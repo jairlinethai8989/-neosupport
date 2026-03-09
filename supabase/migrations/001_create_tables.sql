@@ -11,7 +11,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- 1. TABLE: hospitals
 -- Stores hospital information for 100+ hospitals.
 -- ============================================================
-CREATE TABLE public.hospitals (
+CREATE TABLE IF NOT EXISTS public.hospitals (
     id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name        VARCHAR(255) NOT NULL,
     abbreviation VARCHAR(50)  NOT NULL UNIQUE,  -- e.g., 'KOKHA', 'NANGRONG'
@@ -25,7 +25,7 @@ COMMENT ON COLUMN public.hospitals.abbreviation IS 'Short code used in ticket_no
 -- 2. TABLE: users (LINE Users / Hospital Staff)
 -- Each user is linked to a hospital via hospital_id.
 -- ============================================================
-CREATE TABLE public.users (
+CREATE TABLE IF NOT EXISTS public.users (
     id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     line_uid     VARCHAR(255) NOT NULL UNIQUE,
     display_name VARCHAR(255) NOT NULL,
@@ -39,8 +39,10 @@ COMMENT ON COLUMN public.users.line_uid IS 'Unique LINE user ID from the LINE Me
 COMMENT ON COLUMN public.users.hospital_id IS 'References hospitals.id — which hospital this user belongs to.';
 
 -- Index for fast lookup by LINE UID (login/webhook)
+DROP INDEX IF EXISTS idx_users_line_uid;
 CREATE INDEX idx_users_line_uid ON public.users(line_uid);
 -- Index for filtering users by hospital
+DROP INDEX IF EXISTS idx_users_hospital_id;
 CREATE INDEX idx_users_hospital_id ON public.users(hospital_id);
 
 -- ============================================================
@@ -77,7 +79,7 @@ CREATE TYPE public.escalation_target AS ENUM (
     'Other'
 );
 
-CREATE TABLE public.tickets (
+CREATE TABLE IF NOT EXISTS public.tickets (
     id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     ticket_no     VARCHAR(100) NOT NULL UNIQUE,  -- Auto-generated: SRS_{ABBR}_IPD_{000X}
     description   TEXT         NOT NULL,          -- Issue details from user
@@ -98,11 +100,21 @@ COMMENT ON COLUMN public.tickets.ticket_no IS 'Auto-generated ticket number: SRS
 COMMENT ON COLUMN public.tickets.escalated_to IS 'Department the ticket is forwarded to when escalated.';
 
 -- Indexes for common query patterns
+DROP INDEX IF EXISTS idx_tickets_status;
 CREATE INDEX idx_tickets_status       ON public.tickets(status);
+
+DROP INDEX IF EXISTS idx_tickets_reporter_id;
 CREATE INDEX idx_tickets_reporter_id  ON public.tickets(reporter_id);
+
+DROP INDEX IF EXISTS idx_tickets_escalated_to;
 CREATE INDEX idx_tickets_escalated_to ON public.tickets(escalated_to);
+
+DROP INDEX IF EXISTS idx_tickets_created_at;
 CREATE INDEX idx_tickets_created_at   ON public.tickets(created_at DESC);
+
+DROP INDEX IF EXISTS idx_tickets_assignee;
 CREATE INDEX idx_tickets_assignee     ON public.tickets(assignee_name);
 
 -- Composite index for dashboard filtering (status + escalation)
+DROP INDEX IF EXISTS idx_tickets_status_escalated;
 CREATE INDEX idx_tickets_status_escalated ON public.tickets(status, escalated_to);
