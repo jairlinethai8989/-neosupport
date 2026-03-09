@@ -58,11 +58,13 @@ const SlaDisplay = ({
     }
   }
 
+  const dateDisplay = new Date(ticket.created_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+
   return (
     <div>
       <div style={{ color: waitTimeColor, fontWeight: "bold", fontSize: "0.85rem" }}>{waitTimeText}</div>
       <div style={{color: "var(--text-muted)", fontSize: "0.75rem", opacity: 0.7}}>
-        {formattedDate}
+        {dateDisplay}
       </div>
     </div>
   );
