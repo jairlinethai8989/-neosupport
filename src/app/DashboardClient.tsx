@@ -16,6 +16,176 @@ import {
 import { logout } from "./login/actions";
 import { createClient } from "@/utils/supabase/client";
 
+// ─── Sub-Components ──────────────────────────────────────────
+
+const SlaDisplay = ({ 
+  ticket, 
+  slaPolicy, 
+  now 
+}: { 
+  ticket: any, 
+  slaPolicy: Record<string, number>, 
+  now: Date | null 
+}) => {
+  const priority = ticket.priority || "Medium";
+  const slaHours = slaPolicy[priority] || 8;
+  const createdTime = new Date(ticket.created_at).getTime();
+  const updatedTime = ticket.updated_at ? new Date(ticket.updated_at).getTime() : (now?.getTime() || createdTime);
+  const slaLimitMs = createdTime + (slaHours * 60 * 60 * 1000);
+
+  let waitTimeColor = "var(--text-muted)";
+  let waitTimeText = new Date(ticket.created_at).toLocaleString('th-TH', { 
+    year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+  });
+
+  if (["Resolved", "Closed"].includes(ticket.status)) {
+    const resolveMins = Math.floor((updatedTime - createdTime) / 60000);
+    const rHours = Math.floor(resolveMins / 60);
+    const rMins = resolveMins % 60;
+    const isBreached = updatedTime > slaLimitMs;
+    waitTimeColor = isBreached ? "var(--status-escalated-text)" : "var(--status-done-text)";
+    waitTimeText = `${isBreached ? "⚠️ เกิน SLA " : "✅ "}ใช้เวลา ${rHours}h ${rMins}m`;
+  } else if (now) {
+    const timeLeftMs = slaLimitMs - now.getTime();
+    const timeLeftMins = Math.floor(timeLeftMs / 60000);
+    if (timeLeftMins < 0) {
+      const overMins = Math.abs(timeLeftMins);
+      waitTimeColor = "var(--status-escalated-text)";
+      waitTimeText = `🔥 เลยกำหนด ${Math.floor(overMins/60)}h ${overMins%60}m`;
+    } else {
+      if (timeLeftMins <= 60) waitTimeColor = "var(--prio-high-text)";
+      waitTimeText = `⏳ เหลือ ${Math.floor(timeLeftMins/60)}h ${timeLeftMins%60}m`;
+    }
+  }
+
+  return (
+    <div>
+      <div style={{ color: waitTimeColor, fontWeight: "bold", fontSize: "0.85rem" }}>{waitTimeText}</div>
+      <div style={{color: "var(--text-muted)", fontSize: "0.75rem", opacity: 0.7}}>
+        {formattedDate}
+      </div>
+    </div>
+  );
+};
+
+const TicketRow = ({ 
+  ticket, 
+  router, 
+  onClaim, 
+  isAssigning, 
+  getStatusLabel, 
+  slaPolicy, 
+  now 
+}: any) => {
+  const t = ticket;
+  const userName = t.users?.display_name || "Unknown";
+  const hospitalName = t.users?.hospitals?.name || "Unknown Hospital";
+
+  let badgeCls = "status-pending";
+  if (t.status === "In Progress") badgeCls = "status-in-progress";
+  if (["Resolved", "Closed"].includes(t.status)) badgeCls = "status-done";
+  if (t.status === "Escalated") badgeCls = "status-escalated";
+
+  return (
+    <tr 
+      onClick={() => router.push(`/tickets/${t.id}`)}
+      className="ticket-row-hover"
+      style={{ cursor: "pointer", transition: "all 0.2s ease" }}
+    >
+      <td>
+        <div className="ticket-no">{t.ticket_no}</div>
+        <div style={{fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "0.2rem"}}>{t.issue_type}</div>
+      </td>
+      <td><div className="ticket-desc">{t.description}</div></td>
+      <td>
+        <div style={{fontWeight: 500, color: "var(--text-heading)"}}>{hospitalName}</div>
+        <div style={{fontSize: "0.85rem", color: "var(--text-muted)"}}>🙎‍♂️ {userName}</div>
+      </td>
+      <td>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'flex-start' }}>
+          <span className={`status-badge ${badgeCls}`}>{getStatusLabel(t.status)}</span>
+          <span className={`prio-badge prio-${(t.priority || "Medium").toLowerCase()}`}>{t.priority || "Medium"}</span>
+        </div>
+      </td>
+      <td>
+        {t.assignee_name ? (
+          <div style={{fontWeight: 500, color: "var(--primary)", display: 'flex', alignItems: 'center', gap: '0.4rem'}}>
+            <Users size={14} /> {t.assignee_name}
+          </div>
+        ) : (
+          <button onClick={(e) => onClaim(e, t.id)} disabled={isAssigning === t.id} className="btn-claim-modern">
+            {isAssigning === t.id ? "..." : "✋ Claim"}
+          </button>
+        )}
+      </td>
+      <td><SlaDisplay ticket={t} slaPolicy={slaPolicy} now={now} /></td>
+    </tr>
+  );
+};
+
+const TicketCard = ({ 
+  ticket, 
+  router, 
+  onClaim, 
+  isAssigning, 
+  getStatusLabel, 
+  slaPolicy, 
+  now 
+}: any) => {
+  const t = ticket;
+  const hospitalName = t.users?.hospitals?.name || "Unknown";
+  const userName = t.users?.display_name || "Unknown";
+  
+  let badgeCls = "status-pending";
+  if (t.status === "In Progress") badgeCls = "status-in-progress";
+  if (["Resolved", "Closed"].includes(t.status)) badgeCls = "status-done";
+  if (t.status === "Escalated") badgeCls = "status-escalated";
+
+  return (
+    <div key={t.id} className="ticket-card" onClick={() => router.push(`/tickets/${t.id}`)} style={{ transition: "all 0.2s ease" }}>
+      <div className="card-header" style={{ alignItems: 'flex-start' }}>
+        <div>
+          <div className="card-ticket-no">{t.ticket_no}</div>
+          <div style={{fontSize: '0.75rem', opacity: 0.7}}>{t.issue_type}</div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', alignItems: 'flex-end' }}>
+          <span className={`status-badge ${badgeCls}`} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem' }}>
+            {getStatusLabel(t.status)}
+          </span>
+          <span className={`prio-badge prio-${(t.priority || "Medium").toLowerCase()}`} style={{ fontSize: '0.65rem' }}>
+            {t.priority || "Medium"}
+          </span>
+        </div>
+      </div>
+
+      <div className="card-hospital">{hospitalName}</div>
+      <div className="card-meta">
+        <span>👤 {userName}</span>
+      </div>
+
+      <div className="card-desc">{t.description}</div>
+
+      <div className="card-footer">
+        <SlaDisplay ticket={t} slaPolicy={slaPolicy} now={now} />
+        <div>
+          {t.assignee_name ? (
+            <div style={{fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 600}}>🙋‍♂️ {t.assignee_name}</div>
+          ) : (
+            <button 
+              onClick={(e) => onClaim(e, t.id)}
+              disabled={isAssigning === t.id}
+              className="btn-claim-modern"
+              style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
+            >
+              {isAssigning === t.id ? "..." : "✋ Claim"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function DashboardClient({ initialTickets, userEmail, slaPolicy = {} }: { initialTickets: any[], userEmail?: string, slaPolicy?: Record<string, number> }) {
   const router = useRouter();
   const [theme, setTheme] = useState("dark");
@@ -600,115 +770,24 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
               <tbody>
                 {sortedTickets.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{textAlign: "center", padding: "3rem"}}>
+                    <td colSpan={6} style={{textAlign: "center", padding: "3rem"}}>
                       <span style={{fontSize: "2rem"}}>🏖️</span>
                       <p style={{marginTop: "1rem", color: "var(--text-muted)"}}>No tickets found. Good job!</p>
                     </td>
                   </tr>
                 ) : (
-                  sortedTickets.map((t: any) => {
-                    const userName = t.users?.display_name || "Unknown";
-                    const hospitalName = t.users?.hospitals?.name || "Unknown Hospital";
-                    const date = new Date(t.created_at).toLocaleString('th-TH', {
-                      year: 'numeric', month: 'short', day: 'numeric', 
-                      hour: '2-digit', minute: '2-digit'
-                    });
-
-                    let badgeCls = "status-pending";
-                    if (t.status === "In Progress") badgeCls = "status-in-progress";
-                    if (["Resolved", "Closed"].includes(t.status)) badgeCls = "status-done";
-                    if (t.status === "Escalated") badgeCls = "status-escalated";
-
-                    // SLA Calculation
-                    const priority = t.priority || "Medium";
-                    const slaHours = slaPolicy[priority] || 8;
-                    const createdTime = new Date(t.created_at).getTime();
-                    const updatedTime = t.updated_at ? new Date(t.updated_at).getTime() : (now?.getTime() || createdTime);
-                    const slaLimitMs = createdTime + (slaHours * 60 * 60 * 1000);
-
-                    // State display variables
-                    let waitTimeColor = "var(--text-muted)";
-                    let waitTimeText = date;
-
-                    if (["Resolved", "Closed"].includes(t.status)) {
-                      const resolveMins = Math.floor((updatedTime - createdTime) / 60000);
-                      const rHours = Math.floor(resolveMins / 60);
-                      const rMins = resolveMins % 60;
-                      
-                      const isBreached = updatedTime > slaLimitMs;
-                      waitTimeColor = isBreached ? "var(--status-escalated-text)" : "var(--status-done-text)";
-                      waitTimeText = `${isBreached ? "⚠️ เกิน SLA " : "✅ "}ใช้เวลา ${rHours}h ${rMins}m`;
-                    } else if (now) {
-                      const timeLeftMs = slaLimitMs - now.getTime();
-                      const timeLeftMins = Math.floor(timeLeftMs / 60000);
-                      
-                      if (timeLeftMins < 0) {
-                        const overMins = Math.abs(timeLeftMins);
-                        const oHours = Math.floor(overMins / 60);
-                        const oMins = overMins % 60;
-                        waitTimeColor = "var(--status-escalated-text)";
-                        waitTimeText = oHours > 0 ? `🔥 เลยกำหนด ${oHours}h ${oMins}m` : `🔥 เลยกำหนด ${oMins}m`;
-                      } else {
-                        const tHours = Math.floor(timeLeftMins / 60);
-                        const tMins = timeLeftMins % 60;
-                        if (timeLeftMins <= 60) waitTimeColor = "var(--prio-high-text)"; // < 1 hour left
-                        waitTimeText = tHours > 0 ? `⏳ เหลือ ${tHours}h ${tMins}m` : `⏳ เหลือ ${tMins}m`;
-                      }
-                    }
-
-                    return (
-                      <tr 
-                        key={t.id} 
-                        onClick={() => { router.push(`/tickets/${t.id}`); }}
-                        className={`ticket-row-hover ${["Pending", "In Progress"].includes(t.status) && waitTimeColor === "var(--status-escalated-text)" ? "breached-row" : ""}`}
-                        style={{ cursor: "pointer", transition: "all 0.2s ease" }}
-                        title="Click to view details and chat"
-                      >
-                        <td>
-                          <div className="ticket-no">{t.ticket_no}</div>
-                          <div style={{fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "0.2rem"}}>
-                            {t.issue_type}
-                          </div>
-                        </td>
-                        <td>
-                          <div className="ticket-desc" title={t.description}>{t.description}</div>
-                        </td>
-                        <td>
-                          <div style={{fontWeight: 500, color: "var(--text-heading)"}}>{hospitalName}</div>
-                          <div style={{fontSize: "0.85rem", color: "var(--text-muted)"}}>🙎‍♂️ {userName}</div>
-                        </td>
-                        <td>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'flex-start' }}>
-                            <span className={`status-badge ${badgeCls}`}>{getStatusLabel(t.status)}</span>
-                            <span className={`prio-badge prio-${(t.priority || "Medium").toLowerCase()}`}>{t.priority || "Medium"}</span>
-                          </div>
-                        </td>
-                        <td>
-                          {t.assignee_name ? (
-                            <div style={{fontWeight: 500, color: "var(--primary)", display: 'flex', alignItems: 'center', gap: '0.4rem'}}>
-                              <Users size={14} /> {t.assignee_name}
-                            </div>
-                          ) : (
-                            <button 
-                              onClick={(e) => handleClaim(e, t.id)}
-                              disabled={isAssigning === t.id}
-                              className="btn-claim-modern"
-                            >
-                              {isAssigning === t.id ? "..." : "✋ Claim"}
-                            </button>
-                          )}
-                        </td>
-                        <td>
-                          <div style={{ color: waitTimeColor, fontWeight: "bold", fontSize: "0.85rem", marginBottom: "0.2rem" }}>
-                             {waitTimeText}
-                          </div>
-                          <div style={{color: "var(--text-muted)", fontSize: "0.75rem", opacity: 0.7}}>
-                            {date}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
+                  sortedTickets.map((t: any) => (
+                    <TicketRow 
+                      key={t.id} 
+                      ticket={t} 
+                      router={router} 
+                      onClaim={handleClaim} 
+                      isAssigning={isAssigning}
+                      getStatusLabel={getStatusLabel}
+                      slaPolicy={slaPolicy}
+                      now={now}
+                    />
+                  ))
                 )}
               </tbody>
             </table>
@@ -722,106 +801,18 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
                 📭 ไม่พบรายการที่ค้นหา
               </div>
             ) : (
-              sortedTickets.map(t => {
-                const hospitalName = t.users?.hospitals?.name || "Unknown";
-                const userName = t.users?.display_name || "Unknown";
-                const date = new Date(t.created_at).toLocaleString('th-TH');
-                
-                let badgeCls = "status-pending";
-                if (t.status === "In Progress") badgeCls = "status-progress";
-                if (["Resolved", "Closed"].includes(t.status)) badgeCls = "status-done";
-                if (t.status === "Escalated") badgeCls = "status-escalated";
-
-                // SLA Calculation for mobile
-                const priority = t.priority || "Medium";
-                const slaHours = slaPolicy[priority] || 8;
-                const createdTime = new Date(t.created_at).getTime();
-                const slaLimitMs = createdTime + (slaHours * 60 * 60 * 1000);
-                const updatedTime = t.updated_at ? new Date(t.updated_at).getTime() : (now?.getTime() || createdTime);
-
-                let waitTimeText = "";
-                let waitTimeColor = "var(--text-muted)";
-                let isBreached = false;
-
-                if (["Resolved", "Closed"].includes(t.status)) {
-                  const resolveMins = Math.floor((updatedTime - createdTime) / 60000);
-                  const rHours = Math.floor(resolveMins / 60);
-                  const rMins = resolveMins % 60;
-                  
-                  isBreached = updatedTime > slaLimitMs;
-                  waitTimeColor = isBreached ? "var(--status-escalated-text)" : "var(--status-done-text)";
-                  waitTimeText = `${isBreached ? "⚠️ เกิน SLA " : "✅ "}ใช้เวลา ${rHours}h ${rMins}m`;
-                } else if (now) {
-                  const timeLeftMs = slaLimitMs - now.getTime();
-                  const timeLeftMins = Math.floor(timeLeftMs / 60000);
-                  
-                  if (timeLeftMins < 0) {
-                    const overMins = Math.abs(timeLeftMins);
-                    const oHours = Math.floor(overMins / 60);
-                    const oMins = overMins % 60;
-                    waitTimeColor = "var(--status-escalated-text)";
-                    waitTimeText = oHours > 0 ? `🔥 เลยกำหนด ${oHours}h ${oMins}m` : `🔥 เลยกำหนด ${oMins}m`;
-                    isBreached = true;
-                  } else {
-                    const tHours = Math.floor(timeLeftMins / 60);
-                    const tMins = timeLeftMins % 60;
-                    if (timeLeftMins <= 60) waitTimeColor = "var(--prio-high-text)";
-                    waitTimeText = tHours > 0 ? `⏳ เหลือ ${tHours}h ${tMins}m` : `⏳ เหลือ ${tMins}m`;
-                  }
-                }
-
-                return (
-                  <div key={t.id} className={`ticket-card ${["Pending", "In Progress"].includes(t.status) && isBreached ? "breached-row" : ""}`} onClick={() => router.push(`/tickets/${t.id}`)} style={{ transition: "all 0.2s ease" }}>
-                    <div className="card-header" style={{ alignItems: 'flex-start' }}>
-                      <div>
-                        <div className="card-ticket-no">{t.ticket_no}</div>
-                        <div style={{fontSize: '0.75rem', opacity: 0.7}}>{t.issue_type}</div>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', alignItems: 'flex-end' }}>
-                        <span className={`status-badge ${badgeCls}`} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem' }}>
-                          {getStatusLabel(t.status)}
-                        </span>
-                        <span className={`prio-badge prio-${(t.priority || "Medium").toLowerCase()}`} style={{ fontSize: '0.65rem' }}>
-                          {t.priority || "Medium"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="card-hospital">{hospitalName}</div>
-                    <div className="card-meta">
-                      <span>👤 {userName}</span>
-                      <span>📅 {date}</span>
-                    </div>
-
-                    <div className="card-desc">{t.description}</div>
-
-                    <div className="card-footer">
-                      <div style={{ color: waitTimeColor, fontSize: '0.8rem', fontWeight: 600 }}>
-                        {waitTimeText}
-                      </div>
-                      <div>
-                        {t.assignee_name ? (
-                          <div style={{fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 600}}>
-                            🙋‍♂️ {t.assignee_name}
-                          </div>
-                        ) : (
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleClaim(e, t.id);
-                            }}
-                            disabled={isAssigning === t.id}
-                            className="btn-claim-modern"
-                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
-                          >
-                            {isAssigning === t.id ? "..." : "✋ Claim"}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
+              sortedTickets.map(t => (
+                <TicketCard 
+                  key={t.id} 
+                  ticket={t} 
+                  router={router} 
+                  onClaim={handleClaim} 
+                  isAssigning={isAssigning}
+                  getStatusLabel={getStatusLabel}
+                  slaPolicy={slaPolicy}
+                  now={now}
+                />
+              ))
             )}
           </div>
         </main>

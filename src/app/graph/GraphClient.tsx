@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, memo } from "react";
 import Link from "next/link";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
@@ -34,71 +34,76 @@ export default function GraphClient({ initialTickets, userEmail, slaPolicy = {} 
 
   // ─── Data processing ──────────────────────────────────────────────
 
-  const total = initialTickets.length;
+  const processedData = useMemo(() => {
+    // 1. SLA Calculation
+    let slaOnTime = 0;
+    let slaBreached = 0;
+    let slaPending = 0;
 
-  // 1. SLA Calculation
-  let slaOnTime = 0;
-  let slaBreached = 0;
-  let slaPending = 0;
+    initialTickets.forEach(t => {
+      const priority = t.priority || "Medium";
+      const slaHours = slaPolicy[priority] || 8;
+      const createdTime = new Date(t.created_at).getTime();
+      const limitMs = createdTime + (slaHours * 60 * 60 * 1000);
 
-  initialTickets.forEach(t => {
-    const priority = t.priority || "Medium";
-    const slaHours = slaPolicy[priority] || 8;
-    const createdTime = new Date(t.created_at).getTime();
-    const limitMs = createdTime + (slaHours * 60 * 60 * 1000);
-
-    if (["Resolved", "Closed"].includes(t.status)) {
-      const updatedTime = t.updated_at ? new Date(t.updated_at).getTime() : createdTime;
-      if (updatedTime > limitMs) {
-        slaBreached++;
+      if (["Resolved", "Closed"].includes(t.status)) {
+        const updatedTime = t.updated_at ? new Date(t.updated_at).getTime() : createdTime;
+        if (updatedTime > limitMs) slaBreached++;
+        else slaOnTime++;
       } else {
-        slaOnTime++;
-      }
-    } else {
         slaPending++;
-    }
-  });
+      }
+    });
 
-  const totalResolved = slaOnTime + slaBreached;
-  const slaSuccessRate = totalResolved > 0 ? Math.round((slaOnTime / totalResolved) * 100) : 0;
+    const totalResolved = slaOnTime + slaBreached;
+    const slaSuccessRate = totalResolved > 0 ? Math.round((slaOnTime / totalResolved) * 100) : 0;
 
-  const slaData = [
-    { name: "SLA Achieved", value: slaOnTime, fill: "#10b981" }, // Green
-    { name: "SLA Breached", value: slaBreached, fill: "#ef4444" } // Red
-  ].filter(d => d.value > 0);
+    const slaData = [
+      { name: "SLA Achieved", value: slaOnTime, fill: "#10b981" },
+      { name: "SLA Breached", value: slaBreached, fill: "#ef4444" }
+    ].filter(d => d.value > 0);
 
-  // 2. Department Workload (Hospital/Dept)
-  const deptCounts = initialTickets.reduce((acc, t) => { 
-    const n = t.users?.hospitals?.name || "Unknown"; 
-    acc[n] = (acc[n] || 0) + 1; 
-    return acc; 
-  }, {} as Record<string, number>);
-  
-  const colors = ['#6366f1', '#d946ef', '#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899'];
-  const departmentData = Object.keys(deptCounts)
-    .map((k, i) => ({ name: k, value: deptCounts[k], fill: colors[i % colors.length] }))
-    .sort((a,b) => b.value - a.value);
+    // 2. Department Data
+    const deptCounts = initialTickets.reduce((acc, t) => { 
+      const n = t.users?.hospitals?.name || "Unknown"; 
+      acc[n] = (acc[n] || 0) + 1; 
+      return acc; 
+    }, {} as Record<string, number>);
+    
+    const colors = ['#6366f1', '#d946ef', '#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899'];
+    const departmentData = Object.keys(deptCounts)
+      .map((k, i) => ({ name: k, value: deptCounts[k], fill: colors[i % colors.length] }))
+      .sort((a,b) => b.value - a.value);
 
-  // 3. Issue Types Radar
-  const typeCounts = initialTickets.reduce((acc, t) => { 
-    const typ = t.issue_type || "Uncategorized";
-    acc[typ] = (acc[typ] || 0) + 1; 
-    return acc; 
-  }, {} as Record<string, number>);
-  const typeData = Object.keys(typeCounts).map(k => ({ name: k, value: typeCounts[k] }));
+    // 3. Issue Types
+    const typeCounts = initialTickets.reduce((acc, t) => { 
+      const typ = t.issue_type || "Uncategorized";
+      acc[typ] = (acc[typ] || 0) + 1; 
+      return acc; 
+    }, {} as Record<string, number>);
+    const typeData = Object.keys(typeCounts).map(k => ({ name: k, value: typeCounts[k] }));
 
-  // 4. Ticket Trend (Last 14 days)
-  const dailyDataObj = initialTickets.reduce((acc, t) => {
-    // Ensure all dates map smoothly.
-    const date = new Date(t.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    acc[date] = (acc[date] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-  
-  const dailyData = Object.keys(dailyDataObj).map(date => ({ date, count: dailyDataObj[date] })).reverse().slice(-14);
+    // 4. Trend (Last 14 days)
+    const dailyDataObj = initialTickets.reduce((acc, t) => {
+      const date = new Date(t.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      acc[date] = (acc[date] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    const dailyData = Object.keys(dailyDataObj).map(date => ({ date, count: dailyDataObj[date] })).reverse().slice(-14);
+
+    return {
+      total: initialTickets.length,
+      slaOnTime, slaBreached, slaPending,
+      totalResolved, slaSuccessRate,
+      slaData, departmentData, typeData, dailyData
+    };
+  }, [initialTickets, slaPolicy]);
+
+  const { total, slaBreached, slaPending, totalResolved, slaSuccessRate, slaData, departmentData, typeData, dailyData } = processedData;
 
   // Custom tooltips
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = memo(({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
         <div style={{ backgroundColor: 'var(--bg-surface)', backdropFilter: 'var(--glass-blur)', border: '1px solid var(--border-color)', padding: '12px', borderRadius: '12px', boxShadow: '0 10px 20px rgba(0,0,0,0.3)' }}>
@@ -108,7 +113,7 @@ export default function GraphClient({ initialTickets, userEmail, slaPolicy = {} 
       );
     }
     return null;
-  };
+  });
 
   if (!mounted) return null;
 
