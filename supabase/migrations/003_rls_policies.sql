@@ -13,6 +13,7 @@ ALTER TABLE public.tickets   ENABLE ROW LEVEL SECURITY;
 -- ============================================================
 -- HOSPITALS - Read-only for authenticated users
 -- ============================================================
+DROP POLICY IF EXISTS "hospitals_select_authenticated" ON public.hospitals;
 CREATE POLICY "hospitals_select_authenticated"
     ON public.hospitals
     FOR SELECT
@@ -20,6 +21,7 @@ CREATE POLICY "hospitals_select_authenticated"
     USING (true);
 
 -- Only service_role (admin/backend) can insert/update/delete hospitals
+DROP POLICY IF EXISTS "hospitals_all_service_role" ON public.hospitals;
 CREATE POLICY "hospitals_all_service_role"
     ON public.hospitals
     FOR ALL
@@ -32,6 +34,7 @@ CREATE POLICY "hospitals_all_service_role"
 -- ============================================================
 
 -- Any authenticated user can see all users (for display names, etc.)
+DROP POLICY IF EXISTS "users_select_authenticated" ON public.users;
 CREATE POLICY "users_select_authenticated"
     ON public.users
     FOR SELECT
@@ -41,6 +44,7 @@ CREATE POLICY "users_select_authenticated"
 -- Users can update only their own profile
 -- NOTE: Match auth.uid() to users.id if you link Supabase Auth to this table.
 -- If using LINE UID, you'll need a custom JWT claim or a mapping table.
+DROP POLICY IF EXISTS "users_update_own" ON public.users;
 CREATE POLICY "users_update_own"
     ON public.users
     FOR UPDATE
@@ -49,6 +53,7 @@ CREATE POLICY "users_update_own"
     WITH CHECK (id = auth.uid());
 
 -- Service role can manage all users
+DROP POLICY IF EXISTS "users_all_service_role" ON public.users;
 CREATE POLICY "users_all_service_role"
     ON public.users
     FOR ALL
@@ -61,6 +66,7 @@ CREATE POLICY "users_all_service_role"
 -- ============================================================
 
 -- Authenticated users can read all tickets (dashboard visibility)
+DROP POLICY IF EXISTS "tickets_select_authenticated" ON public.tickets;
 CREATE POLICY "tickets_select_authenticated"
     ON public.tickets
     FOR SELECT
@@ -68,6 +74,7 @@ CREATE POLICY "tickets_select_authenticated"
     USING (true);
 
 -- Users can create tickets (reporter_id must match their own ID)
+DROP POLICY IF EXISTS "tickets_insert_own" ON public.tickets;
 CREATE POLICY "tickets_insert_own"
     ON public.tickets
     FOR INSERT
@@ -76,6 +83,7 @@ CREATE POLICY "tickets_insert_own"
 
 -- Support staff can update any ticket (adjust role check as needed)
 -- PLACEHOLDER: In production, check for a 'support' or 'admin' role claim.
+DROP POLICY IF EXISTS "tickets_update_support" ON public.tickets;
 CREATE POLICY "tickets_update_support"
     ON public.tickets
     FOR UPDATE
@@ -84,6 +92,7 @@ CREATE POLICY "tickets_update_support"
     WITH CHECK (true);
 
 -- Service role has full access
+DROP POLICY IF EXISTS "tickets_all_service_role" ON public.tickets;
 CREATE POLICY "tickets_all_service_role"
     ON public.tickets
     FOR ALL

@@ -83,6 +83,7 @@ COMMENT ON FUNCTION public.generate_ticket_no IS
 -- TRIGGER: trg_generate_ticket_no
 -- Fires BEFORE INSERT on tickets to set ticket_no automatically.
 -- ============================================================
+DROP TRIGGER IF EXISTS trg_generate_ticket_no ON public.tickets;
 CREATE TRIGGER trg_generate_ticket_no
     BEFORE INSERT ON public.tickets
     FOR EACH ROW
@@ -102,6 +103,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trg_tickets_updated_at ON public.tickets;
 CREATE TRIGGER trg_tickets_updated_at
     BEFORE UPDATE ON public.tickets
     FOR EACH ROW

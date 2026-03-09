@@ -3,7 +3,7 @@
 -- Stores individual LINE messages linked to tickets.
 -- ============================================================
 
-CREATE TABLE public.messages (
+CREATE TABLE IF NOT EXISTS public.messages (
     id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     ticket_id       UUID         NOT NULL REFERENCES public.tickets(id) ON DELETE CASCADE,
     line_uid        VARCHAR(255) NOT NULL,           -- LINE user who sent the message
@@ -29,6 +29,7 @@ CREATE INDEX idx_messages_created_at ON public.messages(created_at DESC);
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
 -- Authenticated users can read all messages
+DROP POLICY IF EXISTS "messages_select_authenticated" ON public.messages;
 CREATE POLICY "messages_select_authenticated"
     ON public.messages
     FOR SELECT
@@ -36,6 +37,7 @@ CREATE POLICY "messages_select_authenticated"
     USING (true);
 
 -- Service role has full access (for webhook API route)
+DROP POLICY IF EXISTS "messages_all_service_role" ON public.messages;
 CREATE POLICY "messages_all_service_role"
     ON public.messages
     FOR ALL
