@@ -19,9 +19,9 @@ COMMENT ON COLUMN public.messages.ticket_id IS 'References tickets.id — which 
 COMMENT ON COLUMN public.messages.direction IS 'inbound = user sent to bot, outbound = bot replied to user.';
 
 -- Indexes for common query patterns
-CREATE INDEX idx_messages_ticket_id  ON public.messages(ticket_id);
-CREATE INDEX idx_messages_line_uid   ON public.messages(line_uid);
-CREATE INDEX idx_messages_created_at ON public.messages(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_messages_ticket_id  ON public.messages(ticket_id);
+CREATE INDEX IF NOT EXISTS idx_messages_line_uid   ON public.messages(line_uid);
+CREATE INDEX IF NOT EXISTS idx_messages_created_at ON public.messages(created_at DESC);
 
 -- ============================================================
 -- RLS Policies for messages
