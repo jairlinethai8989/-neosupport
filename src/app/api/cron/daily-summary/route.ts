@@ -47,13 +47,11 @@ export async function GET(request: Request) {
     const metrics = {
       totalActive: 0,
       newToday: 0,
+      closedToday: 0,
       pending: 0,
       escalated: 0,
       breaching: {
-        Critical: 0,
-        High: 0,
-        Medium: 0,
-        Low: 0
+        critical: 0, high: 0, medium: 0, low: 0
       }
     };
 
@@ -64,13 +62,24 @@ export async function GET(request: Request) {
       .eq("key", "sla_policy")
       .single();
     
-    const slaPolicy = settings?.value || { Critical: 1, High: 4, Medium: 8, Low: 24 };
+    // Normalize keys to lowercase for type safety during lookup
+    const rawSla = settings?.value || { Critical: 1, High: 4, Medium: 8, Low: 24 };
+    const slaPolicy: Record<string, number> = {};
+    Object.keys(rawSla).forEach(k => slaPolicy[k.toLowerCase()] = rawSla[k]);
 
     // Process each ticket
     tickets.forEach((t) => {
+      const createdAt = new Date(t.created_at);
+      const updatedAt = new Date(t.updated_at);
+
       // Is it a new ticket today?
-      if (new Date(t.created_at) >= today) {
+      if (createdAt >= today) {
         metrics.newToday++;
+      }
+
+      // Is it closed today? (Closed or Resolved in the current day)
+      if ((t.status === "Resolved" || t.status === "Closed") && updatedAt >= today) {
+        metrics.closedToday++;
       }
 
       // Check Active tickets (not Resolved or Closed)
@@ -81,13 +90,12 @@ export async function GET(request: Request) {
         if (t.status === "Escalated") metrics.escalated++;
 
         // Calculate if breached
-        const priority = t.priority || "Medium";
+        const priority = (t.priority || "Medium").toLowerCase();
         const slaHours = slaPolicy[priority] || 8;
-        const createdTime = new Date(t.created_at).getTime();
+        const createdTime = createdAt.getTime();
         const slaLimitMs = createdTime + (slaHours * 60 * 60 * 1000);
 
         if (now.getTime() > slaLimitMs) {
-          // Type safe increment
           if (priority in metrics.breaching) {
              metrics.breaching[priority as keyof typeof metrics.breaching]++;
           }
@@ -98,44 +106,45 @@ export async function GET(request: Request) {
     const totalBreaches = Object.values(metrics.breaching).reduce((a, b) => a + b, 0);
 
     // 5. Construct LINE Message
-    let messageText = `📊 สรุปรายงาน IT Support ประจำวัน 📊\n`;
+    // Determine report type based on hour (TH time is UTC+7)
+    const hour = now.getHours();
+    let reportTitle = "📊 สรุปรายงาน IT Support ประจำวัน 📊";
+    if (hour >= 17 && hour < 20) {
+      reportTitle = "🌆 สรุปผลการดำเนินงาน (รอบเย็น 17:30) 🌆";
+    } else if (hour >= 23 || hour < 2) {
+      reportTitle = "🌑 สรุปปิดยอดงานประจำวัน (24:00) 🌑";
+    }
+
+    let messageText = `${reportTitle}\n`;
     messageText += `วันที่: ${now.toLocaleDateString("th-TH")}\n`;
     messageText += `━━━━━━━━━━━━━━━━━\n`;
+    messageText += `✅ ปิดยอดวันนี้ (Resolved): ${metrics.closedToday} งาน\n`;
     messageText += `🔹 งานเข้าใหม่วันนี้: ${metrics.newToday} งาน\n`;
     messageText += `⚡ งานค้างในระบบทั้งหมด: ${metrics.totalActive} งาน\n`;
-    messageText += `     • รอรับงาน (Pending): ${metrics.pending}\n`;
-    messageText += `     • ถูกส่งต่อ (Escalated): ${metrics.escalated}\n`;
+    messageText += `     • รอรับงาน: ${metrics.pending}\n`;
+    messageText += `     • ส่งต่อ: ${metrics.escalated}\n`;
     
     if (totalBreaches > 0) {
       messageText += `━━━━━━━━━━━━━━━━━\n`;
-      messageText += `⚠️ คิวงานที่เกินกำหนด SLA (${totalBreaches} งาน): ⚠️\n`;
-      if (metrics.breaching.Critical > 0) messageText += `     🔥 คอขาดบาดตาย: ${metrics.breaching.Critical}\n`;
-      if (metrics.breaching.High > 0) messageText += `     🔴 ด่วนมาก: ${metrics.breaching.High}\n`;
-      if (metrics.breaching.Medium > 0) messageText += `     🟡 ปานกลาง: ${metrics.breaching.Medium}\n`;
-      if (metrics.breaching.Low > 0) messageText += `     🟢 ทั่วไป: ${metrics.breaching.Low}\n`;
-      messageText += `(กรุณาให้ความสำคัญกับงานที่เกินกำหนดเป็นพิเศษ!)\n`;
+      messageText += `⚠️ คิวงานเกินกำหนด SLA (${totalBreaches} งาน): ⚠️\n`;
+      if (metrics.breaching.critical > 0) messageText += `     🔥 คอขาดบาดตาย: ${metrics.breaching.critical}\n`;
+      if (metrics.breaching.high > 0) messageText += `     🔴 ด่วนมาก: ${metrics.breaching.high}\n`;
+      if (metrics.breaching.medium > 0) messageText += `     🟡 ปานกลาง: ${metrics.breaching.medium}\n`;
+      if (metrics.breaching.low > 0) messageText += `     🟢 ทั่วไป: ${metrics.breaching.low}\n`;
     }
 
     messageText += `━━━━━━━━━━━━━━━━━\n`;
-    messageText += `สามารถเข้าระบบเพื่อจัดการงานต่อได้ที่:\n`;
-    messageText += `${process.env.NEXT_PUBLIC_APP_URL || "https://neosupport.vercel.app"}`;
+    messageText += `จัดการงานต่อได้ที่: ${process.env.NEXT_PUBLIC_APP_URL || "https://neosupport.vercel.app"}`;
 
     const itGroupId = process.env.LINE_IT_GROUP_ID || process.env.LINE_ADMIN_UID;
     
     // 6. Send summary to IT Admin Group (or predefined user)
-
     if (!itGroupId) {
-      console.warn("LINE_IT_GROUP_ID or LINE_ADMIN_UID not set. Only returning JSON.");
+      console.warn("LINE_IT_GROUP_ID or LINE_ADMIN_UID not set.");
       return NextResponse.json({ success: true, warning: 'No Target IT Group Set', metrics });
     }
 
-    // Try sending message
-    await pushMessage(itGroupId, [
-      {
-        type: "text",
-        text: messageText,
-      },
-    ]);
+    await pushMessage(itGroupId, [{ type: "text", text: messageText }]);
 
     return NextResponse.json({ success: true, message: "Summary sent", metrics });
   } catch (err: any) {

@@ -105,9 +105,33 @@ async function handleEvent(event: LineEvent): Promise<void> {
   }
 
   const lineUserId = event.source?.userId;
+  const lineGroupId = event.source?.type === "group" ? (event.source as any).groupId : null;
+  const lineRoomId = event.source?.type === "room" ? (event.source as any).roomId : null;
+  const sourceType = event.source?.type || "user";
   const lineMessageId = event.message?.id;
   const messageType = event.message?.type || "text"; // "text", "image", or "sticker"
   let messageText = event.message?.text || "";
+
+  // 🆔 COMMAND: /id — Let the bot tell its own ID/Group ID
+  if (messageText.trim() === "/id" && event.replyToken) {
+    const targetId = lineGroupId || lineRoomId || lineUserId || "Unknown";
+    await replyMessage(event.replyToken, [
+      { type: "text", text: `Your ${sourceType} ID is:\n${targetId}` }
+    ]);
+    return;
+  }
+
+  // Helpful logging for discovering Group IDs
+  if (lineGroupId || lineRoomId) {
+    console.log(`[LINE SOURCE DISCOVERY] Group: ${lineGroupId} | Room: ${lineRoomId} | Type: ${sourceType}`);
+  }
+
+  // ─── Ticketing Restriction ──────────────────────────────────
+  // Only process ticket creation for private 1-on-1 chats.
+  if (sourceType !== "user") {
+    // console.log(`[LINE Webhook] Skipping ticketing: Source is ${sourceType}`);
+    return;
+  }
 
   // Handle sticker — convert to image URL from LINE Sticker CDN
   if (messageType === "sticker") {
