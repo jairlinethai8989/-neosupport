@@ -10,7 +10,8 @@ import {
 import { 
   Sun, Moon, ArrowUpDown, ArrowUp, ArrowDown, Menu, 
   LayoutDashboard, PlusCircle, BarChart3, Users, Hospital, Settings,
-  ChevronLeft, ChevronRight, LogOut, Activity
+  ChevronLeft, ChevronRight, LogOut, Activity, Search, Trash2, 
+  CheckCircle, AlertTriangle, Zap, Clock, User, Plus, Info, Inbox
 } from "lucide-react";
 
 import { logout } from "./login/actions";
@@ -34,7 +35,7 @@ const SlaDisplay = ({
   const slaLimitMs = createdTime + (slaHours * 60 * 60 * 1000);
 
   let waitTimeColor = "var(--text-muted)";
-  let waitTimeText = new Date(ticket.created_at).toLocaleString('th-TH', { 
+  let waitTimeText: React.ReactNode = new Date(ticket.created_at).toLocaleString('th-TH', { 
     year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
   });
 
@@ -44,17 +45,30 @@ const SlaDisplay = ({
     const rMins = resolveMins % 60;
     const isBreached = updatedTime > slaLimitMs;
     waitTimeColor = isBreached ? "var(--status-escalated-text)" : "var(--status-done-text)";
-    waitTimeText = `${isBreached ? "⚠️ เกิน SLA " : "✅ "}ใช้เวลา ${rHours}h ${rMins}m`;
+    waitTimeText = (
+      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        {isBreached ? <AlertTriangle size={14} /> : <CheckCircle size={14} />}
+        {isBreached ? "เกิน SLA " : "ใช้เวลา "} {rHours}h {rMins}m
+      </span>
+    );
   } else if (now) {
     const timeLeftMs = slaLimitMs - now.getTime();
     const timeLeftMins = Math.floor(timeLeftMs / 60000);
     if (timeLeftMins < 0) {
       const overMins = Math.abs(timeLeftMins);
       waitTimeColor = "var(--status-escalated-text)";
-      waitTimeText = `🔥 เลยกำหนด ${Math.floor(overMins/60)}h ${overMins%60}m`;
+      waitTimeText = (
+        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <Zap size={14} className="animate-pulse" /> เลยกำหนด {Math.floor(overMins/60)}h {overMins%60}m
+        </span>
+      );
     } else {
       if (timeLeftMins <= 60) waitTimeColor = "var(--prio-high-text)";
-      waitTimeText = `⏳ เหลือ ${Math.floor(timeLeftMins/60)}h ${timeLeftMins%60}m`;
+      waitTimeText = (
+        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <Clock size={14} /> เหลือ {Math.floor(timeLeftMins/60)}h {timeLeftMins%60}m
+        </span>
+      );
     }
   }
 
@@ -91,17 +105,22 @@ const TicketRow = ({
   return (
     <tr 
       onClick={() => router.push(`/tickets/${t.id}`)}
-      className="ticket-row-hover"
+      className={`ticket-row-hover ${!t.assignee_name ? 'unassigned-row' : ''}`}
       style={{ cursor: "pointer", transition: "all 0.2s ease" }}
     >
       <td>
-        <div className="ticket-no">{t.ticket_no}</div>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          {!t.assignee_name && <span className="unassigned-pulse-dot" title="ยังไม่มีผู้รับงาน" />}
+          <div className="ticket-no">{t.ticket_no}</div>
+        </div>
         <div style={{fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "0.2rem"}}>{t.issue_type}</div>
       </td>
       <td><div className="ticket-desc">{t.description}</div></td>
       <td>
         <div style={{fontWeight: 500, color: "var(--text-heading)"}}>{hospitalName}</div>
-        <div style={{fontSize: "0.85rem", color: "var(--text-muted)"}}>🙎‍♂️ {userName}</div>
+        <div style={{fontSize: "0.85rem", color: "var(--text-muted)", display: 'flex', alignItems: 'center', gap: '4px'}}>
+          <User size={12} /> {userName}
+        </div>
       </td>
       <td>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'flex-start' }}>
@@ -115,8 +134,14 @@ const TicketRow = ({
             <Users size={14} /> {t.assignee_name}
           </div>
         ) : (
-          <button onClick={(e) => onClaim(e, t.id)} disabled={isAssigning === t.id} className="btn-claim-modern">
-            {isAssigning === t.id ? "..." : "✋ Claim"}
+          <button onClick={(e) => onClaim(e, t.id)} disabled={isAssigning === t.id} className="btn-claim-modern-dashboard">
+            {isAssigning === t.id ? (
+              <div className="spinner-mini" />
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Activity size={14} className="animate-pulse" /> รับงาน
+              </div>
+            )}
           </button>
         )}
       </td>
@@ -144,10 +169,13 @@ const TicketCard = ({
   if (t.status === "Escalated") badgeCls = "status-escalated";
 
   return (
-    <div key={t.id} className="ticket-card" onClick={() => router.push(`/tickets/${t.id}`)} style={{ transition: "all 0.2s ease" }}>
+    <div key={t.id} className={`ticket-card ${!t.assignee_name ? 'unassigned-row' : ''}`} onClick={() => router.push(`/tickets/${t.id}`)} style={{ transition: "all 0.2s ease" }}>
       <div className="card-header" style={{ alignItems: 'flex-start' }}>
         <div>
-          <div className="card-ticket-no">{t.ticket_no}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+             {!t.assignee_name && <span className="unassigned-pulse-dot" />}
+             <div className="card-ticket-no">{t.ticket_no}</div>
+          </div>
           <div style={{fontSize: '0.75rem', opacity: 0.7}}>{t.issue_type}</div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', alignItems: 'flex-end' }}>
@@ -162,7 +190,7 @@ const TicketCard = ({
 
       <div className="card-hospital">{hospitalName}</div>
       <div className="card-meta">
-        <span>👤 {userName}</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><User size={12} /> {userName}</span>
       </div>
 
       <div className="card-desc">{t.description}</div>
@@ -176,10 +204,16 @@ const TicketCard = ({
             <button 
               onClick={(e) => onClaim(e, t.id)}
               disabled={isAssigning === t.id}
-              className="btn-claim-modern"
+              className="btn-claim-modern-dashboard"
               style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
             >
-              {isAssigning === t.id ? "..." : "✋ Claim"}
+              {isAssigning === t.id ? (
+                <div className="spinner-mini" />
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Activity size={14} className="animate-pulse" /> รับงาน
+                </div>
+              )}
             </button>
           )}
         </div>
@@ -536,8 +570,8 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
           </div>
           <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             {userEmail && (
-              <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                👨‍💻 {userEmail}
+              <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <User size={14} /> {userEmail}
               </div>
             )}
             <form action={logout}>
@@ -552,7 +586,7 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
             )}
             <Link href="/tickets/new" style={{ textDecoration: 'none' }}>
               <button className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                 <span>➕</span> Create Ticket
+                 <Plus size={18} /> Create Ticket
               </button>
             </Link>
           </div>
@@ -686,10 +720,10 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
                       setSelectedHospital("ALL");
                       setSearchQuery("");
                     }}
-                    className="btn-secondary hover-danger"
-                    style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', borderRadius: '12px' }}
+                     className="btn-secondary hover-danger"
+                    style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
                   >
-                    ✖ ล้างตัวกรอง
+                    <Trash2 size={14} /> ล้างตัวกรอง
                   </button>
                 )}
               </div>
@@ -697,9 +731,9 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
 
             {/* Search and Filters Bar */}
             <div className="filter-bar-modern" style={{ display: 'flex', gap: '1rem', width: '100%', flexWrap: 'wrap' }}>
-              <div style={{ position: 'relative', flex: 1, minWidth: '300px' }}>
+               <div style={{ position: 'relative', flex: 1, minWidth: '300px' }}>
                 <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>
-                  🔍
+                  <Search size={18} />
                 </span>
                 <input 
                   type="text" 
@@ -738,7 +772,7 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
                   boxShadow: '0 2px 5px rgba(0,0,0,0.05)'
                 }}
               >
-                <option value="ALL">🏥 เลือกโรงพยาบาลทั้งหมด</option>
+                 <option value="ALL">เลือกโรงพยาบาลทั้งหมด</option>
                 {allHospitals.map(h => (
                   <option key={h} value={h}>{h}</option>
                 ))}
@@ -771,10 +805,10 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
               </thead>
               <tbody>
                 {sortedTickets.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} style={{textAlign: "center", padding: "3rem"}}>
-                      <span style={{fontSize: "2rem"}}>🏖️</span>
-                      <p style={{marginTop: "1rem", color: "var(--text-muted)"}}>No tickets found. Good job!</p>
+                   <tr>
+                    <td colSpan={6} style={{textAlign: "center", padding: "4rem"}}>
+                      <Inbox size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+                      <p style={{marginTop: '1rem', color: "var(--text-muted)", fontSize: '1.1rem'}}>No tickets found. Good job!</p>
                     </td>
                   </tr>
                 ) : (
@@ -798,9 +832,10 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
 
         {/* Mobile Card Layout - Visible only on mobile via CSS */}
         <div className="mobile-cards-container">
-            {sortedTickets.length === 0 ? (
-              <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                📭 ไม่พบรายการที่ค้นหา
+             {sortedTickets.length === 0 ? (
+              <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <Inbox size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+                ไม่พบรายการที่ค้นหา
               </div>
             ) : (
               sortedTickets.map(t => (
@@ -818,9 +853,9 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
             )}
           </div>
         </main>
-      {toast.show && (
+       {toast.show && (
         <div className="toast-notification">
-           <span>ℹ️</span> {toast.message}
+           <Info size={18} /> {toast.message}
         </div>
       )}
 

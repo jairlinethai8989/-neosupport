@@ -46,8 +46,8 @@ async function getTicketDetails(id: string) {
 
   const initialSettings = {
     modules: settings?.find(s => s.key === "modules")?.value || ["ห้องพยาบาล", "ห้องแพทย์", "ผู้ป่วยใน (IPD)", "ผู้ป่วยนอก (OPD)", "การเงิน/บัญชี", "จัดซื้อ/พัสดุ", "Network/Infra", "อื่นๆ"],
-    issue_types: settings?.find(s => s.key === "issue_types")?.value || ["PB", "REQ", "แนะนำ", "Q&A"],
-    resolution_notes: settings?.find(s => s.key === "resolution_notes")?.value || ["แก้ไขเสร็จเรียบร้อย", "ปรับปรุงค่าระบบและทดสอบแล้ว"],
+    issue_types: settings?.find(s => s.key === "issue_types")?.value || ["PB", "REQ", "แนะนำ", "Q&A", "USER", "Bug", "Feature Request", "Other"],
+    resolution_notes: settings?.find(s => s.key === "resolution_notes")?.value || ["แก้ไขเสร็จเรียบร้อย", "ปรับปรุงค่าระบบและทดสอบแล้ว", "แนะนำการใช้งานเพิ่มเติม", "ได้รับอนุญาตจากหัวหน้างานแล้ว"],
     quick_replies: settings?.find(s => s.key === "quick_replies")?.value || [
       "รับเรื่องแล้วครับ กำลังตรวจสอบให้",
       "รบกวนส่งภาพหน้าจอประกอบด้วยนะครับ",

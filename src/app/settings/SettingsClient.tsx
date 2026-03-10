@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import {
   ArrowLeft, Plus, Trash2, Pencil, Check, X, Search, RefreshCw, CheckCircle2,
-  Sun, Moon, Package, Tag, Wrench, MessageSquare, Building2, Database, Download, HardDrive, ShieldAlert, Shield
+  Sun, Moon, Package, Tag, Wrench, MessageSquare, Building2, Database, Download, HardDrive, ShieldAlert, Shield, Users
 } from "lucide-react";
 
 // ─── Sidebar Menu Config ─────────────────────────────────────
@@ -15,6 +15,7 @@ const MENU_ITEMS = [
   { key: "quick_replies",    icon: MessageSquare, label: "ข้อความตอบกลับสำเร็จรูป",  sub: "Quick Replies" },
   { key: "policy",           icon: Shield,        label: "นโยบายระบบ",               sub: "System Policies" },
   { key: "maintenance",      icon: Database,      label: "ดูแลระบบ / พื้นที่",      sub: "System Maintenance" },
+  { key: "staff_approvals",  icon: Users,         label: "อนุมัติสิทธิ์พนักงาน",      sub: "Staff Management", href: "/settings/staff-approvals" },
   { key: "audit_logs",       icon: ShieldAlert,   label: "ประวัติการ Cleanup",      sub: "Audit Logs", href: "/settings/audit-logs" },
   { key: "hospitals",        icon: Building2,     label: "โรงพยาบาล",                sub: "Hospital Config" },
 ];

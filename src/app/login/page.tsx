@@ -58,6 +58,39 @@ function LoginForm() {
         </button>
       </form>
 
+      {isLogin && (
+        <>
+          <div style={{ margin: '1.5rem 0', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-color)' }} />
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>OR</span>
+            <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-color)' }} />
+          </div>
+
+          <a 
+            href={`https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${process.env.NEXT_PUBLIC_LINE_LOGIN_CLIENT_ID || ''}&redirect_uri=${encodeURIComponent((process.env.NEXT_PUBLIC_APP_URL || '') + '/api/line/callback')}&state=login_staff&scope=profile%20openid`}
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              gap: '0.75rem', 
+              padding: '0.85rem', 
+              backgroundColor: '#06C755', 
+              color: 'white', 
+              borderRadius: '8px', 
+              textDecoration: 'none', 
+              fontWeight: 600,
+              fontSize: '0.95rem',
+              transition: 'opacity 0.2s'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.opacity = '0.9'}
+            onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
+          >
+            <img src="https://upload.wikimedia.org/wikipedia/commons/4/41/LINE_logo.svg" alt="" style={{ width: '20px', height: '20px' }} />
+            Sign in with LINE
+          </a>
+        </>
+      )}
+
       <div style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
         {isLogin ? "Don't have an account? " : "Already have an account? "}
         <button 

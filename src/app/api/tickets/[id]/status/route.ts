@@ -10,7 +10,7 @@ export async function POST(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { status, lineUid, notes, module, issue_type } = body;
+    const { status, lineUid, notes, module, issue_type, escalated_to } = body;
 
     if (!status) {
       return NextResponse.json(
@@ -24,6 +24,7 @@ export async function POST(
     if (notes !== undefined) updatePayload.notes = notes;
     if (module !== undefined) updatePayload.module = module;
     if (issue_type !== undefined) updatePayload.issue_type = issue_type;
+    if (escalated_to !== undefined) updatePayload.escalated_to = escalated_to;
 
     const { data: ticket, error } = await supabaseAdmin
       .from("tickets")
@@ -40,15 +41,21 @@ export async function POST(
       );
     }
 
-    // 2. If status is Resolved or Closed, send a LINE notification WITHOUT awaiting
+    // 2. If status is Resolved or Closed, send a LINE notification
     if (lineUid && (status === "Resolved" || status === "Closed")) {
+      const displayNotes = notes ? `\n📝 วิธีแก้ไข: ${notes.substring(0, 150)}${notes.length > 150 ? "..." : ""}` : "";
+      
       pushMessage(lineUid, [
         {
           type: "text",
-          text: `✅ Ticket ${ticket.ticket_no} ของคุณได้รับการแก้ไขและเปลี่ยนสถานะเป็น "${status}" เรียบร้อยแล้วครับ\n\nขอบคุณที่ใช้บริการ NEO Support 🙏`,
+          text: `✅ Ticket ${ticket.ticket_no} ของคุณได้รับการแก้ไขแล้ว!\n` +
+                `━━━━━━━━━━━━━━━━━\n` +
+                `สถานะ: ${status === "Resolved" ? "แก้ไขเสร็จสิ้น" : "ปิดงาน"}${displayNotes}\n` +
+                `━━━━━━━━━━━━━━━━━\n\n` +
+                `ขอบคุณที่ใช้บริการ NEO Support ครับ 🙏`
         },
       ]).catch(pushError => {
-        console.error("Failed to push status notification in background:", pushError);
+        console.error("Failed to push status notification:", pushError);
       });
     }
 

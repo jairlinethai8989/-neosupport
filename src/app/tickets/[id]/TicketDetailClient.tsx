@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Send, Image as ImageIcon, Video, X, FileText, Share2, CheckCircle, Pencil, Eraser, RotateCcw, Trash2, Square, Circle, Activity } from "lucide-react";
+import { ArrowLeft, Send, Image as ImageIcon, Video, X, FileText, Share2, CheckCircle, Pencil, Eraser, RotateCcw, Trash2, Square, Circle, Activity, ChevronLeft, ChevronRight, Hand, ShieldCheck, UserCheck, Clock, Zap, Info, Search, User, Plus } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 const supabase = createClient();
 import jsPDF from "jspdf";
@@ -330,6 +330,7 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [toast, setToast] = useState<{ message: string, show: boolean }>({ message: "", show: false });
   const [theme, setTheme] = useState("dark");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const reportRef = useRef<HTMLDivElement>(null);
@@ -544,73 +545,104 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
   const handleConfirmResolve = async () => {
     if (!resolveNotes.trim()) { alert("กรุณาระบุวิธีแก้ไขปัญหา"); return; }
     const success = await handleStatusUpdate("Resolved", {
+      lineUid: initialTicket.users?.line_uid,
       notes: resolveNotes + (extraNotes ? `\nหมายเหตุ: ${extraNotes}` : ""),
       module: resolveModule,
       issue_type: resolveIssueType
     });
     if (success) {
       setIsResolveModalOpen(false);
-      showToast("ปิดงานเรียบร้อยแล้ว!");
+      showToast("ปิดงานเรียบร้อยแล้ว! กำลังกลับหน้าหลัก...");
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 1000);
     }
   };
 
   const handleConfirmEscalate = async () => {
     const success = await handleStatusUpdate("Escalated", {
-      notes: `Escalated to: ${escalateDept}`
+      notes: `Escalated to: ${escalateDept}`,
+      escalated_to: escalateDept
     });
     if (success) {
       setIsEscalateModalOpen(false);
-      showToast(`ส่งต่องานไปยังฝ่าย ${escalateDept} เรียบร้อยแล้ว`);
+      showToast(`ส่งต่องานไปยังฝ่าย ${escalateDept} เรียบร้อยแล้ว! กำลังกลับหน้าหลัก...`);
+      setTimeout(() => {
+        router.push("/");
+      }, 1500);
     }
   };
 
   const handleExportPDF = async () => {
-    if (!reportRef.current || isGeneratingPDF) return;
+    console.log("PDF Export Triggered. ref:", reportRef.current);
+    if (!reportRef.current || isGeneratingPDF) {
+      console.warn("PDF Export aborted: ref is null or already generating");
+      return;
+    }
     setIsGeneratingPDF(true);
     try {
-      const reportEl = reportRef.current;
-      
-      // Temporarily move to a visible but off-screen location with opacity 1 for capture
-      const originalPosition = reportEl.parentElement?.style.position;
-      const originalTop = reportEl.parentElement?.style.top;
-      const originalOpacity = reportEl.parentElement?.style.opacity;
-
-      if (reportEl.parentElement) {
-        reportEl.parentElement.style.position = "fixed";
-        reportEl.parentElement.style.top = "0";
-        reportEl.parentElement.style.left = "0";
-        reportEl.parentElement.style.opacity = "1";
-        reportEl.parentElement.style.zIndex = "10000";
+      console.log("Starting PDF generation flow...");
+      // Ensure fonts are loaded before capturing
+      if (typeof document !== "undefined" && (document as any).fonts) {
+        console.log("Waiting for fonts...");
+        await (document as any).fonts.ready;
+        console.log("Fonts ready.");
       }
 
-      // Small delay to ensure styles and fonts are applied
-      await new Promise(r => setTimeout(r, 800));
+      const reportEl = reportRef.current;
+      if (!reportEl) throw new Error("Report element found null during process");
+      const parent = reportEl.parentElement;
+      
+      // Temporarily move to a visible but off-screen location with opacity 1 for capture
+      // We use 'fixed' and 'top: 0' but 'visibility: visible' to ensure it's rendered
+      const originalStyles = {
+        position: parent?.style.position || "",
+        top: parent?.style.top || "",
+        left: parent?.style.left || "",
+        opacity: parent?.style.opacity || "",
+        zIndex: parent?.style.zIndex || "",
+        visibility: parent?.style.visibility || ""
+      };
+
+      if (parent) {
+        parent.style.position = "fixed";
+        parent.style.top = "0";
+        parent.style.left = "0";
+        parent.style.opacity = "1";
+        parent.style.visibility = "visible";
+        parent.style.zIndex = "99999";
+      }
+
+      // Slightly longer delay to ensure everything is rendered
+      await new Promise(r => setTimeout(r, 1200));
 
       const canvas = await html2canvas(reportEl, { 
-        scale: 2, 
+        scale: 2.5, // High quality
         useCORS: true,
-        logging: true, // Let's turn login on for debugging if needed
+        logging: true,
         backgroundColor: "#ffffff",
         allowTaint: false,
-        foreignObjectRendering: false, // Set to false for compatibility, but might try true if needed
         onclone: (clonedDoc) => {
-           // Ensure the element is visible in the cloned DOM
            const el = clonedDoc.querySelector('[data-pdf-report]');
            if (el instanceof HTMLElement) {
              el.style.opacity = '1';
              el.style.visibility = 'visible';
              el.style.display = 'block';
+             el.style.position = 'relative';
+             el.style.top = '0';
+             el.style.left = '0';
            }
         }
       });
       
-      // Restore original Styles
-      if (reportEl.parentElement) {
-        reportEl.parentElement.style.position = "absolute";
-        reportEl.parentElement.style.top = "-9999px";
-        reportEl.parentElement.style.left = "-9999px";
-        reportEl.parentElement.style.opacity = "0";
-        reportEl.parentElement.style.zIndex = "-1";
+      // Restore original Styles immediately after capture
+      if (parent) {
+        parent.style.position = originalStyles.position;
+        parent.style.top = originalStyles.top;
+        parent.style.left = originalStyles.left;
+        parent.style.opacity = originalStyles.opacity;
+        parent.style.zIndex = originalStyles.zIndex;
+        parent.style.visibility = originalStyles.visibility;
       }
 
       const imgData = canvas.toDataURL("image/png");
@@ -619,11 +651,11 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       
       pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`Report_${initialTicket.ticket_no}.pdf`);
-      showToast("ดาวน์โหลด PDF เรียบร้อยแล้ว");
+      pdf.save(`Report_${initialTicket.ticket_no || 'Ticket'}.pdf`);
+      showToast("ดาวน์โหลด PDF เรียบร้อยแล้ว ✅");
     } catch (err) {
       console.error("PDF Export Error:", err);
-      showToast("มีข้อผิดพลาดในการสร้าง PDF");
+      showToast("มีข้อผิดพลาดในการสร้าง PDF ❌");
     } finally {
       setIsGeneratingPDF(false);
     }
@@ -672,19 +704,43 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
 
   return (
     <div className={`dashboard-container ${theme}`} style={{ height: "100vh", overflow: "hidden" }}>
-      {/* Sidebar - Compact for Detail View */}
-      <aside className="sidebar collapsed" style={{ width: "90px", padding: "2rem 0.75rem", alignItems: "center", background: "var(--bg-glass)" }}>
-        <div className="sidebar-logo" style={{ padding: 0 }}>
-          <div className="logo-icon-container" style={{ width: '40px', height: '40px' }}>
-            <Activity className="logo-icon" size={20} />
+      <aside className={`sidebar ${!isSidebarOpen ? 'collapsed' : ''}`} style={{ 
+        width: isSidebarOpen ? "280px" : "90px", 
+        padding: isSidebarOpen ? "2.5rem 1rem" : "2rem 0.75rem", 
+        alignItems: isSidebarOpen ? "stretch" : "center", 
+        background: "var(--bg-glass)",
+        transition: "width 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s ease",
+        position: 'relative'
+      }}>
+        <div className="sidebar-logo" style={{ padding: isSidebarOpen ? "0 1rem" : 0 }}>
+          <div className="logo-icon-container" style={{ width: isSidebarOpen ? '42px' : '40px', height: isSidebarOpen ? '42px' : '40px' }}>
+            <Activity className="logo-icon" size={isSidebarOpen ? 24 : 20} />
           </div>
+          {isSidebarOpen && <span className="logo-text">NEO Support</span>}
         </div>
         
-        <nav className="sidebar-nav" style={{ alignItems: 'center', width: '100%' }}>
-          <Link href="/" className="nav-item active" title="Back to Dashboard" style={{ padding: "0.85rem", width: '50px', justifyContent: 'center' }}>
-            <ArrowLeft size={24} />
+        <nav className="sidebar-nav" style={{ alignItems: isSidebarOpen ? 'stretch' : 'center', width: '100%' }}>
+          <Link href="/" className="nav-item active" title="Back to Dashboard" style={{ 
+            padding: "0.85rem", 
+            width: isSidebarOpen ? '100%' : '50px', 
+            justifyContent: isSidebarOpen ? 'flex-start' : 'center' 
+          }}>
+            <ArrowLeft size={isSidebarOpen ? 20 : 24} />
+            {isSidebarOpen && <span className="nav-label">กลับหน้าหลัก</span>}
           </Link>
         </nav>
+
+        <button 
+          className="sidebar-toggle-btn"
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          title={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+          style={{
+            zIndex: 1002, // Ensure it's above other elements
+            border: theme === 'light' ? '2px solid white' : '2px solid var(--bg-color)'
+          }}
+        >
+          {isSidebarOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+        </button>
       </aside>
 
       <main className="main-content" style={{ display: "flex", gap: "2rem", padding: "1.5rem 2rem", flex: 1 }}>
@@ -711,8 +767,25 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
                   <h2 style={{ fontSize: "1.75rem", fontWeight: 800, fontFamily: "Outfit" }}>{initialTicket.ticket_no}</h2>
                 </div>
                 {["Resolved", "Closed"].includes(currentStatus) && (
-                  <button onClick={handleExportPDF} className="btn-secondary" style={{ padding: "0.5rem", borderRadius: "12px" }} title="Export PDF">
-                    <FileText size={20} />
+                  <button 
+                    onClick={() => {
+                      console.log("Export Button Clicked");
+                      handleExportPDF();
+                    }} 
+                    className="btn-primary" 
+                    style={{ 
+                      padding: "0.6rem 1rem", 
+                      borderRadius: "14px", 
+                      display: "flex", 
+                      alignItems: "center", 
+                      gap: "0.5rem",
+                      background: "var(--primary)",
+                      boxShadow: "0 4px 12px var(--primary-glow)"
+                    }} 
+                    title="Export PDF Report"
+                  >
+                    <FileText size={18} />
+                    <span style={{ fontSize: "0.85rem", fontWeight: 700 }}>PDF</span>
                   </button>
                 )}
             </div>
@@ -737,8 +810,24 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
                     {assigneeName}
                   </div>
                 ) : (
-                  <button onClick={handleAssign} disabled={isAssigning} className="btn-primary" style={{ width: "100%", padding: "1rem", borderRadius: "14px", fontSize: "1rem" }}>
-                    {isAssigning ? "Processing..." : "✋ กดรับงาน (Claim)"}
+                  <button 
+                    onClick={handleAssign} 
+                    disabled={isAssigning} 
+                    className="btn-claim-premium"
+                  >
+                    {isAssigning ? (
+                      <div className="loading-spinner-small" />
+                    ) : (
+                      <>
+                        <div className="claim-icon-wrapper">
+                          <Hand size={24} className="claim-icon" />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                          <span style={{ fontSize: '1.25rem', fontWeight: 800 }}>กดรับงาน (Claim)</span>
+                          <span style={{ fontSize: '0.8rem', opacity: 0.8, fontWeight: 500 }}>คลิกเพื่อยืนยันว่าคุณคือผู้รับผิดชอบ</span>
+                        </div>
+                      </>
+                    )}
                   </button>
                 )}
               </div>
@@ -792,7 +881,7 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
                 <div key={msg.id ?? idx} style={{ alignSelf: isIT ? "flex-end" : "flex-start", maxWidth: "80%", opacity: isOptimistic ? 0.75 : 1, transition: 'opacity 0.3s' }}>
                   <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.25rem", textAlign: isIT ? "right" : "left", padding: "0 0.5rem", display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: isIT ? 'flex-end' : 'flex-start' }}>
                     {isIT ? "IT Support" : userName} • {new Date(msg.created_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
-                    {isOptimistic && <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>⏳</span>}
+                    {isOptimistic && <Clock size={10} className="animate-pulse" style={{ color: 'var(--text-muted)' }} />}
                   </div>
                   <div style={{ 
                     padding: isImage ? "0.5rem" : "1rem 1.25rem", 
@@ -867,8 +956,8 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
               flexWrap: "wrap",
               alignItems: "center"
             }}>
-              <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", flexShrink: 0 }}>
-                ⚡ สำเร็จรูป:
+              <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Zap size={14} className="text-amber-500" /> สำเร็จรูป:
               </span>
               {initialSettings.quick_replies.map((reply: string, idx: number) => (
                 <button
@@ -963,7 +1052,9 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
       {isResolveModalOpen && (
         <div className="modal-overlay">
           <div className="modal-content" style={{ borderRadius: "24px", padding: "2.5rem" }}>
-            <h2 style={{ fontSize: "1.75rem", marginBottom: "1.5rem" }}>✅ ปิดงาน / Resolved Ticket</h2>
+            <h2 style={{ fontSize: "1.75rem", marginBottom: "1.5rem", display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <CheckCircle size={28} className="text-green-500" /> ปิดงาน / Resolved Ticket
+            </h2>
             <div className="form-group"><label>โมดูล / ระบบ</label><select value={resolveModule} onChange={e => setResolveModule(e.target.value)}>{initialSettings?.modules?.map((m: any, idx: number) => <option key={idx} value={m}>{m}</option>)}</select></div>
             <div className="form-group"><label>ประเภทงาน</label><select value={resolveIssueType} onChange={e => setResolveIssueType(e.target.value)}>{initialSettings?.issue_types?.map((t: any, idx: number) => <option key={idx} value={t}>{t}</option>)}</select></div>
             <div className="form-group">
@@ -988,14 +1079,18 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
       {isEscalateModalOpen && (
         <div className="modal-overlay">
           <div className="modal-content" style={{ borderRadius: "24px", padding: "2.5rem" }}>
-            <h2 style={{ fontSize: "1.75rem", marginBottom: "1.5rem" }}>📤 ส่งต่องานไปที่ไหน?</h2>
+            <h2 style={{ fontSize: "1.75rem", marginBottom: "1.5rem", display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <Share2 size={28} className="text-blue-500" /> ส่งต่องานไปที่ไหน?
+            </h2>
             <div className="form-group">
               <label>หน่วยงาน / ฝ่ายที่จะส่งต่อ</label>
               <select value={escalateDept} onChange={e => setEscalateDept(e.target.value)} style={{ padding: "1rem", fontSize: "1.1rem" }}>
                 <option value="SA">System Analyst (SA)</option>
                 <option value="Programmer">Programmer</option>
-                <option value="Network/Admin">Network / Infrastructure</option>
-                <option value="Hardware/Support">Hardware / PC Support</option>
+                <option value="Network">Network Team</option>
+                <option value="Infra">Infrastructure / Admin</option>
+                <option value="DBA">Database Administrator (DBA)</option>
+                <option value="Other">Other / ฝ่ายอื่นๆ</option>
               </select>
             </div>
             <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginTop: "1rem" }}>* การส่งต่อจะเปลี่ยนสถานะเป็น Escalated และแจ้งให้ทีมที่เกี่ยวข้องทราบ</p>
@@ -1008,51 +1103,59 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
       )}
 
       {/* PDF Generation Template (Optimized for Thai) */}
-      <div style={{ position: "fixed", top: "-10000px", left: "-10000px", opacity: 0.1, pointerEvents: "none" }} data-pdf-report>
-        <div ref={reportRef} style={{ width: "800px", padding: "60px", background: "white", color: "black", fontFamily: "'IBM Plex Sans Thai', sans-serif", display: "block" }}>
+      <div style={{ position: "fixed", top: "-20000px", left: "-20000px", opacity: 0, pointerEvents: "none", zIndex: -100 }} data-pdf-report>
+        <div ref={reportRef} style={{ 
+          width: "800px", 
+          padding: "60px", 
+          background: "white", 
+          color: "black", 
+          fontFamily: "'IBM Plex Sans Thai', sans-serif", 
+          display: "block",
+          textAlign: "left"
+        }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '40px', borderBottom: '2px solid #4f46e5', paddingBottom: '20px' }}>
-            <div>
-              <h1 style={{ color: "#4f46e5", margin: 0, fontSize: "28px" }}>NEO SUPPORT</h1>
-              <p style={{ color: "#666", margin: "5px 0" }}>Service Report & Technical Summary</p>
+            <div style={{ textAlign: 'left' }}>
+              <h1 style={{ color: "#4f46e5", margin: 0, fontSize: "28px", fontWeight: 700 }}>NEO SUPPORT</h1>
+              <p style={{ color: "#666", margin: "5px 0", fontSize: "14px" }}>Service Report & Technical Summary</p>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <p style={{ fontWeight: 700, margin: 0 }}>Ticket: {initialTicket.ticket_no}</p>
-              <p style={{ color: "#666", margin: 0 }}>Date: {new Date().toLocaleDateString('th-TH')}</p>
+              <p style={{ fontWeight: 700, margin: 0, fontSize: "18px" }}>Ticket: {initialTicket.ticket_no}</p>
+              <p style={{ color: "#666", margin: "5px 0" }}>Date: {new Date().toLocaleDateString('th-TH')}</p>
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '40px' }}>
-             <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px' }}>
-               <h3 style={{ borderBottom: '1px solid #ddd', paddingBottom: '5px', marginBottom: '10px', fontSize: '16px' }}>CLIENT INFO</h3>
-               <p><strong>Hospital:</strong> {hospitalName}</p>
-               <p><strong>Department:</strong> {initialTicket.users?.department || '-'}</p>
-               <p><strong>Reporter:</strong> {userName}</p>
+             <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px', textAlign: 'left' }}>
+               <h3 style={{ borderBottom: '1px solid #ddd', paddingBottom: '5px', marginBottom: '10px', fontSize: '16px', fontWeight: 700 }}>CLIENT INFO</h3>
+               <p style={{ margin: '5px 0' }}><strong>Hospital:</strong> {initialTicket.users?.hospitals?.name || '-'}</p>
+               <p style={{ margin: '5px 0' }}><strong>Department:</strong> {initialTicket.users?.department || '-'}</p>
+               <p style={{ margin: '5px 0' }}><strong>Reporter:</strong> {initialTicket.users?.display_name || '-'}</p>
              </div>
-             <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px' }}>
-               <h3 style={{ borderBottom: '1px solid #ddd', paddingBottom: '5px', marginBottom: '10px', fontSize: '16px' }}>ISSUE DETAILS</h3>
-               <p><strong>Type:</strong> {initialTicket.issue_type}</p>
-               <p><strong>Module:</strong> {resolveModule}</p>
-               <p><strong>Status:</strong> {currentStatus}</p>
+             <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px', textAlign: 'left' }}>
+               <h3 style={{ borderBottom: '1px solid #ddd', paddingBottom: '5px', marginBottom: '10px', fontSize: '16px', fontWeight: 700 }}>ISSUE DETAILS</h3>
+               <p style={{ margin: '5px 0' }}><strong>Type:</strong> {initialTicket.issue_type || '-'}</p>
+               <p style={{ margin: '5px 0' }}><strong>Module:</strong> {initialTicket.module || '-'}</p>
+               <p style={{ margin: '5px 0' }}><strong>Status:</strong> {currentStatus === 'Resolved' ? 'แก้ไขเสร็จสิ้น' : 'ปิดงาน'}</p>
              </div>
           </div>
 
-          <div style={{ marginBottom: '40px' }}>
-            <h3 style={{ fontSize: '18px', color: '#4f46e5', borderLeft: '4px solid #4f46e5', paddingLeft: '10px', marginBottom: '15px' }}>PROBLEM DESCRIPTION</h3>
-            <p style={{ background: '#fff', border: '1px solid #eee', padding: '15px', borderRadius: '8px', lineHeight: '1.6' }}>{initialTicket.description}</p>
+          <div style={{ marginBottom: '40px', textAlign: 'left' }}>
+            <h3 style={{ fontSize: '18px', color: '#4f46e5', borderLeft: '4px solid #4f46e5', paddingLeft: '10px', marginBottom: '15px', fontWeight: 700 }}>PROBLEM DESCRIPTION</h3>
+            <p style={{ background: '#fff', border: '1px solid #eee', padding: '15px', borderRadius: '8px', lineHeight: '1.6', minHeight: '60px' }}>{initialTicket.description}</p>
           </div>
 
-          <div style={{ marginBottom: '40px' }}>
-            <h3 style={{ fontSize: '18px', color: '#10b981', borderLeft: '4px solid #10b981', paddingLeft: '10px', marginBottom: '15px' }}>RESOLUTION & NOTES</h3>
-            <div style={{ background: '#f0fdf4', border: '1px solid #10b981', padding: '15px', borderRadius: '8px', lineHeight: '1.6' }}>
-              <p><strong>วิธีแก้ไข:</strong> {resolveNotes || 'N/A'}</p>
-              {extraNotes && <p style={{ marginTop: '10px', borderTop: '1px dashed #10b981', paddingTop: '10px' }}><strong>หมายเหตุ:</strong> {extraNotes}</p>}
+          <div style={{ marginBottom: '40px', textAlign: 'left' }}>
+            <h3 style={{ fontSize: '18px', color: '#10b981', borderLeft: '4px solid #10b981', paddingLeft: '10px', marginBottom: '15px', fontWeight: 700 }}>RESOLUTION & NOTES</h3>
+            <div style={{ background: '#f0fdf4', border: '1px solid #10b981', padding: '20px', borderRadius: '8px', lineHeight: '1.6' }}>
+              <p style={{ marginBottom: '10px' }}><strong>วิธีแก้ไข:</strong> {initialTicket.notes || resolveNotes || 'N/A'}</p>
+              {initialTicket.notes?.includes('\nหมายเหตุ:') && <p style={{ marginTop: '10px', borderTop: '1px dashed #10b981', paddingTop: '10px' }}>รายละเอียดเพิ่มเติมตามบันทึกระบบ</p>}
             </div>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '100px' }}>
             <div style={{ textAlign: 'center', width: '250px' }}>
               <p style={{ borderBottom: '1px solid #000', marginBottom: '10px' }}>&nbsp;</p>
-              <p>({assigneeName || 'IT Support Specialist'})</p>
+              <p style={{ fontWeight: 600 }}>({assigneeName || 'IT Support Specialist'})</p>
               <p style={{ fontSize: '12px', color: '#666' }}>Responsible Engineer</p>
             </div>
           </div>
@@ -1115,7 +1218,7 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
 
       {toast.show && (
         <div className="toast-notification">
-           <span>ℹ️</span> {toast.message}
+           <Info size={18} /> {toast.message}
         </div>
       )}
 
@@ -1130,6 +1233,81 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
 
       <style jsx>{`
         @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .btn-claim-premium {
+          width: 100%;
+          padding: 1.25rem 1.5rem;
+          border-radius: 18px;
+          background: linear-gradient(135deg, var(--primary), var(--accent));
+          color: white;
+          border: none;
+          display: flex;
+          align-items: center;
+          gap: 1.25rem;
+          cursor: pointer;
+          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          box-shadow: 0 10px 25px var(--primary-glow);
+          position: relative;
+          overflow: hidden;
+        }
+
+        .btn-claim-premium::before {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+          transition: 0.5s;
+        }
+
+        .btn-claim-premium:hover {
+          transform: translateY(-4px) scale(1.02);
+          box-shadow: 0 15px 35px var(--primary-glow), 0 0 15px var(--accent-glow);
+        }
+
+        .btn-claim-premium:hover::before {
+          left: 100%;
+        }
+
+        .btn-claim-premium:active {
+          transform: translateY(-2px) scale(0.98);
+        }
+
+        .btn-claim-premium:disabled {
+          opacity: 0.7;
+          filter: grayscale(0.5);
+          cursor: not-allowed;
+          transform: none;
+        }
+
+        .claim-icon-wrapper {
+          width: 48px;
+          height: 48px;
+          background: rgba(255, 255, 255, 0.2);
+          border-radius: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          backdrop-filter: blur(5px);
+          transition: transform 0.3s ease;
+        }
+
+        .btn-claim-premium:hover .claim-icon-wrapper {
+          transform: rotate(-10deg) scale(1.1);
+          background: rgba(255, 255, 255, 0.3);
+        }
+
+        .loading-spinner-small {
+          width: 24px;
+          height: 24px;
+          border: 3px solid rgba(255,255,255,0.3);
+          border-top-color: white;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+          margin: 0 auto;
+        }
       `}</style>
     </div>
   );
