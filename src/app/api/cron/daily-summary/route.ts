@@ -108,21 +108,26 @@ export async function GET(request: Request) {
     // 5. Construct LINE Message
     // Determine report type based on hour (TH time is UTC+7)
     const hour = now.getHours();
-    let reportTitle = "📊 สรุปรายงาน IT Support ประจำวัน 📊";
+    let reportTitle = "📊 สรุปรายงาน IT Support 📊";
+    let timeRangeInfo = "";
+
     if (hour >= 17 && hour < 20) {
-      reportTitle = "🌆 สรุปผลการดำเนินงาน (รอบเย็น 17:30) 🌆";
+      reportTitle = "🌆 สรุปผลงานรอบกะเช้า (จบที่ 17:30) 🌆";
+      timeRangeInfo = "ช่วงเวลา: 08:30 - 17:30 น.";
     } else if (hour >= 23 || hour < 2) {
-      reportTitle = "🌑 สรุปปิดยอดงานประจำวัน (24:00) 🌑";
+      reportTitle = "🌑 สรุปปิดยอดประจำวัน (จบที่ 24:00) 🌑";
+      timeRangeInfo = "ช่วงเวลาสะสม: 08:30 - 24:00 น.";
     }
 
     let messageText = `${reportTitle}\n`;
-    messageText += `วันที่: ${now.toLocaleDateString("th-TH")}\n`;
+    messageText += `ประจำวันที่: ${now.toLocaleDateString("th-TH")}\n`;
+    if (timeRangeInfo) messageText += `${timeRangeInfo}\n`;
     messageText += `━━━━━━━━━━━━━━━━━\n`;
-    messageText += `✅ ปิดยอดวันนี้ (Resolved): ${metrics.closedToday} งาน\n`;
+    messageText += `✅ ปิดยอดวันนี้สะสม: ${metrics.closedToday} งาน\n`;
     messageText += `🔹 งานเข้าใหม่วันนี้: ${metrics.newToday} งาน\n`;
-    messageText += `⚡ งานค้างในระบบทั้งหมด: ${metrics.totalActive} งาน\n`;
-    messageText += `     • รอรับงาน: ${metrics.pending}\n`;
-    messageText += `     • ส่งต่อ: ${metrics.escalated}\n`;
+    messageText += `⚡ งานค้างในระบบปัจจุบัน: ${metrics.totalActive} งาน\n`;
+    messageText += `     • รอรับงาน (Pending): ${metrics.pending}\n`;
+    messageText += `     • ส่งต่อ (Escalated): ${metrics.escalated}\n`;
     
     if (totalBreaches > 0) {
       messageText += `━━━━━━━━━━━━━━━━━\n`;
