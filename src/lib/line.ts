@@ -138,3 +138,23 @@ export async function pushMessage(
     throw new Error(`LINE Push API error [${response.status}]: ${errorBody}`);
   }
 }
+
+/**
+ * Links/Unlinks a Rich Menu for a specific user
+ * Pass richMenuId as null to unlink and return to default
+ */
+export async function setRichMenuForUser(userId: string, richMenuId: string | null): Promise<void> {
+  const url = richMenuId 
+    ? `https://api.line.me/v2/bot/user/${userId}/richmenu/${richMenuId}`
+    : `https://api.line.me/v2/bot/user/${userId}/richmenu`;
+  
+  const response = await fetch(url, {
+    method: richMenuId ? "POST" : "DELETE",
+    headers: { Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}` },
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    console.error(`LINE RichMenu API error [${response.status}]: ${errorBody}`);
+  }
+}

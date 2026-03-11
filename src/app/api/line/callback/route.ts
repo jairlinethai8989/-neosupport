@@ -67,18 +67,41 @@ export async function GET(request: NextRequest) {
     }
 
     // 5. User is Approved -> Log them in to Supabase Auth
-    // Note: We use a custom auth mechanism or store the LINE token
-    // For this demo, let's assume we use the LINE ID to sign them into a dedicated account
     const email = `${lineUid}@line.neosupport.local`;
-    const { error: authError } = await supabase.auth.signInWithPassword({
+    
+    // Attempt sign in
+    let { error: authError } = await supabase.auth.signInWithPassword({
       email,
-      password: lineUid // Using UID as fallback password for simple mapping
+      password: lineUid
     });
+    
+    // Fallback: If sign in fails, the Auth account might not exist yet
+    // (for users approved before the recent fix). Create it on the fly.
+    if (authError && authError.message.includes('Invalid login credentials')) {
+      console.log(`Fallback: Creating missing auth account for: ${email}`);
+      const { supabaseAdmin } = await import('@/lib/supabase');
+      const { error: createError } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password: lineUid,
+        email_confirm: true,
+        user_metadata: { line_uid: lineUid }
+      });
+
+      if (!createError) {
+        // Try sign in again after creation
+        const { error: retryError } = await supabase.auth.signInWithPassword({
+          email,
+          password: lineUid
+        });
+        authError = retryError;
+      } else {
+        console.error('Auto-create auth user failed:', createError.message);
+      }
+    }
 
     if (authError) {
-      // If auth fails, maybe create the session for them (Magic Link or similar)
-      console.error('Auth Error:', authError.message);
-      return NextResponse.redirect(new URL('/login?error=Failed to create session', request.url));
+      console.error('Auth Error finally:', authError.message);
+      return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(authError.message)}`, request.url));
     }
 
     return NextResponse.redirect(new URL('/', request.url));
