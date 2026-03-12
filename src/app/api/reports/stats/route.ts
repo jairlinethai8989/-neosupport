@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
       .from("tickets")
       .select("hospital_id, hospitals(name)");
     
-    const hospitalCounts = hospitalStats?.reduce((acc: any, t) => {
+    const hospitalCounts = hospitalStats?.reduce((acc: any, t: any) => {
       const name = t.hospitals?.name || "Unknown";
       acc[name] = (acc[name] || 0) + 1;
       return acc;

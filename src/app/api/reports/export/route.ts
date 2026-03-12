@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     if (error) throw error;
 
     // 2. Format data for Excel
-    const formattedData = tickets.map(t => ({
+    const formattedData = tickets.map((t: any) => ({
       "Ticket No": t.ticket_no,
       "Reporter": t.users?.display_name || "N/A",
       "Hospital": t.hospitals?.name || "N/A",
