@@ -40,7 +40,8 @@ export interface LineUserProfile {
 export type LineMessageShape = 
   | { type: 'text'; text: string }
   | { type: 'sticker'; packageId: string; stickerId: string }
-  | { type: 'image'; originalContentUrl: string; previewImageUrl: string };
+  | { type: 'image'; originalContentUrl: string; previewImageUrl: string }
+  | { type: 'flex'; altText: string; contents: any };
 
 // ─── Internal Helpers ────────────────────────────────────────
 
@@ -158,3 +159,158 @@ export async function setRichMenuForUser(userId: string, richMenuId: string | nu
     console.error(`LINE RichMenu API error [${response.status}]: ${errorBody}`);
   }
 }
+
+/**
+ * Creates a standard Flex Message JSON for Staff Alerts
+ */
+export function createStaffAlertFlex(ticket: {
+  ticket_no: string;
+  description: string;
+  hospital_name: string;
+  reporter_name: string;
+  priority?: string;
+}) {
+  const priorityColor = ticket.priority === 'Critical' ? '#ef4444' : 
+                       ticket.priority === 'High' ? '#f59e0b' : '#3b82f6';
+
+  return {
+    type: "bubble" as const,
+    size: "mega" as const,
+    header: {
+      type: "box",
+      layout: "baseline",
+      contents: [
+        {
+          type: "text",
+          text: "งานใหม่เข้าระบบ 🚨",
+          weight: "bold",
+          size: "lg",
+          color: "#ffffff"
+        }
+      ],
+      backgroundColor: priorityColor,
+      paddingAll: "15px"
+    },
+    body: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "text",
+          text: ticket.ticket_no,
+          weight: "bold",
+          size: "xl",
+          margin: "md"
+        },
+        {
+          type: "box",
+          layout: "vertical",
+          margin: "lg",
+          spacing: "sm",
+          contents: [
+            {
+              type: "box",
+              layout: "baseline",
+              spacing: "sm",
+              contents: [
+                {
+                  type: "text",
+                  text: "โรงพยาบาล:",
+                  color: "#aaaaaa",
+                  size: "sm",
+                  flex: 2
+                },
+                {
+                  type: "text",
+                  text: ticket.hospital_name,
+                  wrap: true,
+                  color: "#666666",
+                  size: "sm",
+                  flex: 5
+                }
+              ]
+            },
+            {
+              type: "box",
+              layout: "baseline",
+              spacing: "sm",
+              contents: [
+                {
+                  type: "text",
+                  text: "ผู้แจ้ง:",
+                  color: "#aaaaaa",
+                  size: "sm",
+                  flex: 2
+                },
+                {
+                  type: "text",
+                  text: ticket.reporter_name,
+                  wrap: true,
+                  color: "#666666",
+                  size: "sm",
+                  flex: 5
+                }
+              ]
+            }
+          ]
+        },
+        {
+          type: "separator",
+          margin: "xxl"
+        },
+        {
+          type: "box",
+          layout: "vertical",
+          margin: "md",
+          contents: [
+            {
+              type: "text",
+              text: "รายละเอียดอาการ:",
+              size: "sm",
+              color: "#aaaaaa",
+              margin: "md"
+            },
+            {
+              type: "text",
+              text: ticket.description,
+              wrap: true,
+              size: "md",
+              color: "#333333",
+              margin: "sm"
+            }
+          ]
+        }
+      ]
+    },
+    footer: {
+      type: "box",
+      layout: "vertical",
+      spacing: "sm",
+      contents: [
+        {
+          type: "button",
+          style: "primary",
+          height: "sm",
+          color: "#2563eb",
+          action: {
+            type: "uri",
+            label: "🖐️ กดรับงาน (Claim)",
+            uri: `${process.env.NEXT_PUBLIC_APP_URL}/tickets`
+          }
+        },
+        {
+          type: "button",
+          style: "link",
+          height: "sm",
+          action: {
+            type: "uri",
+            label: "ดูรายละเอียดงาน",
+            uri: `${process.env.NEXT_PUBLIC_APP_URL}/tickets`
+          }
+        }
+      ],
+      flex: 0
+    }
+  };
+}
+

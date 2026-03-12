@@ -7,7 +7,7 @@ import {
   PieChart, Pie, Cell, AreaChart, Area, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
   Legend
 } from "recharts";
-import { Sun, Moon, LayoutDashboard, Database, Activity, Briefcase, FileText, CheckCircle, AlertTriangle } from "lucide-react";
+import { Sun, Moon, LayoutDashboard, Database, Activity, Briefcase, FileText, CheckCircle, AlertTriangle, Download, Zap } from "lucide-react";
 import { logout } from "../login/actions";
 
 export default function GraphClient({ initialTickets, userEmail, slaPolicy = {} }: { initialTickets: any[], userEmail?: string, slaPolicy?: Record<string, number> }) {
@@ -149,6 +149,13 @@ export default function GraphClient({ initialTickets, userEmail, slaPolicy = {} 
             <p style={{ color: 'var(--text-muted)' }}>Executive overview of ticket volumes, efficiency, and queue load.</p>
           </div>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <button 
+              onClick={() => window.open('/api/reports/export', '_blank')}
+              className="btn-primary" 
+              style={{ padding: '0.6rem 1.2rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }}
+            >
+              <Download size={18} /> Export Excel
+            </button>
             <button className="theme-toggle" onClick={toggleTheme} style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '50%', padding: '0.5rem', cursor: 'pointer' }}>
               {theme === 'dark' ? <Sun size={20} color="var(--text-muted)"/> : <Moon size={20} color="var(--text-muted)"/>}
             </button>

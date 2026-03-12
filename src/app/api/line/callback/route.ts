@@ -47,23 +47,23 @@ export async function GET(request: NextRequest) {
 
     if (dbError) throw dbError;
 
-    // 4. Handle Routing Logic
+    // 4. Handle Routing Logic & Permissions
     if (!dbUser) {
-      // New User -> Redirect to Registration with profile data in session or query (simplified here)
-      const params = new URLSearchParams({
-        uid: lineUid,
-        name: lineDisplayName,
-        pic: linePictureUrl || ''
-      });
-      return NextResponse.redirect(new URL(`/register/staff?${params.toString()}`, request.url));
+      // If it's a new user trying to login via web, redirect to registration info
+      return NextResponse.redirect(new URL('/login?error=คุณยังไม่ได้ลงทะเบียนในระบบ กรุณาลงทะเบียนผ่าน LINE OA ก่อนครับ', request.url));
+    }
+
+    // 🔥 CRITICAL: Only Staff and Admin can access the Web Dashboard
+    if (dbUser.role !== 'Staff' && dbUser.role !== 'Admin') {
+      return NextResponse.redirect(new URL('/login?error=พื้นที่นี้สำหรับเจ้าหน้าที่ IT เท่านั้นครับ ลูกค้าแจ้งงานผ่าน LINE OA ได้เลย!', request.url));
     }
 
     if (dbUser.status === 'pending') {
-      return NextResponse.redirect(new URL('/login?error=Account pending approval', request.url));
+      return NextResponse.redirect(new URL('/login?error=บัญชีของคุณกำลังรอการอนุมัติจากผู้ดูแลระบบ', request.url));
     }
 
     if (dbUser.status === 'rejected') {
-      return NextResponse.redirect(new URL('/login?error=Account access denied', request.url));
+      return NextResponse.redirect(new URL('/login?error=บัญชีของคุณถูกปฏิเสธการเข้าถึง', request.url));
     }
 
     // 5. User is Approved -> Log them in to Supabase Auth

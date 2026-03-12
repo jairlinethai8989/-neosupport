@@ -4,8 +4,11 @@ import {
   LineWebhookBody,
   LineEvent,
   replyMessage,
+  pushMessage,
+  createStaffAlertFlex,
 } from "@/lib/line";
 import { supabaseAdmin } from "@/lib/supabase";
+import { categorizeTicket } from "@/lib/ai";
 
 // ============================================================
 // LINE Webhook API Route
@@ -224,16 +227,62 @@ async function handleEvent(event: LineEvent): Promise<void> {
   if (!user) {
     console.warn(`Unregistered LINE user: ${lineUserId}`);
 
-    // Reply telling them to register
+    // REPLY: Invite user to register via Flex Message
     if (event.replyToken) {
+      const regUrl = `${process.env.NEXT_PUBLIC_APP_URL}/register/customer?uid=${lineUserId}`;
+      
       await replyMessage(event.replyToken, [
         {
-          type: "text",
-          text:
-            "⚠️ คุณยังไม่ได้ลงทะเบียนในระบบ\n\n" +
-            "กรุณาติดต่อผู้ดูแลระบบ IT เพื่อลงทะเบียนก่อนใช้งานระบบแจ้งปัญหาครับ\n\n" +
-            "📞 ติดต่อ: ทีม IT Support",
-        },
+          type: "flex",
+          altText: "กรุณาลงทะเบียนเพื่อใช้งานระบบแจ้งซ่อม",
+          contents: {
+            type: "bubble",
+            hero: {
+              type: "image",
+              url: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=600&auto=format&fit=crop",
+              size: "full",
+              aspectRatio: "20:13",
+              aspectMode: "cover"
+            },
+            body: {
+              type: "box",
+              layout: "vertical",
+              contents: [
+                {
+                  type: "text",
+                  text: "ยินดีต้อนรับสู่ NEO Support 🏥",
+                  weight: "bold",
+                  size: "lg"
+                },
+                {
+                  type: "text",
+                  text: "เพื่อความรวดเร็วในการบริการ กรุณาลงทะเบียนยืนยันตัวตน (ครั้งเดียว) ก่อนเริ่มใช้งานครับ",
+                  wrap: true,
+                  size: "sm",
+                  color: "#666666",
+                  margin: "md"
+                }
+              ]
+            },
+            footer: {
+              type: "box",
+              layout: "vertical",
+              spacing: "sm",
+              contents: [
+                {
+                  type: "button",
+                  style: "primary",
+                  color: "#06C755",
+                  action: {
+                    type: "uri",
+                    label: "✍️ ลงทะเบียนแจ้งซ่อม",
+                    uri: regUrl
+                  }
+                }
+              ]
+            }
+          }
+        }
       ]);
     }
     return;
@@ -271,7 +320,16 @@ async function handleEvent(event: LineEvent): Promise<void> {
         status: "Pending", // Will be shown as 'งานใหม่' in UI
         issue_type: null, // Removed default PB as per request
       })
-      .select("id, ticket_no")
+      .select(`
+        id, 
+        ticket_no, 
+        description, 
+        priority,
+        users (
+          display_name,
+          hospitals (name)
+        )
+      `)
       .single();
     
     console.log(`[LINE Webhook] Ticket creation took ${Date.now() - createStartTime}ms`);
@@ -289,10 +347,35 @@ async function handleEvent(event: LineEvent): Promise<void> {
       return;
     }
 
+    // ─── Step E: Notify Staff Group ──────────────────────────
+    const staffGroupId = process.env.LINE_STAFF_GROUP_ID;
+    if (staffGroupId) {
+      const flexContent = createStaffAlertFlex({
+        ticket_no: newTicket.ticket_no,
+        description: newTicket.description,
+        hospital_name: (newTicket.users as any)?.hospitals?.name || "Unknown Hospital",
+        reporter_name: (newTicket.users as any)?.display_name || "Unknown User",
+        priority: newTicket.priority || "Medium"
+      });
+
+      pushMessage(staffGroupId, [
+        {
+          type: "flex",
+          altText: `🚨 งานใหม่: ${newTicket.ticket_no}`,
+          contents: flexContent
+        }
+      ]).catch(err => console.error("Failed to notify staff group:", err));
+    }
+
     ticketId = newTicket.id;
     ticketNo = newTicket.ticket_no;
     isNewTicket = true;
     console.log(`Created new ticket: ${ticketNo}`);
+
+    // Trigger AI Auto-Categorization for text-based new tickets
+    if (finalMessageType === 'text' && finalContent) {
+       categorizeTicket(ticketId, finalContent).catch(e => console.error("Async AI Categorization error:", e));
+    }
   }
 
   // ─── Step D: Reply to user ONLY when a new ticket is created ───

@@ -22,6 +22,7 @@ async function getDashboardData() {
         display_name,
         department,
         hospitals (
+          id,
           name
         )
       )
@@ -38,16 +39,17 @@ async function getDashboardData() {
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  const tickets = await getDashboardData();
   
-  const { data: settings } = await supabaseAdmin
-    .from("global_settings")
-    .select("value")
-    .eq("key", "sla_policy")
-    .single();
+  // 🏎️ Start all fetches in parallel
+  const [userResult, tickets, settingsResult] = await Promise.all([
+    supabase.auth.getUser(),
+    getDashboardData(),
+    supabaseAdmin.from("global_settings").select("value").eq("key", "sla_policy").single()
+  ]);
 
+  const user = userResult.data.user;
+  const settings = settingsResult.data;
+  
   const displayUser = user?.email?.replace("@neosupport.local", "") || user?.email;
   const slaPolicy = settings?.value || { Critical: 1, High: 4, Medium: 8, Low: 24 };
 

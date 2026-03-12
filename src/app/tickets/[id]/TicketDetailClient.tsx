@@ -345,6 +345,63 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
   const [resolveModule, setResolveModule] = useState(initialTicket.module || (initialSettings?.modules?.[0] || "ห้องพยาบาล"));
   const [resolveIssueType, setResolveIssueType] = useState(initialTicket.issue_type || (initialSettings?.issue_types?.[0] || "PB"));
 
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [aiSummary, setAiSummary] = useState(initialTicket.ai_summary || "");
+  const [staffList, setStaffList] = useState<{id: string, display_name: string}[]>([]);
+  const [myActiveTickets, setMyActiveTickets] = useState<any[]>([]);
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [transferStaffName, setTransferStaffName] = useState("");
+  const [transferNotes, setTransferNotes] = useState("");
+  const [isTransferring, setIsTransferring] = useState(false);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [escalateNotes, setEscalateNotes] = useState("");
+  const [isEscalating, setIsEscalating] = useState(false);
+
+  // Fetch staff list and active tickets
+  useEffect(() => {
+    const loadAppData = async () => {
+      // 1. Get Current User
+      const { data: { user } } = await supabase.auth.getUser();
+      const currentUserName = user?.user_metadata?.full_name || user?.email?.split('@')[0];
+
+      // 2. Fetch Staff List
+      const { data: sData } = await supabase
+        .from('users')
+        .select('id, display_name')
+        .eq('role', 'Staff')
+        .eq('status', 'approved');
+      if (sData) setStaffList(sData);
+
+      // 4. Fetch Departments
+      const { data: deptData } = await supabase
+        .from('departments')
+        .select('id, name')
+        .order('name', { ascending: true });
+      if (deptData) {
+        setDepartments(deptData);
+        // Default to a sensible one if available, otherwise "SA" value from before
+        const prog = deptData.find(d => d.name === 'Programmer');
+        if (prog) setEscalateDept(prog.id);
+        else if (deptData.length > 0) setEscalateDept(deptData[0].id);
+      }
+
+      // 3. Fetch My Active Tickets (Using current user's likely assignee name)
+      // Check both currentUserName and assigneeName for better coverage
+      const staffName = assigneeName || currentUserName;
+      if (staffName) {
+        const { data: tData } = await supabase
+          .from('tickets')
+          .select('id, ticket_no, status, priority, description, users(display_name)')
+          .eq('assignee_name', staffName)
+          .neq('status', 'Resolved')
+          .neq('status', 'Closed')
+          .order('created_at', { ascending: false });
+        if (tData) setMyActiveTickets(tData);
+      }
+    };
+    loadAppData();
+  }, [assigneeName]);
+
   const showToast = (message: string) => {
     setToast({ message, show: true });
     setTimeout(() => setToast({ message: "", show: false }), 3000);
@@ -497,6 +554,29 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
     }
   };
 
+  const handleGenerateAISummary = async () => {
+    if (isGeneratingAI) return;
+    setIsGeneratingAI(true);
+    try {
+      const res = await fetch('/api/ai/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticketId: initialTicket.id })
+      });
+      const data = await res.json();
+      if (data.summary) {
+        setAiSummary(data.summary);
+        showToast("AI สรุปงานให้เรียบร้อยแล้ว ✨");
+      } else if (data.error === "AI API Key not configured") {
+        showToast("กรุณาตั้งค่า GOOGLE_GEMINI_API_KEY ก่อนครับ");
+      }
+    } catch {
+      showToast("AI ทำงานขัดข้อง กรุณาลองใหม่");
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
   const handleStatusUpdate = async (newStatus: string, additionalData: any = {}) => {
     setIsUpdatingStatus(true);
     try {
@@ -560,16 +640,52 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
   };
 
   const handleConfirmEscalate = async () => {
-    const success = await handleStatusUpdate("Escalated", {
-      notes: `Escalated to: ${escalateDept}`,
-      escalated_to: escalateDept
-    });
-    if (success) {
-      setIsEscalateModalOpen(false);
-      showToast(`ส่งต่องานไปยังฝ่าย ${escalateDept} เรียบร้อยแล้ว! กำลังกลับหน้าหลัก...`);
-      setTimeout(() => {
-        router.push("/");
-      }, 1500);
+    if (!escalateNotes.trim()) { alert("กรุณาระบุจุดประสงค์หรือรายละเอียดการส่งต่องาน"); return; }
+    setIsEscalating(true);
+    try {
+      const res = await fetch(`/api/tickets/${initialTicket.id}/transfer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          newDepartmentId: escalateDept, 
+          notes: escalateNotes,
+          status: "Escalated"
+        })
+      });
+      if (res.ok) {
+        setIsEscalateModalOpen(false);
+        showToast(`ส่งต่องานไปยังฝ่ายเรียบร้อยแล้ว! ✅`);
+        setTimeout(() => router.push("/"), 1500);
+      } else {
+        showToast("เกิดข้อผิดพลาดในการส่งต่องาน");
+      }
+    } catch {
+      showToast("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
+    } finally {
+      setIsEscalating(false);
+    }
+  };
+
+  const handleTransferJob = async (newAssignee: string, notes: string) => {
+    if (!newAssignee) return;
+    setIsTransferring(true);
+    try {
+      const res = await fetch(`/api/tickets/${initialTicket.id}/transfer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newAssigneeName: newAssignee, notes })
+      });
+      if (res.ok) {
+        setIsTransferModalOpen(false);
+        showToast(`ส่งมอบงานให้คุณ ${newAssignee} สำเร็จ ✅`);
+        setTimeout(() => router.push("/"), 1500);
+      } else {
+        showToast("เกิดข้อผิดพลาดในการส่งมอบงาน");
+      }
+    } catch {
+      showToast("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์เพื่อส่งมอบงานได้");
+    } finally {
+      setIsTransferring(false);
     }
   };
 
@@ -719,15 +835,49 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
           {isSidebarOpen && <span className="logo-text">NEO Support</span>}
         </div>
         
-        <nav className="sidebar-nav" style={{ alignItems: isSidebarOpen ? 'stretch' : 'center', width: '100%' }}>
-          <Link href="/" className="nav-item active" title="Back to Dashboard" style={{ 
+        <nav className="sidebar-nav" style={{ alignItems: isSidebarOpen ? 'stretch' : 'center', width: '100%', flex: 1, overflowY: 'auto', gap: '0.5rem' }}>
+          <Link href="/" className="nav-item" title="Back to Dashboard" style={{ 
             padding: "0.85rem", 
             width: isSidebarOpen ? '100%' : '50px', 
-            justifyContent: isSidebarOpen ? 'flex-start' : 'center' 
+            justifyContent: isSidebarOpen ? 'flex-start' : 'center',
+            marginBottom: '1.5rem',
+            background: 'var(--bg-color)',
           }}>
             <ArrowLeft size={isSidebarOpen ? 20 : 24} />
             {isSidebarOpen && <span className="nav-label">กลับหน้าหลัก</span>}
           </Link>
+
+          {isSidebarOpen && myActiveTickets.length > 0 && (
+            <div style={{ padding: "0 0.8rem", color: "var(--text-muted)", fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", marginBottom: "0.5rem" }}>
+              งานที่กำลังทำ ({myActiveTickets.length})
+            </div>
+          )}
+
+          {myActiveTickets.map(t => (
+            <Link 
+              key={t.id} 
+              href={`/tickets/${t.id}`} 
+              className={`nav-item ${t.id === initialTicket.id ? 'active' : ''}`}
+              style={{ 
+                padding: "0.85rem", 
+                width: isSidebarOpen ? '100%' : '50px', 
+                justifyContent: isSidebarOpen ? 'flex-start' : 'center',
+                flexDirection: 'column',
+                alignItems: isSidebarOpen ? 'flex-start' : 'center',
+                gap: '4px'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
+                <Clock size={16} />
+                {isSidebarOpen && <span className="nav-label" style={{ fontWeight: 600 }}>{t.ticket_no}</span>}
+              </div>
+              {isSidebarOpen && (
+                <div style={{ fontSize: '0.7rem', opacity: 0.7, paddingLeft: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>
+                  {t.users?.display_name} - {t.description}
+                </div>
+              )}
+            </Link>
+          ))}
         </nav>
 
         <button 
@@ -802,6 +952,26 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
                 <div style={{ gridColumn: "span 2" }}><label style={{ color: "var(--text-muted)", fontSize: "0.7rem" }}>Hospital</label><p style={{ fontWeight: 600 }}>🏥 {hospitalName}</p></div>
               </div>
 
+              {/* Handover Section */}
+              {initialTicket.handover_notes && (
+                <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(239, 68, 68, 0.05)', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.1)' }}>
+                  <label style={{ fontSize: '0.7rem', color: 'var(--status-escalated-text)', fontWeight: 700 }}>⚠️ หมายเหตุการส่งมอบงาน</label>
+                  <p style={{ marginTop: '0.3rem', fontSize: '0.9rem' }}>{initialTicket.handover_notes}</p>
+                </div>
+              )}
+
+              {/* AI Summary Section */}
+              {aiSummary && (
+                <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'var(--bg-glass)', borderRadius: '12px', border: '1px solid var(--primary-glow)' }}>
+                  <label style={{ fontSize: '0.7rem', color: 'var(--primary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Zap size={14} /> AI สรุปงาน (Insight)
+                  </label>
+                  <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', lineHeight: '1.6', color: 'var(--text-main)' }}>
+                    {aiSummary.split('\n').map((line: string, i: number) => <p key={i} style={{ marginBottom: '0.4rem' }}>{line}</p>)}
+                  </div>
+                </div>
+              )}
+
               <div style={{ padding: "1.5rem", background: "rgba(255,255,255,0.03)", borderRadius: "20px", border: "1px solid var(--border-color)" }}>
                 <label style={{ color: "var(--text-muted)", fontSize: "0.75rem", display: "block", marginBottom: "1rem" }}>ASSIGNED STAFF</label>
                 {assigneeName ? (
@@ -834,25 +1004,37 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
             </div>
 
             {/* Actions Bar */}
-            <div style={{ marginTop: "2rem", display: "flex", gap: "0.75rem" }}>
-              {currentStatus !== "Resolved" && (
-                 <>
-                   <button 
-                     onClick={() => setIsResolveModalOpen(true)} 
-                     className="btn-primary" 
-                     style={{ flex: 2, background: "linear-gradient(135deg, #10b981, #059669)", color: "white", padding: "1rem", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", boxShadow: "0 10px 20px rgba(16,185,129,0.3)" }}
-                   >
-                    <CheckCircle size={20} /> ปิดงาน (Resolve)
-                   </button>
-                   <button 
-                     onClick={() => setIsEscalateModalOpen(true)}
-                     className="btn-secondary"
-                     style={{ flex: 1, padding: "1rem", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", background: "rgba(239, 68, 68, 0.1)", color: "var(--status-escalated-text)", borderColor: "var(--status-escalated-text)" }}
-                   >
-                     <Share2 size={20} /> ส่งต่องาน (Escalate)
-                   </button>
-                 </>
+            <div style={{ marginTop: "2rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+              {currentStatus !== "Resolved" && assigneeName && (
+                 <div style={{ display: "flex", gap: "0.75rem" }}>
+                    <button 
+                      onClick={() => setIsResolveModalOpen(true)} 
+                      className="btn-primary" 
+                      style={{ flex: 2, background: "linear-gradient(135deg, #10b981, #059669)", color: "white", padding: "1rem", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", boxShadow: "0 10px 20px rgba(16,185,129,0.3)" }}
+                    >
+                     <CheckCircle size={20} /> ปิดงาน (Resolve)
+                    </button>
+                    <button 
+                      onClick={() => setIsTransferModalOpen(true)}
+                      className="btn-secondary"
+                      style={{ flex: 1, padding: "1rem", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", background: "rgba(99, 102, 241, 0.1)", color: "var(--primary)", borderColor: "var(--primary)" }}
+                    >
+                      <Share2 size={20} /> ส่งต่องาน
+                    </button>
+                 </div>
               )}
+              
+              {assigneeName && (
+                <button 
+                  onClick={handleGenerateAISummary}
+                  disabled={isGeneratingAI}
+                  className="btn-secondary"
+                  style={{ width: "100%", padding: "0.85rem", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.6rem", borderStyle: "dashed", borderColor: "var(--primary)" }}
+                >
+                  {isGeneratingAI ? <div className="spinner-mini" /> : <><Zap size={16} /> {aiSummary ? "AI สรุปใหม่" : "ให้ AI สรุปงาน"}</>}
+                </button>
+              )}
+
               {currentStatus === "Resolved" && (
                 <button 
                   onClick={() => setIsResolveModalOpen(true)} 
@@ -1083,20 +1265,82 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
               <Share2 size={28} className="text-blue-500" /> ส่งต่องานไปที่ไหน?
             </h2>
             <div className="form-group">
-              <label>หน่วยงาน / ฝ่ายที่จะส่งต่อ</label>
+              <label>หน่วยงาน / ฝ่ายที่จะส่งต่อ (Department Escalation)</label>
               <select value={escalateDept} onChange={e => setEscalateDept(e.target.value)} style={{ padding: "1rem", fontSize: "1.1rem" }}>
-                <option value="SA">System Analyst (SA)</option>
-                <option value="Programmer">Programmer</option>
-                <option value="Network">Network Team</option>
-                <option value="Infra">Infrastructure / Admin</option>
-                <option value="DBA">Database Administrator (DBA)</option>
-                <option value="Other">Other / ฝ่ายอื่นๆ</option>
+                {departments.map(d => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+                {departments.length === 0 && <option value="wait" disabled>กำลังโหลดแผนก...</option>}
               </select>
             </div>
-            <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginTop: "1rem" }}>* การส่งต่อจะเปลี่ยนสถานะเป็น Escalated และแจ้งให้ทีมที่เกี่ยวข้องทราบ</p>
+            <div className="form-group" style={{ marginTop: "1rem" }}>
+              <label>รายละเอียดประกอบการส่งต่อ (Handover Notes) *</label>
+              <textarea 
+                rows={3} 
+                required
+                value={escalateNotes} 
+                onChange={e => setEscalateNotes(e.target.value)} 
+                placeholder="ระบุสิ่งที่ทำไปแล้ว หรือทำไมต้องส่งต่อ..." 
+                style={{ borderRadius: "12px", background: "var(--bg-color)" }} 
+              />
+            </div>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginTop: "1rem" }}>* การส่งต่อจะเปลี่ยนสถานะเป็น <strong style={{ color: 'var(--status-escalated-text)' }}>Escalated</strong> และบันทึกลงประวัติการส่งมอบงาน</p>
             <div className="modal-actions">
               <button className="btn-secondary" onClick={() => setIsEscalateModalOpen(false)}>ยกเลิก</button>
-              <button className="btn-primary" onClick={handleConfirmEscalate} disabled={isUpdatingStatus} style={{ background: "var(--accent)" }}>{isUpdatingStatus ? "Sending..." : "ยืนยันการส่งต่อ"}</button>
+              <button 
+                className="btn-primary" 
+                onClick={handleConfirmEscalate} 
+                disabled={isEscalating || !escalateDept || !escalateNotes.trim()} 
+                style={{ background: "var(--accent)" }}
+              >
+                {isEscalating ? "กำลังส่งต่อ..." : "ยืนยันการส่งต่อ"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Handover / Transfer Modal */}
+      {isTransferModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ borderRadius: "24px", padding: "2.5rem", maxWidth: "450px" }}>
+            <h2 style={{ fontSize: "1.75rem", marginBottom: "1.5rem", display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <Share2 size={28} style={{ color: "var(--primary)" }} /> ส่งมอบงานให้เพื่อนทีม IT
+            </h2>
+            <div className="form-group">
+              <label>เลือกพนักงานที่จะรับช่วงต่อ</label>
+              <select 
+                value={transferStaffName} 
+                onChange={e => setTransferStaffName(e.target.value)} 
+                style={{ padding: "1rem", fontSize: "1.1rem" }}
+              >
+                <option value="">-- เลือกรายชื่อ Staff --</option>
+                {staffList.filter(s => s.display_name !== assigneeName).map(s => (
+                  <option key={s.id} value={s.display_name}>{s.display_name}</option>
+                ))}
+                {staffList.length === 0 && <option disabled>กำลังโหลดรายชื่อพนักงาน...</option>}
+              </select>
+            </div>
+            <div className="form-group" style={{ marginTop: "1rem" }}>
+              <label>หมายเหตุการส่งมอบ (Handover Notes)</label>
+              <textarea 
+                rows={3} 
+                value={transferNotes} 
+                onChange={e => setTransferNotes(e.target.value)} 
+                placeholder="ระบุสิ่งที่ทำไปแล้ว หรือสิ่งที่ต้องทำต่อ..." 
+                style={{ borderRadius: "12px", background: "var(--bg-color)" }} 
+              />
+            </div>
+            <div className="modal-actions" style={{ marginTop: "2rem" }}>
+              <button className="btn-secondary" onClick={() => setIsTransferModalOpen(false)}>ยกเลิก</button>
+              <button 
+                className="btn-primary" 
+                onClick={() => handleTransferJob(transferStaffName, transferNotes)} 
+                disabled={!transferStaffName || isTransferring}
+                style={{ background: "var(--primary)" }}
+              >
+                {isTransferring ? "กำลังส่งมอบ..." : "ยืนยันการส่งมอบ"}
+              </button>
             </div>
           </div>
         </div>
@@ -1150,6 +1394,15 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
               <p style={{ marginBottom: '10px' }}><strong>วิธีแก้ไข:</strong> {initialTicket.notes || resolveNotes || 'N/A'}</p>
               {initialTicket.notes?.includes('\nหมายเหตุ:') && <p style={{ marginTop: '10px', borderTop: '1px dashed #10b981', paddingTop: '10px' }}>รายละเอียดเพิ่มเติมตามบันทึกระบบ</p>}
             </div>
+            
+            {aiSummary && (
+              <div style={{ marginTop: '20px', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '20px', borderRadius: '8px', lineHeight: '1.6' }}>
+                <p style={{ marginBottom: '8px', color: '#4f46e5', fontWeight: 700 }}>AI สรุปผลการตรวจสอบ:</p>
+                <div style={{ fontSize: '13px', color: '#475569' }}>
+                  {aiSummary.split('\n').map((line: string, i: number) => <p key={i} style={{ margin: '0 0 4px 0' }}>{line}</p>)}
+                </div>
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '100px' }}>

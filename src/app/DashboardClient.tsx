@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, memo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
@@ -16,10 +16,11 @@ import {
 
 import { logout } from "./login/actions";
 import { createClient } from "@/utils/supabase/client";
+import { exportToCSV, exportTicketsPDF } from "@/utils/export-utils";
 
 // ─── Sub-Components ──────────────────────────────────────────
 
-const SlaDisplay = ({ 
+const SlaDisplay = memo(({ 
   ticket, 
   slaPolicy, 
   now 
@@ -82,9 +83,10 @@ const SlaDisplay = ({
       </div>
     </div>
   );
-};
+});
+ SlaDisplay.displayName = "SlaDisplay";
 
-const TicketRow = ({ 
+const TicketRow = memo(({ 
   ticket, 
   router, 
   onClaim, 
@@ -96,6 +98,7 @@ const TicketRow = ({
   const t = ticket;
   const userName = t.users?.display_name || "Unknown";
   const hospitalName = t.users?.hospitals?.name || "Unknown Hospital";
+  const hospitalId = t.users?.hospitals?.id;
 
   let badgeCls = "status-pending";
   if (t.status === "In Progress") badgeCls = "status-in-progress";
@@ -117,8 +120,20 @@ const TicketRow = ({
       </td>
       <td><div className="ticket-desc">{t.description}</div></td>
       <td>
-        <div style={{fontWeight: 500, color: "var(--text-heading)"}}>{hospitalName}</div>
-        <div style={{fontSize: "0.85rem", color: "var(--text-muted)", display: 'flex', alignItems: 'center', gap: '4px'}}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{fontWeight: 500, color: "var(--text-heading)"}}>{hospitalName}</div>
+          {hospitalId && (
+            <button 
+              onClick={(e) => { e.stopPropagation(); router.push(`/hospitals/${hospitalId}/stats`); }}
+              className="btn-icon-mini-dashboard"
+              title="ดูสถิติเชิงลึกของโรงพยาบาลนี้"
+              style={{ padding: '4px', borderRadius: '6px', background: 'var(--primary-glow)', border: 'none', cursor: 'pointer', color: 'var(--primary)', display: 'flex' }}
+            >
+              <BarChart3 size={14} />
+            </button>
+          )}
+        </div>
+        <div style={{fontSize: "0.85rem", color: "var(--text-muted)", display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px'}}>
           <User size={12} /> {userName}
         </div>
       </td>
@@ -148,9 +163,10 @@ const TicketRow = ({
       <td><SlaDisplay ticket={t} slaPolicy={slaPolicy} now={now} /></td>
     </tr>
   );
-};
+});
+TicketRow.displayName = "TicketRow";
 
-const TicketCard = ({ 
+const TicketCard = memo(({ 
   ticket, 
   router, 
   onClaim, 
@@ -161,6 +177,7 @@ const TicketCard = ({
 }: any) => {
   const t = ticket;
   const hospitalName = t.users?.hospitals?.name || "Unknown";
+  const hospitalId = t.users?.hospitals?.id;
   const userName = t.users?.display_name || "Unknown";
   
   let badgeCls = "status-pending";
@@ -188,7 +205,17 @@ const TicketCard = ({
         </div>
       </div>
 
-      <div className="card-hospital">{hospitalName}</div>
+      <div className="card-hospital" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span>{hospitalName}</span>
+        {hospitalId && (
+          <button 
+            onClick={(e) => { e.stopPropagation(); router.push(`/hospitals/${hospitalId}/stats`); }}
+            style={{ padding: '0.4rem', borderRadius: '8px', background: 'var(--primary-glow)', border: 'none', color: 'var(--primary)' }}
+          >
+            <BarChart3 size={16} />
+          </button>
+        )}
+      </div>
       <div className="card-meta">
         <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><User size={12} /> {userName}</span>
       </div>
@@ -220,7 +247,8 @@ const TicketCard = ({
       </div>
     </div>
   );
-};
+});
+TicketCard.displayName = "TicketCard";
 
 export default function DashboardClient({ initialTickets, userEmail, slaPolicy = {} }: { initialTickets: any[], userEmail?: string, slaPolicy?: Record<string, number> }) {
   const router = useRouter();
@@ -248,17 +276,18 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
     e.stopPropagation();
     if (isAssigning) return;
     setIsAssigning(id);
+    const staffName = userEmail || "IT Support";
     try {
       const res = await fetch(`/api/tickets/${id}/assign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assigneeName: "IT Support" })
+        body: JSON.stringify({ assigneeName: staffName })
       });
       
       if (res.ok) {
         // Optimistic update
         setTickets(prev => prev.map(tick => 
-          tick.id === id ? { ...tick, assignee_name: "IT Support", status: (tick.status === "Pending" ? "In Progress" : tick.status) } : tick
+          tick.id === id ? { ...tick, assignee_name: staffName, status: (tick.status === "Pending" ? "In Progress" : tick.status) } : tick
         ));
         showToast("รับงานสำเร็จ! กำลังไปที่หน้าแชท...");
         router.push(`/tickets/${id}`);
@@ -512,32 +541,41 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
         </div>
         
         <nav className="sidebar-nav">
+          <div className="nav-group-label">{isSidebarOpen ? "หลัก" : "•••"}</div>
           <Link href="/" className="nav-item active">
             <LayoutDashboard size={20} className="nav-icon" />
             {isSidebarOpen && <span className="nav-label">Dashboard</span>}
           </Link>
           <Link href="/tickets/new" className="nav-item">
             <PlusCircle size={20} className="nav-icon" />
-            {isSidebarOpen && <span className="nav-label">Create Ticket</span>}
+            {isSidebarOpen && <span className="nav-label">สร้างตั๋วงาน</span>}
           </Link>
+
+          <div className="nav-group-label" style={{ marginTop: '1rem' }}>{isSidebarOpen ? "วิเคราะห์ข้อมูล" : "•••"}</div>
           <Link href="/graph" className="nav-item">
             <BarChart3 size={20} className="nav-icon" />
-            {isSidebarOpen && <span className="nav-label">Statistics</span>}
+            {isSidebarOpen && <span className="nav-label">สถิติรวม</span>}
           </Link>
-          <Link href="#" className="nav-item">
+          <Link href="/settings/hospitals" className="nav-item">
+            <Hospital size={20} className="nav-icon" />
+            {isSidebarOpen && <span className="nav-label">รายชื่อโรงพยาบาล</span>}
+          </Link>
+
+          <div className="nav-group-label" style={{ marginTop: '1rem' }}>{isSidebarOpen ? "จัดการระบบ" : "•••"}</div>
+          <Link href="/settings/staff-approvals" className="nav-item">
             <Users size={20} className="nav-icon" />
-            {isSidebarOpen && <span className="nav-label">Users</span>}
+            {isSidebarOpen && <span className="nav-label">อนุมัติพนักงาน</span>}
           </Link>
           <Link href="/settings" className="nav-item">
             <Settings size={20} className="nav-icon" />
-            {isSidebarOpen && <span className="nav-label">Settings</span>}
+            {isSidebarOpen && <span className="nav-label">ตั้งค่าระบบ</span>}
           </Link>
 
           <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
               <form action={logout}>
                 <button type="submit" className="nav-item hover-danger" style={{ width: '100%', background: 'none', border: 'none' }}>
                   <LogOut size={20} className="nav-icon" />
-                  {isSidebarOpen && <span className="nav-label">Sign Out</span>}
+                  {isSidebarOpen && <span className="nav-label">ออกจากระบบ</span>}
                 </button>
               </form>
           </div>
@@ -726,6 +764,36 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
                     <Trash2 size={14} /> ล้างตัวกรอง
                   </button>
                 )}
+
+                <div style={{ display: 'flex', gap: '0.5rem', marginLeft: '0.5rem', borderLeft: '1px solid var(--border-color)', paddingLeft: '1rem' }}>
+                  <button 
+                    onClick={() => {
+                      const dataToExport = sortedTickets.map(t => ({
+                        'Ticket No': t.ticket_no,
+                        'Description': t.description,
+                        'Hospital': t.users?.hospitals?.name,
+                        'Department': t.users?.department,
+                        'User': t.users?.display_name,
+                        'Status': t.status,
+                        'Priority': t.priority,
+                        'Assignee': t.assignee_name,
+                        'Created At': new Date(t.created_at).toLocaleString('th-TH')
+                      }));
+                      exportToCSV(dataToExport, `tickets_report_${new Date().toISOString().split('T')[0]}`);
+                    }}
+                    className="btn-secondary"
+                    style={{ fontSize: '0.85rem', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.3)' }}
+                  >
+                    CSV
+                  </button>
+                  <button 
+                    onClick={() => exportTicketsPDF(sortedTickets, `IT_Support_Report_${new Date().toLocaleDateString('th-TH')}`)}
+                    className="btn-secondary"
+                    style={{ fontSize: '0.85rem', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                  >
+                    PDF
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -777,6 +845,28 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
                   <option key={h} value={h}>{h}</option>
                 ))}
               </select>
+
+              {selectedHospital !== "ALL" && (
+                <button 
+                  onClick={() => {
+                    const hData = tickets.find(t => (t.users?.hospitals?.name === selectedHospital));
+                    if (hData?.users?.hospitals?.id) {
+                      router.push(`/hospitals/${hData.users.hospitals.id}/stats`);
+                    }
+                  }}
+                  className="btn-primary"
+                  style={{ 
+                    padding: '0.75rem 1.25rem', 
+                    borderRadius: '14px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '8px',
+                    boxShadow: '0 4px 12px var(--primary-glow)' 
+                  }}
+                >
+                  <BarChart3 size={18} /> ดูสถิติ {selectedHospital}
+                </button>
+              )}
             </div>
           </div>
           <div style={{overflowX: 'auto'}}>

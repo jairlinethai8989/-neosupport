@@ -5,44 +5,46 @@ import { notFound } from "next/navigation";
 export const revalidate = 0; // Disable caching
 
 async function getTicketDetails(id: string) {
-  // Fetch ticket and user relations
-  const { data: ticket, error: ticketError } = await supabaseAdmin
-    .from("tickets")
-    .select(`
-      *,
-      users!tickets_reporter_id_fkey(
-        id,
-        line_uid,
-        display_name,
-        department,
-        hospitals(
-          name
+  // 🏎️ Fetch Ticket, Messages, and Settings in PARALLEL
+  const [ticketResult, messagesResult, settingsResult] = await Promise.all([
+    supabaseAdmin
+      .from("tickets")
+      .select(`
+        *,
+        users!tickets_reporter_id_fkey(
+          id,
+          line_uid,
+          display_name,
+          department,
+          hospitals(
+            name
+          )
         )
-      )
-    `)
-    .eq("id", id)
-    .single();
+      `)
+      .eq("id", id)
+      .single(),
+    supabaseAdmin
+      .from("messages")
+      .select("*")
+      .eq("ticket_id", id)
+      .order("created_at", { ascending: true }),
+    supabaseAdmin
+      .from("global_settings")
+      .select("*")
+  ]);
+
+  const { data: ticket, error: ticketError } = ticketResult;
+  const { data: messages, error: messageError } = messagesResult;
+  const { data: settings } = settingsResult;
 
   if (ticketError || !ticket) {
     console.error("Error fetching ticket:", ticketError);
     return null;
   }
 
-  // Fetch messages ordered by created_at ascending
-  const { data: messages, error: messageError } = await supabaseAdmin
-    .from("messages")
-    .select("*")
-    .eq("ticket_id", id)
-    .order("created_at", { ascending: true });
-
   if (messageError) {
     console.error("Error fetching messages:", messageError);
   }
-
-  // Fetch settings from DB
-  const { data: settings } = await supabaseAdmin
-    .from("global_settings")
-    .select("*");
 
   const initialSettings = {
     modules: settings?.find(s => s.key === "modules")?.value || ["ห้องพยาบาล", "ห้องแพทย์", "ผู้ป่วยใน (IPD)", "ผู้ป่วยนอก (OPD)", "การเงิน/บัญชี", "จัดซื้อ/พัสดุ", "Network/Infra", "อื่นๆ"],
