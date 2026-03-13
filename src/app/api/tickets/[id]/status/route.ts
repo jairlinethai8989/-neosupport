@@ -45,6 +45,11 @@ export async function POST(
     if (lineUid && (status === "Resolved" || status === "Closed")) {
       const displayNotes = notes ? `\n📝 วิธีแก้ไข: ${notes.substring(0, 150)}${notes.length > 150 ? "..." : ""}` : "";
       
+      // Get base URL for rating
+      const protocol = request.headers.get("x-forwarded-proto") || "http";
+      const host = request.headers.get("host");
+      const ratingUrl = `${protocol}://${host}/tickets/${id}/rate`;
+
       pushMessage(lineUid, [
         {
           type: "text",
@@ -52,6 +57,8 @@ export async function POST(
                 `━━━━━━━━━━━━━━━━━\n` +
                 `สถานะ: ${status === "Resolved" ? "แก้ไขเสร็จสิ้น" : "ปิดงาน"}${displayNotes}\n` +
                 `━━━━━━━━━━━━━━━━━\n\n` +
+                `⭐️ รบกวนช่วยประเมินความพึงพอใจการบริการได้ที่นี่ครับ:\n` +
+                `${ratingUrl}\n\n` +
                 `ขอบคุณที่ใช้บริการ NEO Support ครับ 🙏`
         },
       ]).catch(pushError => {

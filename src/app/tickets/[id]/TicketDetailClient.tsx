@@ -1006,7 +1006,7 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
             {/* Actions Bar */}
             <div style={{ marginTop: "2rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
               {currentStatus !== "Resolved" && assigneeName && (
-                 <div style={{ display: "flex", gap: "0.75rem" }}>
+                  <div style={{ display: "flex", gap: "0.75rem" }}>
                     <button 
                       onClick={() => setIsResolveModalOpen(true)} 
                       className="btn-primary" 
@@ -1019,7 +1019,14 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
                       className="btn-secondary"
                       style={{ flex: 1, padding: "1rem", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", background: "rgba(99, 102, 241, 0.1)", color: "var(--primary)", borderColor: "var(--primary)" }}
                     >
-                      <Share2 size={20} /> ส่งต่องาน
+                      <UserCheck size={20} /> ส่งมอบ Staff
+                    </button>
+                    <button 
+                      onClick={() => setIsEscalateModalOpen(true)}
+                      className="btn-secondary"
+                      style={{ flex: 1, padding: "1rem", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", background: "rgba(239, 68, 68, 0.05)", color: "var(--status-escalated-text)", borderColor: "var(--status-escalated-text)" }}
+                    >
+                      <Share2 size={20} /> ส่งฝ่ายอื่น
                     </button>
                  </div>
               )}

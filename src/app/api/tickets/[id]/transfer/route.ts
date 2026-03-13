@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from "@/lib/supabase";
+import { createClient } from "@/utils/supabase/server";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -38,24 +39,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     if (updateError) throw updateError;
 
-    // 3. Log the handover if it's a department change
-    if (newDepartmentId) {
-       // Get the user ID of the person performing the action
-       // (Fallback to a system user or the reporter if unavailable)
-       const { data: currentUser } = await supabaseAdmin
-         .from("users")
-         .select("id")
-         .eq("role", "Staff")
-         .limit(1)
-         .single(); // Temporary: ideally passed in or from auth
+    // 3. Log the handover if it's a department or staff change
+    if (newDepartmentId || newAssigneeName) {
+       // GET ACTUAL USER from session
+       const supabase = await createClient();
+       const { data: { user } } = await supabase.auth.getUser();
+       
+       if (!user) {
+         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+       }
 
        await supabaseAdmin
          .from("handover_logs")
          .insert({
            ticket_id: id,
            from_department_id: ticket?.current_department_id,
-           to_department_id: newDepartmentId,
-           handed_over_by: currentUser?.id,
+           to_department_id: newDepartmentId || ticket?.current_department_id, // Keep current if only staff changed
+           handed_over_by: user.id,
            notes: notes
          });
     }

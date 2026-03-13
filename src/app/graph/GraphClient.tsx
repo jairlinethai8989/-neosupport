@@ -10,7 +10,17 @@ import {
 import { Sun, Moon, LayoutDashboard, Database, Activity, Briefcase, FileText, CheckCircle, AlertTriangle, Download, Zap } from "lucide-react";
 import { logout } from "../login/actions";
 
-export default function GraphClient({ initialTickets, userEmail, slaPolicy = {} }: { initialTickets: any[], userEmail?: string, slaPolicy?: Record<string, number> }) {
+export default function GraphClient({ 
+  initialTickets, 
+  userEmail, 
+  slaPolicy = {}, 
+  businessHours = { exclude_periods: [] } 
+}: { 
+  initialTickets: any[], 
+  userEmail?: string, 
+  slaPolicy?: Record<string, number>,
+  businessHours?: { exclude_periods: {start: string, end: string}[] }
+}) {
   const [theme, setTheme] = useState("dark");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [mounted, setMounted] = useState(false);
@@ -40,18 +50,48 @@ export default function GraphClient({ initialTickets, userEmail, slaPolicy = {} 
     let slaBreached = 0;
     let slaPending = 0;
 
+    // Helper to check if a specific timestamp falls into excluded periods
+    const isExcluded = (date: Date) => {
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      const timeStr = `${hours}:${minutes}`;
+      
+      return businessHours.exclude_periods.some(p => timeStr >= p.start && timeStr < p.end);
+    };
+
+    // Helper to calculate target expiration date by skipping excluded hours
+    const getTargetExpiration = (startDateStr: string, slaHours: number) => {
+      let current = new Date(startDateStr);
+      let remainingSeconds = slaHours * 3600;
+      const stepSeconds = 600; // 10 min steps for calculation speed
+
+      while (remainingSeconds > 0) {
+        current = new Date(current.getTime() + stepSeconds * 1000);
+        if (!isExcluded(current)) {
+          remainingSeconds -= stepSeconds;
+        }
+        // Safety: max 14 days
+        if (current.getTime() - new Date(startDateStr).getTime() > 14 * 24 * 60 * 60 * 1000) break;
+      }
+      return current.getTime();
+    };
+
     initialTickets.forEach(t => {
-      const priority = t.priority || "Medium";
-      const slaHours = slaPolicy[priority] || 8;
-      const createdTime = new Date(t.created_at).getTime();
-      const limitMs = createdTime + (slaHours * 60 * 60 * 1000);
+      // 1. Skip SLA calculation for Escalated tickets (Exempt)
+      if (t.status === "Escalated") return;
+
+      const typeKey = t.issue_type || "Default";
+      const slaHours = slaPolicy[typeKey] || slaPolicy["Default"] || 8;
+      const limitMs = getTargetExpiration(t.created_at, slaHours);
 
       if (["Resolved", "Closed"].includes(t.status)) {
-        const updatedTime = t.updated_at ? new Date(t.updated_at).getTime() : createdTime;
+        const updatedTime = t.updated_at ? new Date(t.updated_at).getTime() : new Date(t.created_at).getTime();
         if (updatedTime > limitMs) slaBreached++;
         else slaOnTime++;
       } else {
-        slaPending++;
+        // Pending ticket: check if already breached
+        if (Date.now() > limitMs) slaBreached++;
+        else slaPending++;
       }
     });
 
@@ -92,15 +132,97 @@ export default function GraphClient({ initialTickets, userEmail, slaPolicy = {} 
     
     const dailyData = Object.keys(dailyDataObj).map(date => ({ date, count: dailyDataObj[date] })).reverse().slice(-14);
 
+    // 5. Staff Performance
+    interface StaffStat {
+      name: string;
+      total: number;
+      resolved: number;
+      achieved: number;
+      breached: number;
+      ratings: number[];
+    }
+
+    const staffStatsObj = initialTickets.reduce((acc: Record<string, StaffStat>, t) => {
+      const staff = t.assignee_name || "Unassigned";
+      if (!acc[staff]) {
+        acc[staff] = { name: staff, total: 0, resolved: 0, achieved: 0, breached: 0, ratings: [] };
+      }
+      
+      const currentStaff = acc[staff];
+      currentStaff.total++;
+      if (t.rating) currentStaff.ratings.push(t.rating);
+      
+      const typeKey = t.issue_type || "Default";
+      const slaHours = slaPolicy[typeKey] || slaPolicy["Default"] || 8;
+      const limitMs = getTargetExpiration(t.created_at, slaHours);
+
+      if (["Resolved", "Closed"].includes(t.status)) {
+        currentStaff.resolved++;
+        const updatedTime = t.updated_at ? new Date(t.updated_at).getTime() : new Date(t.created_at).getTime();
+        if (updatedTime > limitMs) currentStaff.breached++;
+        else currentStaff.achieved++;
+      }
+      return acc;
+    }, {} as Record<string, StaffStat>);
+
+    const staffData = Object.values(staffStatsObj)
+      .map((s: any) => ({
+        ...s,
+        successRate: s.resolved > 0 ? Math.round((s.achieved / s.resolved) * 100) : 0,
+        avgRating: s.ratings.length > 0 ? (s.ratings.reduce((a: number, b: number) => a + b, 0) / s.ratings.length).toFixed(1) : "N/A"
+      }))
+      .sort((a, b) => b.resolved - a.resolved);
+
+    // 6. Hospital Performance
+    interface HospStat {
+      name: string;
+      total: number;
+      resolved: number;
+      achieved: number;
+      breached: number;
+      ratings: number[];
+    }
+
+    const hospStatsObj = initialTickets.reduce((acc: Record<string, HospStat>, t) => {
+      const hospital = t.users?.hospitals?.name || "Unknown Hospital";
+      if (!acc[hospital]) {
+        acc[hospital] = { name: hospital, total: 0, resolved: 0, achieved: 0, breached: 0, ratings: [] };
+      }
+      
+      const currentHosp = acc[hospital];
+      currentHosp.total++;
+      if (t.rating) currentHosp.ratings.push(t.rating);
+      
+      const typeKey = t.issue_type || "Default";
+      const slaHours = slaPolicy[typeKey] || slaPolicy["Default"] || 8;
+      const limitMs = getTargetExpiration(t.created_at, slaHours);
+
+      if (["Resolved", "Closed"].includes(t.status)) {
+        currentHosp.resolved++;
+        const updatedTime = t.updated_at ? new Date(t.updated_at).getTime() : new Date(t.created_at).getTime();
+        if (updatedTime > limitMs) currentHosp.breached++;
+        else currentHosp.achieved++;
+      }
+      return acc;
+    }, {} as Record<string, HospStat>);
+
+    const hospitalStats = Object.values(hospStatsObj)
+      .map((h: any) => ({
+        ...h,
+        successRate: h.resolved > 0 ? Math.round((h.achieved / h.resolved) * 100) : 0,
+        avgRating: h.ratings.length > 0 ? (h.ratings.reduce((a: number, b: number) => a + b, 0) / h.ratings.length).toFixed(1) : "N/A"
+      }))
+      .sort((a, b) => b.total - a.total);
+
     return {
       total: initialTickets.length,
       slaOnTime, slaBreached, slaPending,
       totalResolved, slaSuccessRate,
-      slaData, departmentData, typeData, dailyData
+      slaData, departmentData, typeData, dailyData, staffData, hospitalStats
     };
-  }, [initialTickets, slaPolicy]);
+  }, [initialTickets, slaPolicy, businessHours]);
 
-  const { total, slaBreached, slaPending, totalResolved, slaSuccessRate, slaData, departmentData, typeData, dailyData } = processedData;
+  const { total, slaBreached, slaPending, totalResolved, slaSuccessRate, slaData, departmentData, typeData, dailyData, staffData, hospitalStats } = processedData;
 
   // Custom tooltips
   const CustomTooltip = memo(({ active, payload, label }: any) => {
@@ -267,19 +389,69 @@ export default function GraphClient({ initialTickets, userEmail, slaPolicy = {} 
             </div>
           </div>
 
-          {/* Issue Types Radar Chart */}
-          <div className="chart-block animate-fade-in delay-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '20px', padding: '1.5rem', gridColumn: '1 / -1' }}>
-            <h2 style={{ fontSize: '1.2rem', marginBottom: '1.5rem', fontWeight: 600 }}>⚙️ Top Issue Categories</h2>
-            <div style={{ width: '100%', height: '400px' }}>
-              <ResponsiveContainer>
-                <RadarChart cx="50%" cy="50%" outerRadius="75%" data={typeData}>
-                  <PolarGrid stroke="rgba(255,255,255,0.1)" />
-                  <PolarAngleAxis dataKey="name" tick={{fill: 'var(--text-muted)', fontSize: 13, fontWeight: 500}} />
-                  <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={{fill: 'var(--text-muted)'}} />
-                  <Radar name="Ticket Count" dataKey="value" stroke="var(--accent)" strokeWidth={2} fill="var(--accent)" fillOpacity={0.5} />
-                  <RechartsTooltip content={<CustomTooltip />} />
-                </RadarChart>
-              </ResponsiveContainer>
+          {/* Hospital Statistics Table */}
+          <div className="chart-block animate-fade-in delay-5" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '20px', padding: '1.5rem', gridColumn: '1 / -1' }}>
+            <h2 style={{ fontSize: '1.2rem', marginBottom: '1.5rem', fontWeight: 600 }}>🏛️ Hospital Impact & SLA Overview</h2>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
+                    <th style={{ padding: '12px', fontSize: '0.85rem' }}>Hospital Name</th>
+                    <th style={{ padding: '12px', fontSize: '0.85rem' }}>Total Volume</th>
+                    <th style={{ padding: '12px', fontSize: '0.85rem' }}>Resolved</th>
+                    <th style={{ padding: '12px', fontSize: '0.85rem' }}>SLA Rate</th>
+                    <th style={{ padding: '12px', fontSize: '0.85rem' }}>Rating ⭐️</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {hospitalStats.map((h, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', transition: 'background 0.2s' }}>
+                      <td style={{ padding: '14px 12px', fontWeight: 600, color: 'var(--text-heading)' }}>{h.name}</td>
+                      <td style={{ padding: '14px 12px' }}>{h.total}</td>
+                      <td style={{ padding: '14px 12px' }}>{h.resolved}</td>
+                      <td style={{ padding: '14px 12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontWeight: 700, minWidth: '40px' }}>{h.successRate}%</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '14px 12px' }}>
+                        <span style={{ color: '#f59e0b', fontWeight: 800 }}>{h.avgRating}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div className="chart-block animate-fade-in delay-5" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '20px', padding: '1.5rem', gridColumn: '1 / -1' }}>
+            <h2 style={{ fontSize: '1.2rem', marginBottom: '1.5rem', fontWeight: 600 }}>👥 Staff Performance Overview</h2>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
+                    <th style={{ padding: '12px', fontSize: '0.85rem' }}>Staff Name</th>
+                    <th style={{ padding: '12px', fontSize: '0.85rem' }}>Assigned</th>
+                    <th style={{ padding: '12px', fontSize: '0.85rem' }}>Resolved</th>
+                    <th style={{ padding: '12px', fontSize: '0.85rem' }}>SLA Rate</th>
+                    <th style={{ padding: '12px', fontSize: '0.85rem' }}>Rating ⭐️</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {staffData.map((s, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', transition: 'background 0.2s' }}>
+                      <td style={{ padding: '14px 12px', fontWeight: 600, color: 'var(--text-heading)' }}>{s.name}</td>
+                      <td style={{ padding: '14px 12px' }}>{s.total}</td>
+                      <td style={{ padding: '14px 12px' }}>{s.resolved}</td>
+                      <td style={{ padding: '14px 12px' }}>
+                         <span style={{ fontWeight: 700 }}>{s.successRate}%</span>
+                      </td>
+                      <td style={{ padding: '14px 12px' }}>
+                        <span style={{ color: '#f59e0b', fontWeight: 800 }}>{s.avgRating}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
 

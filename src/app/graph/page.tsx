@@ -42,14 +42,22 @@ export default async function GraphPage() {
 
   const tickets = await getDashboardData();
   
-  const { data: settings } = await supabaseAdmin
+  // Fetch Advanced SLA configuration
+  const { data: slaSettings } = await supabaseAdmin
     .from("global_settings")
-    .select("value")
-    .eq("key", "sla_policy")
-    .single();
+    .select("key, value");
+
+  const slaPolicy = slaSettings?.find(s => s.key === 'sla_config_by_type')?.value || { Default: 8 };
+  const businessHours = slaSettings?.find(s => s.key === 'business_hours')?.value || { exclude_periods: [] };
 
   const displayUser = user?.email?.replace("@neosupport.local", "") || user?.email;
-  const slaPolicy = settings?.value || { Critical: 1, High: 4, Medium: 8, Low: 24 };
 
-  return <GraphClient initialTickets={tickets} userEmail={displayUser} slaPolicy={slaPolicy} />;
+  return (
+    <GraphClient 
+      initialTickets={tickets} 
+      userEmail={displayUser} 
+      slaPolicy={slaPolicy} 
+      businessHours={businessHours}
+    />
+  );
 }
