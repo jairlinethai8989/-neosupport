@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
   try {
     // ─── Step 1: Read raw body ──────────────────────────────
     const body = await request.text();
+    console.log("LINE Webhook received body length:", body.length);
 
     // ─── Step 2: Verify LINE signature ──────────────────────
     const signature = request.headers.get("x-line-signature");
@@ -51,7 +52,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!verifySignature(body, signature, channelSecret)) {
+    const isValid = verifySignature(body, signature, channelSecret);
+    console.log("LINE Webhook signature verification status:", isValid);
+
+    if (!isValid) {
       console.warn("Invalid LINE webhook signature");
       return NextResponse.json(
         { error: "Invalid signature" },
@@ -221,7 +225,7 @@ async function handleEvent(event: LineEvent): Promise<void> {
   console.log(`[LINE Webhook] User lookup took ${Date.now() - startTime}ms`);
 
   if (userError) {
-    console.error("User lookup error:", userError);
+    console.error("User lookup error in LINE Webhook:", userError);
     return;
   }
 

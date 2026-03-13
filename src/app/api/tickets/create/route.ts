@@ -5,8 +5,10 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { hospitalId, module, issue_type, description, imageUrl } = body;
+    console.log("Creating ticket for hospital:", hospitalId, "description:", description);
 
     if (!hospitalId || !description) {
+      console.warn("Missing required fields: hospitalId or description");
       return NextResponse.json(
         { error: "Hospital and Description are required" },
         { status: 400 }
@@ -24,7 +26,7 @@ export async function POST(req: Request) {
     let reporterId = null;
 
     if (fetchErr) {
-      console.error(fetchErr);
+      console.error("Error fetching user for hospital:", fetchErr);
     }
 
     if (users && users.length > 0) {
@@ -42,10 +44,15 @@ export async function POST(req: Request) {
         .select()
         .single();
         
-      if (!createErr && newUser) {
-         reporterId = newUser.id;
+      if (createErr) {
+        console.error("Error creating temporary system user:", createErr);
+        throw new Error("Cannot find or create a user for this Hospital to generate the ticket.");
+      }
+      
+      if (newUser) {
+        reporterId = newUser.id;
       } else {
-         throw new Error("Cannot find or create a user for this Hospital to generate the ticket.");
+        throw new Error("Cannot find or create a user for this Hospital to generate the ticket.");
       }
     }
 
