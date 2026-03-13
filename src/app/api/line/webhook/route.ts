@@ -552,8 +552,7 @@ async function handleEvent(event: LineEvent): Promise<void> {
   // If no open ticket and not in a command state, we can either prompt them to click "แจ้งซ่อม"
   // or just ignore if it's random chat.
   if (event.replyToken && messageType === "text" && !isExpired) {
-    // Optionally reply to guide them
-    // await replyMessage(event.replyToken, [{ type: "text", text: "ต้องการแจ้งซ่อมหรือไม่คะ? กรุณากดปุ่ม 'แจ้งซ่อม' จากเมนูช่วยเหลือค่ะ/ครับ" }]);
+    await replyMessage(event.replyToken, [{ type: "text", text: "ต้องการแจ้งซ่อมหรือไม่คะ? กรุณากดปุ่ม 'แจ้งซ่อม' จากเมนู Rich Menu หรือพิมพ์ 'แจ้งซ่อม' เพื่อเริ่มแจ้งงานนะคะ/ครับ" }]);
   }
 
   // Clean up cache for handled event
