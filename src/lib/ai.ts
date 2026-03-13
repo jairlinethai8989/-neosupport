@@ -136,3 +136,51 @@ export async function summarizeConversation(ticketId: string) {
     return { error: err.message };
   }
 }
+
+/**
+ * Generate an answer based on knowledge base context
+ */
+export async function getAIAnswerFromKB(query: string, context: any[]) {
+  const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
+  if (!apiKey) return "ขออภัยค่ะ/ครับ ระบบ AI ยังไม่พร้อมใช้งานในขณะนี้";
+
+  if (context.length === 0) {
+    return "ขออภัยค่ะ/ครับ ไม่พบข้อมูลวิธีแก้ไขปัญหานี้ในฐานข้อมูลเบื้องต้น รบกวนกดปุ่ม 'แจ้งซ่อม' เพื่อให้เจ้าหน้าที่ดูแลให้นะคะ/ครับ";
+  }
+
+  const contextText = context.map((item, i) => `[ข้อมูลที่ ${i+1}]\nหัวข้อ: ${item.title}\nวิธีแก้ไข: ${item.content}`).join('\n\n');
+
+  const prompt = `
+    คุณเป็นผู้ช่วยสนับสนุนด้าน IT (IT Support Assistant)
+    ใช้ข้อมูลจาก "ฐานความรู้" ต่อไปนี้เพื่อตอบคำถามผู้ใช้งาน
+    
+    ฐานความรู้:
+    ${contextText}
+    
+    คำถามผู้ใช้งาน: "${query}"
+    
+    คำแนะนำ:
+    - ตอบเป็นภาษาไทยที่สุภาพ เป็นกันเอง และใช้หางเสียง "ค่ะ/ครับ" หรือ "นะคะ/ครับ"
+    - หากข้อมูลในฐานความรู้ไม่เพียงพอ ให้บอกลูกค้าตามตรงและแนะนำให้กด "แจ้งซ่อม"
+    - สรุปวิธีแก้ไขให้เข้าใจง่ายเป็นข้อๆ
+  `;
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }]
+        })
+      }
+    );
+
+    const result = await response.json();
+    return result.candidates?.[0]?.content?.parts?.[0]?.text || "ไม่สามารถประมวลผลคำตอบได้ในขณะนี้ค่ะ/ครับ";
+  } catch (err) {
+    console.error("KB AI Answer Error:", err);
+    return "เกิดข้อผิดพลาดในการค้นหาคำตอบค่ะ/ครับ รบกวนลองใหม่อีกครั้งนะคะ";
+  }
+}

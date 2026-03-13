@@ -517,7 +517,7 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
     
     // 🛡️ Limit video size to 10MB
     if (isVideo && file.size > 10 * 1024 * 1024) {
-      alert("❌ วิดีโอขนาดใหญ่เกินไป (จำกัดไม่เกิน 10MB)\nกรุณาลดขนาดไฟล์ก่อนส่งครับ");
+      alert("❌ วิดีโอขนาดใหญ่เกินไป (จำกัดไม่เกิน 10MB)\nกรุณาลดขนาดไฟล์ก่อนส่งนะคะ/ครับ");
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
@@ -568,7 +568,7 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
         setAiSummary(data.summary);
         showToast("AI สรุปงานให้เรียบร้อยแล้ว ✨");
       } else if (data.error === "AI API Key not configured") {
-        showToast("กรุณาตั้งค่า GOOGLE_GEMINI_API_KEY ก่อนครับ");
+        showToast("กรุณาตั้งค่า GOOGLE_GEMINI_API_KEY ก่อนนะคะ/ครับ");
       }
     } catch {
       showToast("AI ทำงานขัดข้อง กรุณาลองใหม่");

@@ -57,9 +57,9 @@ export async function POST(
                 `━━━━━━━━━━━━━━━━━\n` +
                 `สถานะ: ${status === "Resolved" ? "แก้ไขเสร็จสิ้น" : "ปิดงาน"}${displayNotes}\n` +
                 `━━━━━━━━━━━━━━━━━\n\n` +
-                `⭐️ รบกวนช่วยประเมินความพึงพอใจการบริการได้ที่นี่ครับ:\n` +
+                `⭐️ รบกวนช่วยประเมินความพึงพอใจการบริการได้ที่นี่นะคะ/ครับ:\n` +
                 `${ratingUrl}\n\n` +
-                `ขอบคุณที่ใช้บริการ NEO Support ครับ 🙏`
+                `ขอบคุณที่ใช้บริการ NEO Support ค่ะ/ครับ 🙏`
         },
       ]).catch(pushError => {
         console.error("Failed to push status notification:", pushError);

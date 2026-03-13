@@ -67,7 +67,7 @@ function RegistrationForm() {
     return (
       <div style={{ textAlign: "center", padding: "2rem" }}>
         <h2 style={{ color: "var(--status-escalated-text)" }}>❌ ลิงก์ไม่ถูกต้อง</h2>
-        <p>กรุณาทักแชท LINE OA เพื่อรับลิงก์ลงทะเบียนใหม่ครับ</p>
+        <p>กรุณาทักแชท LINE OA เพื่อรับลิงก์ลงทะเบียนใหม่นะคะ/ครับ</p>
       </div>
     );
   }
@@ -77,7 +77,7 @@ function RegistrationForm() {
       <div style={{ textAlign: "center", padding: "3rem", animation: "fade-in 0.5s" }}>
         <h1 style={{ fontSize: "4rem", marginBottom: "1rem" }}>✅</h1>
         <h2 style={{ color: "var(--status-done-text)" }}>ลงทะเบียนสำเร็จ!</h2>
-        <p>ตอนนี้คุณสามารถเริ่มแจ้งปัญหาผ่าน LINE ได้ทันทีครับ</p>
+        <p>ตอนนี้คุณสามารถเริ่มแจ้งปัญหาผ่าน LINE ได้ทันทีค่ะ/ครับ</p>
         <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "2rem" }}>กำลังพาวนกลับไปยัง LINE...</p>
       </div>
     );

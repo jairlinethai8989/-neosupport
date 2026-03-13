@@ -50,12 +50,12 @@ export async function GET(request: NextRequest) {
     // 4. Handle Routing Logic & Permissions
     if (!dbUser) {
       // If it's a new user trying to login via web, redirect to registration info
-      return NextResponse.redirect(new URL('/login?error=คุณยังไม่ได้ลงทะเบียนในระบบ กรุณาลงทะเบียนผ่าน LINE OA ก่อนครับ', request.url));
+      return NextResponse.redirect(new URL('/login?error=คุณยังไม่ได้ลงทะเบียนในระบบ กรุณาลงทะเบียนผ่าน LINE OA ก่อนนะคะ/ครับ', request.url));
     }
 
     // 🔥 CRITICAL: Only Staff and Admin can access the Web Dashboard
     if (dbUser.role !== 'Staff' && dbUser.role !== 'Admin') {
-      return NextResponse.redirect(new URL('/login?error=พื้นที่นี้สำหรับเจ้าหน้าที่ IT เท่านั้นครับ ลูกค้าแจ้งงานผ่าน LINE OA ได้เลย!', request.url));
+      return NextResponse.redirect(new URL('/login?error=พื้นที่นี้สำหรับเจ้าหน้าที่ IT เท่านั้นค่ะ/ครับ ลูกค้าแจ้งงานผ่าน LINE OA ได้เลย!', request.url));
     }
 
     if (dbUser.status === 'pending') {

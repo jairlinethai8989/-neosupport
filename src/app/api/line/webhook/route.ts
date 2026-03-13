@@ -8,7 +8,8 @@ import {
   createStaffAlertFlex,
 } from "@/lib/line";
 import { supabaseAdmin } from "@/lib/supabase";
-import { categorizeTicket } from "@/lib/ai";
+import { categorizeTicket, getAIAnswerFromKB } from "@/lib/ai";
+import { searchKnowledgeBase } from "@/lib/knowledge";
 
 // ============================================================
 // LINE Webhook API Route
@@ -213,7 +214,7 @@ async function handleEvent(event: LineEvent): Promise<void> {
   
   const { data: user, error: userError } = await supabaseAdmin
     .from("users")
-    .select("id, display_name, hospital_id")
+    .select("id, display_name, hospital_id, line_metadata")
     .eq("line_uid", lineUserId)
     .maybeSingle(); 
   
@@ -256,7 +257,7 @@ async function handleEvent(event: LineEvent): Promise<void> {
                 },
                 {
                   type: "text",
-                  text: "เพื่อความรวดเร็วในการบริการ กรุณาลงทะเบียนยืนยันตัวตน (ครั้งเดียว) ก่อนเริ่มใช้งานครับ",
+                  text: "เพื่อความรวดเร็วในการบริการ กรุณาลงทะเบียนยืนยันตัวตน (ครั้งเดียว) ก่อนเริ่มงานนะคะ/ครับ",
                   wrap: true,
                   size: "sm",
                   color: "#666666",
@@ -288,8 +289,226 @@ async function handleEvent(event: LineEvent): Promise<void> {
     return;
   }
 
-  // ─── Step B: Check for existing open ticket ───────────────
-  // An "open" ticket is one with status Pending or In Progress
+  // ─── Step B: State-based Workflow ────────────────────────────
+  const metadata = (user.line_metadata as any) || {};
+  const currentState = metadata.state;
+  const stateAt = metadata.state_at ? new Date(metadata.state_at) : null;
+  const isExpired = stateAt && (Date.now() - stateAt.getTime() > 30 * 60 * 1000); // 30 mins
+
+  // 1. COMMAND: "แจ้งซ่อม" (From Rich Menu)
+  if (messageText.trim() === "แจ้งซ่อม") {
+    await supabaseAdmin
+      .from("users")
+      .update({
+        line_metadata: {
+          state: "AWAITING_DESCRIPTION",
+          state_at: new Date().toISOString(),
+          temp_attachments: []
+        }
+      })
+      .eq("id", user.id);
+
+    if (event.replyToken) {
+      await replyMessage(event.replyToken, [
+        {
+          type: "text",
+          text: "สวัสดีค่ะ/ครับ รบกวนช่วยพิมพ์ระบุรายละเอียดปัญหา หรือถ่ายรูปส่งมาเพื่อเปิดใบงานได้เลยนะคะ/ครับ"
+        }
+      ]);
+    }
+    return;
+  }
+
+  // 1.1 COMMAND: "ค้นหาวิธีแก้ไข" (From Rich Menu)
+  if (messageText.trim() === "ค้นหาวิธีแก้ไข") {
+    await supabaseAdmin
+      .from("users")
+      .update({
+        line_metadata: {
+          state: "AWAITING_KNOWLEDGE_QUERY",
+          state_at: new Date().toISOString()
+        }
+      })
+      .eq("id", user.id);
+
+    if (event.replyToken) {
+      await replyMessage(event.replyToken, [
+        {
+          type: "text",
+          text: "สวัสดีค่ะ/ครับ รบกวนพิมพ์ปัญหาที่คุณพบ หรือคำถามที่ต้องการให้ AI ช่วยตรวจสอบได้เลยนะคะ/ครับ (เช่น พิมพ์ไม่ได้, เข้าเครื่องไม่ได้)"
+        }
+      ]);
+    }
+    return;
+  }
+
+  // 2. STATE: AWAITING_DESCRIPTION
+  if (currentState === "AWAITING_DESCRIPTION" && !isExpired) {
+    // If user sends media (Image/Video)
+    if (isMediaType) {
+      const newAttachments = [...(metadata.temp_attachments || []), { content: finalContent, type: finalMessageType, id: lineMessageId }];
+      
+      await supabaseAdmin
+        .from("users")
+        .update({
+          line_metadata: {
+            ...metadata,
+            temp_attachments: newAttachments
+          }
+        })
+        .eq("id", user.id);
+
+      if (event.replyToken) {
+        await replyMessage(event.replyToken, [
+          {
+            type: "text",
+            text: "ได้รับไฟล์เรียบร้อยแล้วค่ะ/ครับ รบกวนช่วยพิมพ์สรุปปัญหาที่พบสักนิด เพื่อใช้เป็นหัวข้อและเปิดใบงานให้นะคะ/ครับ"
+          }
+        ]);
+      }
+      return;
+    }
+
+    // 2.1 STATE: AWAITING_KNOWLEDGE_QUERY
+    if (currentState === "AWAITING_KNOWLEDGE_QUERY" && !isExpired) {
+      if (messageType === "text" && finalContent) {
+        // Search KB
+        const context = await searchKnowledgeBase(finalContent);
+        
+        // Get AI Answer
+        const aiResponse = await getAIAnswerFromKB(finalContent, context);
+
+        // Clear State and Reply
+        await supabaseAdmin
+          .from("users")
+          .update({ line_metadata: null })
+          .eq("id", user.id);
+
+        if (event.replyToken) {
+          await replyMessage(event.replyToken, [
+            {
+              type: "text",
+              text: aiResponse
+            },
+            {
+              type: "text",
+              text: "หากข้อมูลข้างต้นยังไม่สามารถแก้ปัญหาได้ คุณสามารถกดเมนู 'แจ้งซ่อม' เพื่อเปิดใบงานหาเจ้าหน้าที่ได้ทันทีนะคะ/ครับ"
+            }
+          ]);
+        }
+        return;
+      }
+    }
+
+    // If user sends text -> This becomes the ticket description and OPENS the ticket
+    if (messageType === "text" && finalContent) {
+      const ticketDescription = finalContent;
+      const tempAttachments = metadata.temp_attachments || [];
+
+      // ─── Create the ticket ────────────────────────────────
+      const { data: newTicket, error: ticketError } = await supabaseAdmin
+        .from("tickets")
+        .insert({
+          description: ticketDescription,
+          reporter_id: user.id,
+          source: "LINE",
+          status: "Pending",
+        })
+        .select(`
+          id, 
+          ticket_no, 
+          description, 
+          priority,
+          users (
+            display_name,
+            hospitals (name)
+          )
+        `)
+        .single();
+
+      if (ticketError || !newTicket) {
+        console.error("Failed to create ticket:", ticketError);
+        if (event.replyToken) {
+          await replyMessage(event.replyToken, [{ type: "text", text: "❌ เกิดข้อผิดพลาดในการสร้าง Ticket กรุณาลองใหม่อีกครั้งนะคะ/ครับ" }]);
+        }
+        return;
+      }
+
+      const ticketId = newTicket.id;
+      const ticketNo = newTicket.ticket_no;
+
+      // ─── Save all messages (Temp media + final text) ──────
+      const messagesToInsert = [
+        ...tempAttachments.map((att: any) => ({
+          ticket_id: ticketId,
+          line_uid: lineUserId,
+          content: att.content,
+          message_type: att.type,
+          line_message_id: att.id,
+          direction: "inbound"
+        })),
+        {
+          ticket_id: ticketId,
+          line_uid: lineUserId,
+          content: ticketDescription,
+          message_type: "text",
+          line_message_id: lineMessageId,
+          direction: "inbound"
+        }
+      ];
+
+      await supabaseAdmin.from("messages").insert(messagesToInsert);
+
+      // ─── Clear User State ────────────────────────────────
+      await supabaseAdmin
+        .from("users")
+        .update({ line_metadata: {} })
+        .eq("id", user.id);
+
+      // ─── Notify Staff Group ──────────────────────────────
+      const staffGroupId = process.env.LINE_STAFF_GROUP_ID;
+      if (staffGroupId) {
+        const flexContent = createStaffAlertFlex({
+          ticket_no: ticketNo,
+          description: ticketDescription,
+          hospital_name: (newTicket.users as any)?.hospitals?.name || "Unknown Hospital",
+          reporter_name: (newTicket.users as any)?.display_name || "Unknown User",
+          priority: newTicket.priority || "Medium"
+        });
+
+        pushMessage(staffGroupId, [
+          {
+            type: "flex",
+            altText: `🚨 งานใหม่: ${ticketNo}`,
+            contents: flexContent
+          }
+        ]).catch(err => console.error("Failed to notify staff group:", err));
+      }
+
+      // ─── Reply to user ──────────────────────────────────
+      if (event.replyToken) {
+        const hasMedia = tempAttachments.length > 0;
+        const replyText =
+          `✅ เปิดใบงานใหม่เรียบร้อยแล้วค่ะ/ครับ\n` +
+          `━━━━━━━━━━━━━━━━━\n` +
+          `📋 หมายเลข: ${ticketNo}\n` +
+          `📝 รายละเอียด: ${ticketDescription.substring(0, 100)}${ticketDescription.length > 100 ? "..." : ""}\n` +
+          (hasMedia ? `🖼️ ไฟล์แนบ: ${tempAttachments.length} ไฟล์\n` : "") +
+          `━━━━━━━━━━━━━━━━━\n\n` +
+          `ทีมงานจะรับเรื่องและตรวจสอบให้เร็วที่สุดนะคะ/ครับ 🙏`;
+
+        await replyMessage(event.replyToken, [{ type: "text", text: replyText }]);
+      }
+
+      // Trigger AI Auto-Categorization
+      categorizeTicket(ticketId, ticketDescription).catch(e => console.error("Async AI Categorization error:", e));
+      
+      return;
+    }
+  }
+
+  // ─── Step C: Append to existing open ticket ───────────────
+  // If not in AWAITING_DESCRIPTION state or state expired, check for open tickets to append messages
   const { data: existingTicket } = await supabaseAdmin
     .from("tickets")
     .select("id, ticket_no")
@@ -299,130 +518,41 @@ async function handleEvent(event: LineEvent): Promise<void> {
     .limit(1)
     .maybeSingle();
 
-  let ticketId: string;
-  let ticketNo: string;
-  let isNewTicket = false;
-
   if (existingTicket) {
-    // ─── Use existing open ticket ───────────────────────────
-    ticketId = existingTicket.id;
-    ticketNo = existingTicket.ticket_no;
+    const ticketId = existingTicket.id;
+    const ticketNo = existingTicket.ticket_no;
     console.log(`Appending to existing ticket: ${ticketNo}`);
-  } else {
-    // ─── Create a new ticket ────────────────────────────────
-    const createStartTime = Date.now();
-    const { data: newTicket, error: ticketError } = await supabaseAdmin
-      .from("tickets")
+
+    // Save message to database
+    await supabaseAdmin
+      .from("messages")
       .insert({
-        description: messageType === "image" ? "🖼️ [รูปภาพแนบ]" : finalContent,
-        reporter_id: user.id,
-        source: "LINE",
-        status: "Pending", // Will be shown as 'งานใหม่' in UI
-        issue_type: null, // Removed default PB as per request
-      })
-      .select(`
-        id, 
-        ticket_no, 
-        description, 
-        priority,
-        users (
-          display_name,
-          hospitals (name)
-        )
-      `)
-      .single();
-    
-    console.log(`[LINE Webhook] Ticket creation took ${Date.now() - createStartTime}ms`);
-
-    if (ticketError || !newTicket) {
-      console.error("Failed to create ticket:", ticketError);
-      if (event.replyToken) {
-        await replyMessage(event.replyToken, [
-          {
-            type: "text",
-            text: "❌ เกิดข้อผิดพลาดในการสร้าง Ticket กรุณาลองใหม่อีกครั้งครับ",
-          },
-        ]);
-      }
-      return;
-    }
-
-    // ─── Step E: Notify Staff Group ──────────────────────────
-    const staffGroupId = process.env.LINE_STAFF_GROUP_ID;
-    if (staffGroupId) {
-      const flexContent = createStaffAlertFlex({
-        ticket_no: newTicket.ticket_no,
-        description: newTicket.description,
-        hospital_name: (newTicket.users as any)?.hospitals?.name || "Unknown Hospital",
-        reporter_name: (newTicket.users as any)?.display_name || "Unknown User",
-        priority: newTicket.priority || "Medium"
+        ticket_id: ticketId,
+        line_uid: lineUserId,
+        content: finalContent,
+        message_type: finalMessageType,
+        line_message_id: lineMessageId,
+        direction: "inbound",
       });
 
-      pushMessage(staffGroupId, [
-        {
-          type: "flex",
-          altText: `🚨 งานใหม่: ${newTicket.ticket_no}`,
-          contents: flexContent
-        }
-      ]).catch(err => console.error("Failed to notify staff group:", err));
-    }
-
-    ticketId = newTicket.id;
-    ticketNo = newTicket.ticket_no;
-    isNewTicket = true;
-    console.log(`Created new ticket: ${ticketNo}`);
-
-    // Trigger AI Auto-Categorization for text-based new tickets
-    if (finalMessageType === 'text' && finalContent) {
-       categorizeTicket(ticketId, finalContent).catch(e => console.error("Async AI Categorization error:", e));
-    }
+    console.log(`✅ Message appended successfully to ticket ${ticketNo}`);
+    
+    // Clean up cache
+    setTimeout(() => {
+      processingEventIds.delete(lineMessageId);
+    }, 10000);
+    return;
   }
 
-  // ─── Step D: Reply to user ONLY when a new ticket is created ───
-  // We do NOT reply on every subsequent message to avoid spam.
-  // Closing notification is sent separately via /api/tickets/[id]/status.
-  if (isNewTicket && event.replyToken) {
-    const displayMsg = messageType === "image"   ? "🖼️ [รูปภาพแนบ]" :
-                       messageType === "video"   ? "🎬 [วิดีโอแนบ]" :
-                       messageType === "sticker" ? "🎭 [สติกเกอร์]" :
-                       finalContent;
-    const replyText =
-      `✅ สร้าง Ticket ใหม่เรียบร้อยแล้ว\n` +
-      `━━━━━━━━━━━━━━━━━\n` +
-      `📋 หมายเลข: ${ticketNo}\n` +
-      `📝 รายละเอียด: ${displayMsg.substring(0, 100)}${displayMsg.length > 100 ? "..." : ""}\n` +
-      `━━━━━━━━━━━━━━━━━\n\n` +
-      `ทีมงานจะรับเรื่องและตรวจสอบให้เร็วที่สุดครับ 🙏`;
-
-    const replyStartTime = Date.now();
-    await replyMessage(event.replyToken, [
-      { type: "text", text: replyText },
-    ]);
-    console.log(`[LINE Webhook] replyMessage took ${Date.now() - replyStartTime}ms`);
+  // ─── Step D: Default behavior ─────────────────────────────
+  // If no open ticket and not in a command state, we can either prompt them to click "แจ้งซ่อม"
+  // or just ignore if it's random chat.
+  if (event.replyToken && messageType === "text" && !isExpired) {
+    // Optionally reply to guide them
+    // await replyMessage(event.replyToken, [{ type: "text", text: "ต้องการแจ้งซ่อมหรือไม่คะ? กรุณากดปุ่ม 'แจ้งซ่อม' จากเมนูช่วยเหลือค่ะ/ครับ" }]);
   }
 
-  // ─── Step C: Save message to database ───────────────────────
-  const savedContent = finalContent;
-  const savedType    = finalMessageType;
-
-  const { error: messageError } = await supabaseAdmin
-    .from("messages")
-    .insert({
-      ticket_id: ticketId,
-      line_uid: lineUserId,
-      content: savedContent,
-      message_type: savedType,
-      line_message_id: lineMessageId,
-      direction: "inbound",
-    });
-
-  if (messageError) {
-    console.error("Failed to save message:", messageError);
-  }
-
-  console.log(`✅ Event processed successfully for ticket ${ticketNo} in ${Date.now() - startTime}ms`);
-  
-  // Clean up cache after some time (10 seconds) to prevent infinite memory growth
+  // Clean up cache for handled event
   setTimeout(() => {
     processingEventIds.delete(lineMessageId);
   }, 10000);
