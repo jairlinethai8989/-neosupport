@@ -225,7 +225,7 @@ export default function GraphClient({
   const { total, slaBreached, slaPending, totalResolved, slaSuccessRate, slaData, departmentData, typeData, dailyData, staffData, hospitalStats } = processedData;
 
   // Custom tooltips
-  const CustomTooltip = memo(({ active, payload, label }: any) => {
+  const CustomTooltip = memo(function CustomTooltip({ active, payload, label }: any) {
     if (active && payload && payload.length) {
       return (
         <div style={{ backgroundColor: 'var(--bg-surface)', backdropFilter: 'var(--glass-blur)', border: '1px solid var(--border-color)', padding: '12px', borderRadius: '12px', boxShadow: '0 10px 20px rgba(0,0,0,0.3)' }}>

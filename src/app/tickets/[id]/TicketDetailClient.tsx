@@ -306,7 +306,7 @@ function ImageAnnotationModal({ imageUrl, onClose, onSend }: {
       </div>
 
       <p style={{ color:'rgba(255,255,255,0.35)', fontSize:'0.78rem', marginTop:'0.7rem' }}>
-        เลือกเครื่องมือ → วาดบนภาพ → กด "ส่งรูปแก้ไข"
+        เลือกเครื่องมือ → วาดบนภาพ → กด &quot;ส่งรูปแก้ไข&quot;
       </p>
     </div>
   );

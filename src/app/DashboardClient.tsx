@@ -474,7 +474,7 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
       });
     }
     return sortableItems;
-  }, [tickets, sortConfig, searchQuery, statusFilter, selectedHospital, isSmartView]);
+  }, [tickets, sortConfig, searchQuery, statusFilter, selectedHospital, isSmartView, visibleTickets]);
 
   const renderSortIcon = (key: string) => {
     if (sortConfig?.key !== key) return <ArrowUpDown size={14} className="inline-icon opacity-40" />;
