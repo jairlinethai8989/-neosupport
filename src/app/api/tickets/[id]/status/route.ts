@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { pushMessage } from "@/lib/line";
+import { pushMessage, createRatingFlex } from "@/lib/line";
 
 // POST /api/tickets/[id]/status
 export async function POST(
@@ -20,7 +20,7 @@ export async function POST(
     }
 
     // 1. Update ticket status in database
-    const updatePayload: any = { status };
+    const updatePayload: any = { status, updated_at: new Date().toISOString() };
     if (notes !== undefined) updatePayload.notes = notes;
     if (module !== undefined) updatePayload.module = module;
     if (issue_type !== undefined) updatePayload.issue_type = issue_type;
@@ -45,25 +45,26 @@ export async function POST(
     if (lineUid && (status === "Resolved" || status === "Closed")) {
       const displayNotes = notes ? `\n📝 วิธีแก้ไข: ${notes.substring(0, 150)}${notes.length > 150 ? "..." : ""}` : "";
       
-      // Get base URL for rating
-      const protocol = request.headers.get("x-forwarded-proto") || "http";
-      const host = request.headers.get("host");
-      const ratingUrl = `${protocol}://${host}/tickets/${id}/rate`;
+      const flexContent = createRatingFlex(id, ticket.ticket_no);
 
-      pushMessage(lineUid, [
-        {
-          type: "text",
-          text: `✅ Ticket ${ticket.ticket_no} ของคุณได้รับการแก้ไขแล้ว!\n` +
-                `━━━━━━━━━━━━━━━━━\n` +
-                `สถานะ: ${status === "Resolved" ? "แก้ไขเสร็จสิ้น" : "ปิดงาน"}${displayNotes}\n` +
-                `━━━━━━━━━━━━━━━━━\n\n` +
-                `⭐️ รบกวนช่วยประเมินความพึงพอใจการบริการได้ที่นี่นะคะ/ครับ:\n` +
-                `${ratingUrl}\n\n` +
-                `ขอบคุณที่ใช้บริการ NEO Support ค่ะ/ครับ 🙏`
-        },
-      ]).catch(pushError => {
+      try {
+        await pushMessage(lineUid, [
+          {
+            type: "text",
+            text: `✅ Ticket ${ticket.ticket_no} ของคุณได้รับการแก้ไขแล้ว!\n` +
+                  `━━━━━━━━━━━━━━━━━\n` +
+                  `สถานะ: ${status === "Resolved" ? "แก้ไขเสร็จสิ้น" : "ปิดงาน"}${displayNotes}\n` +
+                  `━━━━━━━━━━━━━━━━━`
+          },
+          {
+            type: "flex",
+            altText: "ประเมินความพึงพอใจ ⭐",
+            contents: flexContent
+          }
+        ]);
+      } catch (pushError) {
         console.error("Failed to push status notification:", pushError);
-      });
+      }
     }
 
     return NextResponse.json({ success: true, status });

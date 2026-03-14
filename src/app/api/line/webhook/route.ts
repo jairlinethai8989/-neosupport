@@ -105,14 +105,22 @@ export async function POST(request: NextRequest) {
 const processingEventIds = new Set<string>();
 
 async function handleEvent(event: LineEvent): Promise<void> {
-  // Only process message events
+  const lineUserId = event.source?.userId;
+  if (!lineUserId) return;
+
+  // 1. Handle POSTBACK (e.g., Rating Stars)
+  if (event.type === "postback" && event.postback) {
+    await handlePostback(event, lineUserId);
+    return;
+  }
+
+  // 2. Handle MESSAGE events
   const SUPPORTED_TYPES = ["text", "image", "video", "sticker"];
   if (event.type !== "message" || !SUPPORTED_TYPES.includes(event.message?.type || "")) {
     console.log(`Skipping event type: ${event.type}/${event.message?.type}`);
     return;
   }
 
-  const lineUserId = event.source?.userId;
   const lineGroupId = event.source?.type === "group" ? (event.source as any).groupId : null;
   const lineRoomId = event.source?.type === "room" ? (event.source as any).roomId : null;
   const sourceType = event.source?.type || "user";
@@ -301,7 +309,8 @@ async function handleEvent(event: LineEvent): Promise<void> {
 
   // 1. COMMAND: "แจ้งซ่อม" (From Rich Menu)
   if (messageText.trim() === "แจ้งซ่อม") {
-    await supabaseAdmin
+    // Start DB update
+    const dbPromise = supabaseAdmin
       .from("users")
       .update({
         line_metadata: {
@@ -312,14 +321,24 @@ async function handleEvent(event: LineEvent): Promise<void> {
       })
       .eq("id", user.id);
 
+    // Reply immediately
     if (event.replyToken) {
       await replyMessage(event.replyToken, [
         {
           type: "text",
-          text: "สวัสดีค่ะ/ครับ รบกวนช่วยพิมพ์ระบุรายละเอียดปัญหา หรือถ่ายรูปส่งมาเพื่อเปิดใบงานได้เลยนะคะ/ครับ"
+          text: "สวัสดีค่ะ/ครับ รบกวนช่วยพิมพ์ระบุรายละเอียดปัญหา หรือถ่ายรูปส่งมาเพื่อเปิดใบงานได้เลยนะคะ/ครับ",
+          quickReply: {
+            items: [
+              {
+                type: "action",
+                action: { type: "message", label: "📄 พิมพ์รายละเอียด", text: "เปิดใบงาน: " }
+              }
+            ]
+          }
         }
       ]);
     }
+    await dbPromise; // Ensure DB updated
     return;
   }
 
@@ -410,7 +429,23 @@ async function handleEvent(event: LineEvent): Promise<void> {
       const ticketId = newTicket.id;
       const ticketNo = newTicket.ticket_no;
 
-      // ─── Save all messages (Temp media + final text) ──────
+      // ─── Reply to user IMMEDIATELY for perceived speed ───────
+      if (event.replyToken) {
+        const hasMedia = tempAttachments.length > 0;
+        const replyText =
+          `✅ เปิดใบงานใหม่เรียบร้อยแล้วค่ะ/ครับ\n` +
+          `━━━━━━━━━━━━━━━━━\n` +
+          `📋 หมายเลข: ${ticketNo}\n` +
+          `📝 รายละเอียด: ${ticketDescription.substring(0, 100)}${ticketDescription.length > 100 ? "..." : ""}\n` +
+          (hasMedia ? `🖼️ ไฟล์แนบ: ${tempAttachments.length} ไฟล์\n` : "") +
+          `━━━━━━━━━━━━━━━━━\n\n` +
+          `ทีมงานจะรับเรื่องและตรวจสอบให้เร็วที่สุดนะคะ/ครับ 🙏`;
+
+        // Send and await reply before finishing other DB tasks
+        await replyMessage(event.replyToken, [{ type: "text", text: replyText }]);
+      }
+
+      // ─── Run remaining tasks in background or parallel ─────
       const messagesToInsert = [
         ...tempAttachments.map((att: any) => ({
           ticket_id: ticketId,
@@ -430,51 +465,27 @@ async function handleEvent(event: LineEvent): Promise<void> {
         }
       ];
 
-      await supabaseAdmin.from("messages").insert(messagesToInsert);
-
-      // ─── Clear User State ────────────────────────────────
-      await supabaseAdmin
-        .from("users")
-        .update({ line_metadata: {} })
-        .eq("id", user.id);
-
-      // ─── Notify Staff Group ──────────────────────────────
-      const staffGroupId = process.env.LINE_STAFF_GROUP_ID;
-      if (staffGroupId) {
-        const flexContent = createStaffAlertFlex({
-          ticket_no: ticketNo,
-          description: ticketDescription,
-          hospital_name: (newTicket.users as any)?.hospitals?.name || "Unknown Hospital",
-          reporter_name: (newTicket.users as any)?.display_name || "Unknown User",
-          priority: newTicket.priority || "Medium"
-        });
-
-        pushMessage(staffGroupId, [
-          {
-            type: "flex",
-            altText: `🚨 งานใหม่: ${ticketNo}`,
-            contents: flexContent
+      // Use Promise.all to run non-dependent operations faster
+      await Promise.all([
+        supabaseAdmin.from("messages").insert(messagesToInsert),
+        supabaseAdmin.from("users").update({ line_metadata: {} }).eq("id", user.id),
+        // Notify Staff Group in background
+        (async () => {
+          const staffGroupId = process.env.LINE_STAFF_GROUP_ID;
+          if (staffGroupId) {
+            const flexContent = createStaffAlertFlex({
+              ticket_no: ticketNo,
+              description: ticketDescription,
+              hospital_name: (newTicket.users as any)?.hospitals?.name || "Unknown Hospital",
+              reporter_name: (newTicket.users as any)?.display_name || "Unknown User",
+              priority: newTicket.priority || "Medium"
+            });
+            await pushMessage(staffGroupId, [{ type: "flex", altText: `🚨 งานใหม่: ${ticketNo}`, contents: flexContent }]);
           }
-        ]).catch(err => console.error("Failed to notify staff group:", err));
-      }
-
-      // ─── Reply to user ──────────────────────────────────
-      if (event.replyToken) {
-        const hasMedia = tempAttachments.length > 0;
-        const replyText =
-          `✅ เปิดใบงานใหม่เรียบร้อยแล้วค่ะ/ครับ\n` +
-          `━━━━━━━━━━━━━━━━━\n` +
-          `📋 หมายเลข: ${ticketNo}\n` +
-          `📝 รายละเอียด: ${ticketDescription.substring(0, 100)}${ticketDescription.length > 100 ? "..." : ""}\n` +
-          (hasMedia ? `🖼️ ไฟล์แนบ: ${tempAttachments.length} ไฟล์\n` : "") +
-          `━━━━━━━━━━━━━━━━━\n\n` +
-          `ทีมงานจะรับเรื่องและตรวจสอบให้เร็วที่สุดนะคะ/ครับ 🙏`;
-
-        await replyMessage(event.replyToken, [{ type: "text", text: replyText }]);
-      }
-
-      // Trigger AI Auto-Categorization
-      categorizeTicket(ticketId, ticketDescription).catch(e => console.error("Async AI Categorization error:", e));
+        })(),
+        // Trigger AI Categorization in background
+        categorizeTicket(ticketId, ticketDescription)
+      ]);
       
       return;
     }
@@ -559,4 +570,89 @@ async function handleEvent(event: LineEvent): Promise<void> {
   setTimeout(() => {
     processingEventIds.delete(lineMessageId);
   }, 10000);
+}
+
+/**
+ * Handle Postback events (Rating, etc.)
+ */
+async function handlePostback(event: LineEvent, lineUserId: string): Promise<void> {
+  const data = event.postback?.data || "";
+  const params = new URLSearchParams(data);
+  const action = params.get("action");
+
+  if (action === "rate") {
+    const ticketId = params.get("ticket_id");
+    const rating = parseInt(params.get("rating") || "0");
+
+    if (ticketId && rating > 0) {
+      const { error } = await supabaseAdmin
+        .from("tickets")
+        .update({
+          rating,
+          rated_at: new Date().toISOString()
+        })
+        .eq("id", ticketId);
+
+      if (event.replyToken) {
+        if (error) {
+          await replyMessage(event.replyToken, [{ type: "text", text: "❌ เกิดข้อผิดพลาดในการบันทึกคะแนน กรุณาลองใหม่อีกครั้งนะคะ/ครับ" }]);
+        } else {
+          await replyMessage(event.replyToken, [
+            { 
+              type: "text", 
+              text: `ขอบคุณที่ให้คะแนน ${rating} ดาว นะคะ/ครับ! ✨\nทีมงานจะมุ่งมั่นพัฒนาการบริการให้ดียิ่งขึ้นไปอีกค่ะ/ครับ 🙏` 
+            }
+          ]);
+        }
+      }
+    }
+    return;
+  }
+
+  if (action === "report") {
+    // Look up user
+    const { data: user } = await supabaseAdmin
+      .from("users")
+      .select("id")
+      .eq("line_uid", lineUserId)
+      .maybeSingle();
+
+    if (!user) {
+       // Not registered, same as Step A in handleEvent
+       if (event.replyToken) {
+         const regUrl = `${process.env.NEXT_PUBLIC_APP_URL}/register/customer?uid=${lineUserId}`;
+         await replyMessage(event.replyToken, [{ type: "text", text: `กรุณาลงทะเบียนก่อนแจ้งซ่อมที่นี่นะคะ/ครับ: ${regUrl}` }]);
+       }
+       return;
+    }
+
+    // Update state to AWAITING_DESCRIPTION
+    await supabaseAdmin
+      .from("users")
+      .update({
+        line_metadata: {
+          state: "AWAITING_DESCRIPTION",
+          state_at: new Date().toISOString(),
+          temp_attachments: []
+        }
+      })
+      .eq("id", user.id);
+
+    if (event.replyToken) {
+      await replyMessage(event.replyToken, [
+        {
+          type: "text",
+          text: "สวัสดีค่ะ/ครับ รบกวนช่วยพิมพ์ระบุรายละเอียดปัญหา หรือถ่ายรูปส่งมาเพื่อเปิดใบงานได้เลยนะคะ/ครับ",
+          quickReply: {
+            items: [
+              {
+                type: "action",
+                action: { type: "message", label: "📄 พิมพ์รายละเอียด", text: "เปิดใบงาน: " }
+              }
+            ]
+          }
+        }
+      ]);
+    }
+  }
 }

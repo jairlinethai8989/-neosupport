@@ -23,6 +23,13 @@ export interface LineEvent {
   };
   timestamp: number;
   replyToken?: string;
+  postback?: {
+    data: string;
+    params?: {
+      date?: string;
+      datetime?: string;
+    }
+  };
 }
 
 export interface LineWebhookBody {
@@ -38,10 +45,10 @@ export interface LineUserProfile {
 }
 
 export type LineMessageShape = 
-  | { type: 'text'; text: string }
-  | { type: 'sticker'; packageId: string; stickerId: string }
-  | { type: 'image'; originalContentUrl: string; previewImageUrl: string }
-  | { type: 'flex'; altText: string; contents: any };
+  | { type: 'text'; text: string; quickReply?: any }
+  | { type: 'sticker'; packageId: string; stickerId: string; quickReply?: any }
+  | { type: 'image'; originalContentUrl: string; previewImageUrl: string; quickReply?: any }
+  | { type: 'flex'; altText: string; contents: any; quickReply?: any };
 
 // ─── Internal Helpers ────────────────────────────────────────
 
@@ -313,4 +320,100 @@ export function createStaffAlertFlex(ticket: {
     }
   };
 }
+
+/**
+ * Creates a Flex Message for Star Rating (Satisfaction Survey)
+ */
+export function createRatingFlex(ticketId: string, ticketNo: string) {
+  return {
+    type: "bubble" as const,
+    size: "mega" as const,
+    header: {
+      type: "box",
+      layout: "vertical",
+      backgroundColor: "#4f46e5",
+      paddingAll: "20px",
+      contents: [
+        {
+          type: "text",
+          text: "ประเมินความพึงพอใจ ⭐",
+          weight: "bold",
+          color: "#ffffff",
+          size: "lg",
+          align: "center"
+        }
+      ]
+    },
+    body: {
+      type: "box",
+      layout: "vertical",
+      spacing: "md",
+      paddingAll: "20px",
+      contents: [
+        {
+          type: "text",
+          text: `Ticket: ${ticketNo}`,
+          weight: "bold",
+          size: "md",
+          align: "center"
+        },
+        {
+          type: "text",
+          text: "งานแก้ไขเสร็จเรียบร้อยแล้วค่ะ/ครับ รบกวนช่วยประเมินการบริการของเจ้าหน้าที่ เพื่อนำไปปรับปรุงให้ดียิ่งขึ้นนะคะ/ครับ",
+          wrap: true,
+          size: "sm",
+          color: "#666666",
+          align: "center"
+        },
+        {
+          type: "box",
+          layout: "horizontal",
+          margin: "xl",
+          spacing: "xs",
+          justifyContent: "center",
+          contents: [1, 2, 3, 4, 5].map(star => ({
+            type: "button",
+            action: {
+              type: "postback",
+              label: "⭐",
+              data: `action=rate&ticket_id=${ticketId}&rating=${star}`,
+              displayText: `ให้คะแนน ${star} ดาว ⭐`
+            },
+            flex: 1,
+            color: "#f59e0b",
+            style: "link",
+            height: "sm"
+          }))
+        },
+        {
+          type: "box",
+          layout: "horizontal",
+          contents: [1, 2, 3, 4, 5].map(star => ({
+            type: "text",
+            text: String(star),
+            align: "center",
+            size: "xs",
+            color: "#999999"
+          }))
+        }
+      ]
+    },
+    footer: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "button",
+          style: "link",
+          action: {
+            type: "uri",
+            label: "เขียนคำแนะนำเพิ่มเติม",
+            uri: `${process.env.NEXT_PUBLIC_APP_URL}/tickets/${ticketId}/rate`
+          }
+        }
+      ]
+    }
+  };
+}
+
 
