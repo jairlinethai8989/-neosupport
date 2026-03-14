@@ -369,20 +369,32 @@ export function createRatingFlex(ticketId: string, ticketNo: string) {
           type: "box",
           layout: "horizontal",
           margin: "xl",
-          spacing: "sm",
+          spacing: "xs",
           justifyContent: "center",
           contents: [1, 2, 3, 4, 5].map(star => ({
             type: "button",
             action: {
               type: "postback",
-              label: "⭐ " + star,
+              label: (star === 5 ? "⭐⭐⭐⭐⭐" : star === 4 ? "⭐⭐⭐⭐" : star === 3 ? "⭐⭐⭐" : star === 2 ? "⭐⭐" : "⭐"),
               data: `action=rate&ticket_id=${ticketId}&rating=${star}`,
               displayText: `ให้คะแนน ${star} ดาว ⭐`
             },
             flex: 1,
             color: "#f59e0b",
-            style: "secondary",
+            style: "link",
             height: "sm"
+          }))
+        },
+        {
+          type: "box",
+          layout: "horizontal",
+          contents: [1, 2, 3, 4, 5].map(star => ({
+            type: "text",
+            text: String(star),
+            align: "center",
+            size: "xs",
+            color: "#999999",
+            flex: 1
           }))
         }
       ]
@@ -463,8 +475,8 @@ export function createReportPromptFlex() {
           color: "#06C755",
           action: {
             type: "message",
-            label: "⌨️ พิมพ์รายละเอียดทันที",
-            text: "เปิดใบงาน: "
+            label: "⌨️ พิมพ์รายละเอียด",
+            text: "ระบุปัญหา: "
           }
         }
       ]

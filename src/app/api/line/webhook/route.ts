@@ -389,7 +389,26 @@ async function handleEvent(event: LineEvent): Promise<void> {
 
     // If user sends text -> This becomes the ticket description and OPENS the ticket
     if (messageType === "text" && finalContent) {
-      const ticketDescription = finalContent;
+      // ─── Extract final description ────────────────────────
+      let ticketDescription = finalContent.trim();
+      const prefixes = ["เปิดใบงาน:", "ระบุปัญหา:"];
+      for (const p of prefixes) {
+        if (ticketDescription.startsWith(p)) {
+          ticketDescription = ticketDescription.replace(p, "").trim();
+        }
+      }
+
+      // 🛑 GUARD: Don't create ticket if description is empty
+      if (!ticketDescription && (metadata.temp_attachments || []).length === 0) {
+        if (event.replyToken) {
+          await replyMessage(event.replyToken, [{ 
+            type: "text", 
+            text: "⚠️ กรุณาระบุรายละเอียดปัญหาเพื่อให้ระบบเปิดใบงานได้นะคะ/ครับ" 
+          }]);
+        }
+        return;
+      }
+
       const tempAttachments = metadata.temp_attachments || [];
 
       // ─── Create the ticket ────────────────────────────────
@@ -576,12 +595,15 @@ async function handlePostback(event: LineEvent, lineUserId: string): Promise<voi
   const action = params.get("action");
 
   if (action === "rate") {
-    const ticketId = params.get("ticket_id");
+    const ticketId = params.get("ticket_id")?.trim();
     const rating = parseInt(params.get("rating") || "0");
 
     console.log(`[Postback:Rate] TicketID: ${ticketId}, Rating: ${rating}`);
 
-    if (ticketId && rating > 0) {
+    // Validate UUID format and rating range
+    const isUuid = ticketId && /^[0-9a-f-]{36}$/i.test(ticketId);
+    
+    if (isUuid && rating >= 1 && rating <= 5) {
       const { error } = await supabaseAdmin
         .from("tickets")
         .update({
