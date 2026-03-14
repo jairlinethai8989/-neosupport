@@ -893,10 +893,10 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
         </button>
       </aside>
 
-      <main className="main-content" style={{ display: "flex", gap: "2rem", padding: "1.5rem 2rem", flex: 1 }}>
+      <main className="main-content" style={{ display: "flex", gap: "2rem", padding: "1.5rem 2rem", flex: 1, minHeight: 0, overflow: "hidden" }}>
         {/* Left Side: Detail Card */}
-        <div style={{ flex: "0 0 380px", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-          <div className="stat-card animate-fade-in" style={{ padding: "2rem", height: "100%", display: "flex", flexDirection: "column" }}>
+        <div className="detail-panel" style={{ flex: "0 0 380px", display: "flex", flexDirection: "column", gap: "1.5rem", minHeight: 0 }}>
+          <div className="stat-card animate-fade-in" style={{ padding: "1.5rem 2rem", flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem" }}>
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
@@ -1410,6 +1410,41 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
                 </div>
               </div>
             )}
+
+            {/* SATISFACTION RATING IN PDF */}
+            {(initialTicket.rating || 0) > 0 && (
+              <div style={{ marginTop: '20px', background: '#fffbeb', border: '1px solid #fcd34d', padding: '15px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <p style={{ margin: 0, fontWeight: 700, color: '#92400e', fontSize: '14px' }}>ความพึงพอใจของลูกค้า</p>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#b45309' }}>ประเมินโดยผู้แจ้งงานเมื่อปิดใบงาน</p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ margin: 0, fontSize: '24px', letterSpacing: '4px' }}>
+                    {"⭐".repeat(initialTicket.rating || 0)}
+                  </p>
+                  <p style={{ margin: 0, fontWeight: 700, color: '#92400e' }}>{initialTicket.rating} / 5 คะแนน</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* CONVERSATION IMAGES IN PDF */}
+          {(() => {
+            const chatImages = messages.filter(m => m.message_type === 'image' && m.content.startsWith('http')).slice(0, 4);
+            if (chatImages.length === 0) return null;
+            return (
+              <div style={{ marginTop: '20px' }}>
+                <h3 style={{ fontSize: '18px', color: '#4f46e5', borderLeft: '4px solid #4f46e5', paddingLeft: '10px', marginBottom: '15px', fontWeight: 700 }}>ATTACHED COMMUNICATIONS</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                  {chatImages.map((img, idx) => (
+                    <div key={idx} style={{ border: '1px solid #eee', borderRadius: '8px', overflow: 'hidden', height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' }}>
+                      <img src={img.content} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} crossOrigin="anonymous" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '100px' }}>
@@ -1567,6 +1602,35 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
           border-radius: 50%;
           animation: spin 1s linear infinite;
           margin: 0 auto;
+        }
+
+        @media (max-width: 1200px) {
+          .main-content {
+            flex-direction: column !important;
+            padding: 1rem !important;
+            gap: 1.5rem !important;
+            overflow-y: auto !important;
+          }
+          .detail-panel {
+            flex: none !important;
+            width: 100% !important;
+          }
+          .sidebar {
+            display: none !important;
+          }
+        }
+
+        .modal-content {
+          max-width: 600px;
+          width: 95%;
+          max-height: 90vh;
+          overflow-y: auto;
+        }
+
+        select {
+          background-color: var(--bg-color) !important;
+          color: white !important;
+          border: 1px solid var(--border-color) !important;
         }
       `}</style>
     </div>
