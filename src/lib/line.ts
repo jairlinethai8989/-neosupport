@@ -369,31 +369,20 @@ export function createRatingFlex(ticketId: string, ticketNo: string) {
           type: "box",
           layout: "horizontal",
           margin: "xl",
-          spacing: "xs",
+          spacing: "sm",
           justifyContent: "center",
           contents: [1, 2, 3, 4, 5].map(star => ({
             type: "button",
             action: {
               type: "postback",
-              label: "⭐",
+              label: "⭐ " + star,
               data: `action=rate&ticket_id=${ticketId}&rating=${star}`,
               displayText: `ให้คะแนน ${star} ดาว ⭐`
             },
             flex: 1,
             color: "#f59e0b",
-            style: "link",
+            style: "secondary",
             height: "sm"
-          }))
-        },
-        {
-          type: "box",
-          layout: "horizontal",
-          contents: [1, 2, 3, 4, 5].map(star => ({
-            type: "text",
-            text: String(star),
-            align: "center",
-            size: "xs",
-            color: "#999999"
           }))
         }
       ]
@@ -416,4 +405,69 @@ export function createRatingFlex(ticketId: string, ticketNo: string) {
   };
 }
 
-
+/**
+ * Creates a Flex Message for Reporting a Problem
+ */
+export function createReportPromptFlex() {
+  return {
+    type: "bubble" as const,
+    size: "mega" as const,
+    header: {
+      type: "box",
+      layout: "vertical",
+      backgroundColor: "#ef4444",
+      paddingAll: "15px",
+      contents: [
+        {
+          type: "text",
+          text: "📝 แจ้งรายละเอียดปัญหา",
+          weight: "bold",
+          color: "#ffffff",
+          size: "lg",
+          align: "center"
+        }
+      ]
+    },
+    body: {
+      type: "box",
+      layout: "vertical",
+      spacing: "md",
+      paddingAll: "20px",
+      contents: [
+        {
+          type: "text",
+          text: "รบกวนระบุปัญหาที่คุณพบ เพื่อเปิดใบงานนะคะ/ครับ",
+          weight: "bold",
+          size: "md",
+          align: "center",
+          wrap: true
+        },
+        {
+          type: "text",
+          text: "คุณสามารถส่งเป็นข้อความ หรือถ่ายรูปปัญหาที่เกิดขึ้นส่งมาได้เลยค่ะ/ครับ",
+          size: "sm",
+          color: "#666666",
+          align: "center",
+          wrap: true
+        }
+      ]
+    },
+    footer: {
+      type: "box",
+      layout: "vertical",
+      spacing: "sm",
+      contents: [
+        {
+          type: "button",
+          style: "primary",
+          color: "#06C755",
+          action: {
+            type: "message",
+            label: "⌨️ พิมพ์รายละเอียดทันที",
+            text: "เปิดใบงาน: "
+          }
+        }
+      ]
+    }
+  };
+}

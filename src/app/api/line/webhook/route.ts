@@ -6,6 +6,7 @@ import {
   replyMessage,
   pushMessage,
   createStaffAlertFlex,
+  createReportPromptFlex,
 } from "@/lib/line";
 import { supabaseAdmin } from "@/lib/supabase";
 import { categorizeTicket, getAIAnswerFromKB } from "@/lib/ai";
@@ -323,18 +324,12 @@ async function handleEvent(event: LineEvent): Promise<void> {
 
     // Reply immediately
     if (event.replyToken) {
+      const flexContent = createReportPromptFlex();
       await replyMessage(event.replyToken, [
         {
-          type: "text",
-          text: "สวัสดีค่ะ/ครับ รบกวนช่วยพิมพ์ระบุรายละเอียดปัญหา หรือถ่ายรูปส่งมาเพื่อเปิดใบงานได้เลยนะคะ/ครับ",
-          quickReply: {
-            items: [
-              {
-                type: "action",
-                action: { type: "message", label: "📄 พิมพ์รายละเอียด", text: "เปิดใบงาน: " }
-              }
-            ]
-          }
+          type: "flex",
+          altText: "📝 แจ้งรายละเอียดปัญหา",
+          contents: flexContent
         }
       ]);
     }
@@ -584,6 +579,8 @@ async function handlePostback(event: LineEvent, lineUserId: string): Promise<voi
     const ticketId = params.get("ticket_id");
     const rating = parseInt(params.get("rating") || "0");
 
+    console.log(`[Postback:Rate] TicketID: ${ticketId}, Rating: ${rating}`);
+
     if (ticketId && rating > 0) {
       const { error } = await supabaseAdmin
         .from("tickets")
@@ -595,16 +592,19 @@ async function handlePostback(event: LineEvent, lineUserId: string): Promise<voi
 
       if (event.replyToken) {
         if (error) {
-          await replyMessage(event.replyToken, [{ type: "text", text: "❌ เกิดข้อผิดพลาดในการบันทึกคะแนน กรุณาลองใหม่อีกครั้งนะคะ/ครับ" }]);
+          console.error("[Postback:Rate] Update Error:", error);
+          await replyMessage(event.replyToken, [{ type: "text", text: "❌ ไม่สามารถบันทึกคะแนนได้ในขณะนี้ กรุณาลองใหม่นะคะ/ครับ" }]);
         } else {
           await replyMessage(event.replyToken, [
             { 
               type: "text", 
-              text: `ขอบคุณที่ให้คะแนน ${rating} ดาว นะคะ/ครับ! ✨\nทีมงานจะมุ่งมั่นพัฒนาการบริการให้ดียิ่งขึ้นไปอีกค่ะ/ครับ 🙏` 
+              text: `ขอบคุณที่ให้คะแนน ${rating} ดาว นะคะ/ครับ! ✨\nเราได้รับคะแนนของคุณแล้ว และจะนำไปปรับปรุงการบริการต่อไปค่ะ/ครับ 🙏` 
             }
           ]);
         }
       }
+    } else {
+      console.warn("[Postback:Rate] Missing ticketId or invalid rating", { ticketId, rating });
     }
     return;
   }
@@ -639,18 +639,12 @@ async function handlePostback(event: LineEvent, lineUserId: string): Promise<voi
       .eq("id", user.id);
 
     if (event.replyToken) {
+      const flexContent = createReportPromptFlex();
       await replyMessage(event.replyToken, [
         {
-          type: "text",
-          text: "สวัสดีค่ะ/ครับ รบกวนช่วยพิมพ์ระบุรายละเอียดปัญหา หรือถ่ายรูปส่งมาเพื่อเปิดใบงานได้เลยนะคะ/ครับ",
-          quickReply: {
-            items: [
-              {
-                type: "action",
-                action: { type: "message", label: "📄 พิมพ์รายละเอียด", text: "เปิดใบงาน: " }
-              }
-            ]
-          }
+          type: "flex",
+          altText: "📝 แจ้งรายละเอียดปัญหา",
+          contents: flexContent
         }
       ]);
     }
