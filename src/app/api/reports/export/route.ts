@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
         created_at,
         assignee_name,
         handover_notes,
-        users:reporter_id (display_name),
+        users!reporter_id (display_name),
         hospitals (name)
       `)
       .order("created_at", { ascending: false });

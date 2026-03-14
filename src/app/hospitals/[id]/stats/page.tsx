@@ -27,7 +27,7 @@ function HospitalStats() {
       const [hospResult, ticketsResult] = await Promise.all([
         supabase.from("hospitals").select("*").eq("id", hospitalId).single(),
         supabase.from("tickets")
-          .select("*, users!inner(*)")
+          .select("*, users!reporter_id!inner(*)")
           .eq("users.hospital_id", hospitalId)
           .order('created_at', { ascending: false })
       ]);

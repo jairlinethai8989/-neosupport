@@ -18,7 +18,7 @@ async function getDashboardData() {
       created_at,
       updated_at,
       assignee_name,
-      users (
+      users!reporter_id (
         display_name,
         department,
         hospitals (

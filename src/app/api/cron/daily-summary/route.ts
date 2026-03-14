@@ -36,7 +36,7 @@ export async function GET(request: Request) {
         created_at, 
         updated_at,
         assignee_name,
-        users ( hospitals(name) )
+        users!reporter_id ( hospitals(name) )
       `);
 
     if (error || !tickets) {

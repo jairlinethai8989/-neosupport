@@ -332,7 +332,7 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
             // Need to fetch user nested relationship since realtime payload is flat
             const { data: newTicket } = await supabase
               .from('tickets')
-              .select(`*, users(display_name, department, hospitals(name))`)
+              .select(`*, users!reporter_id(display_name, department, hospitals(name))`)
               .eq('id', payload.new.id)
               .single();
 

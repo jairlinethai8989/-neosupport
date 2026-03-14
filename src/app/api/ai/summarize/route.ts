@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     // 1. Fetch ticket and messages
     const { data: ticket } = await supabaseAdmin
       .from("tickets")
-      .select("*, users(display_name, hospitals(name))")
+      .select("*, users!reporter_id(display_name, hospitals(name))")
       .eq("id", ticketId)
       .single();
 

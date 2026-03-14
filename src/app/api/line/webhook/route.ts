@@ -373,37 +373,6 @@ async function handleEvent(event: LineEvent): Promise<void> {
       return;
     }
 
-    // 2.1 STATE: AWAITING_KNOWLEDGE_QUERY
-    if (currentState === "AWAITING_KNOWLEDGE_QUERY" && !isExpired) {
-      if (messageType === "text" && finalContent) {
-        // Search KB
-        const context = await searchKnowledgeBase(finalContent);
-        
-        // Get AI Answer
-        const aiResponse = await getAIAnswerFromKB(finalContent, context);
-
-        // Clear State and Reply
-        await supabaseAdmin
-          .from("users")
-          .update({ line_metadata: null })
-          .eq("id", user.id);
-
-        if (event.replyToken) {
-          await replyMessage(event.replyToken, [
-            {
-              type: "text",
-              text: aiResponse
-            },
-            {
-              type: "text",
-              text: "หากข้อมูลข้างต้นยังไม่สามารถแก้ปัญหาได้ คุณสามารถกดเมนู 'แจ้งซ่อม' เพื่อเปิดใบงานหาเจ้าหน้าที่ได้ทันทีนะคะ/ครับ"
-            }
-          ]);
-        }
-        return;
-      }
-    }
-
     // If user sends text -> This becomes the ticket description and OPENS the ticket
     if (messageType === "text" && finalContent) {
       const ticketDescription = finalContent;
@@ -423,7 +392,7 @@ async function handleEvent(event: LineEvent): Promise<void> {
           ticket_no, 
           description, 
           priority,
-          users (
+          users!reporter_id (
             display_name,
             hospitals (name)
           )
@@ -507,6 +476,37 @@ async function handleEvent(event: LineEvent): Promise<void> {
       // Trigger AI Auto-Categorization
       categorizeTicket(ticketId, ticketDescription).catch(e => console.error("Async AI Categorization error:", e));
       
+      return;
+    }
+  }
+
+  // 2.1 STATE: AWAITING_KNOWLEDGE_QUERY
+  if (currentState === "AWAITING_KNOWLEDGE_QUERY" && !isExpired) {
+    if (messageType === "text" && finalContent) {
+      // Search KB
+      const context = await searchKnowledgeBase(finalContent);
+      
+      // Get AI Answer
+      const aiResponse = await getAIAnswerFromKB(finalContent, context);
+
+      // Clear State and Reply
+      await supabaseAdmin
+        .from("users")
+        .update({ line_metadata: null })
+        .eq("id", user.id);
+
+      if (event.replyToken) {
+        await replyMessage(event.replyToken, [
+          {
+            type: "text",
+            text: aiResponse
+          },
+          {
+            type: "text",
+            text: "หากข้อมูลข้างต้นยังไม่สามารถแก้ปัญหาได้ คุณสามารถกดเมนู 'แจ้งซ่อม' เพื่อเปิดใบงานหาเจ้าหน้าที่ได้ทันทีนะคะ/ครับ"
+          }
+        ]);
+      }
       return;
     }
   }
