@@ -595,38 +595,45 @@ async function handlePostback(event: LineEvent, lineUserId: string): Promise<voi
   const action = params.get("action");
 
   if (action === "rate") {
-    const ticketId = params.get("ticket_id")?.trim();
+    const ticketRef = params.get("ticket_id")?.trim();
     const rating = parseInt(params.get("rating") || "0");
 
-    console.log(`[Postback:Rate] TicketID: ${ticketId}, Rating: ${rating}`);
+    console.log(`[Postback:Rate] TicketRef: ${ticketRef}, Rating: ${rating}`);
 
-    // Validate UUID format and rating range
-    const isUuid = ticketId && /^[0-9a-f-]{36}$/i.test(ticketId);
-    
-    if (isUuid && rating >= 1 && rating <= 5) {
-      const { error } = await supabaseAdmin
-        .from("tickets")
-        .update({
-          rating,
-          rated_at: new Date().toISOString()
-        })
-        .eq("id", ticketId);
+    if (ticketRef && rating >= 1 && rating <= 5) {
+      // Try update by UUID first
+      const isUuid = /^[0-9a-f-]{36}$/i.test(ticketRef);
+      let query = supabaseAdmin.from("tickets").update({ 
+        rating, 
+        rated_at: new Date().toISOString() 
+      });
+
+      if (isUuid) {
+        query = query.eq("id", ticketRef);
+      } else {
+        query = query.eq("ticket_no", ticketRef);
+      }
+
+      const { data: updated, error } = await query.select("id").maybeSingle();
 
       if (event.replyToken) {
         if (error) {
-          console.error("[Postback:Rate] Update Error:", error);
-          await replyMessage(event.replyToken, [{ type: "text", text: "❌ ไม่สามารถบันทึกคะแนนได้ในขณะนี้ กรุณาลองใหม่นะคะ/ครับ" }]);
+          console.error("[Postback:Rate] DB Update Error:", error);
+          await replyMessage(event.replyToken, [{ type: "text", text: "❌ ไม่สามารถบันทึกคะแนนได้ในขณะนี้ (" + (error.message || "DB Error") + ") กรุณาลองใหม่อีกครั้งนะคะ/ครับ" }]);
+        } else if (!updated) {
+          console.warn("[Postback:Rate] Ticket not found:", ticketRef);
+          await replyMessage(event.replyToken, [{ type: "text", text: "❌ ไม่พบข้อมูลใบงานนี้ในระบบ หรือใบงานอาจถูกลบไปแล้วค่ะ/ครับ" }]);
         } else {
           await replyMessage(event.replyToken, [
             { 
               type: "text", 
-              text: `ขอบคุณที่ให้คะแนน ${rating} ดาว นะคะ/ครับ! ✨\nเราได้รับคะแนนของคุณแล้ว และจะนำไปปรับปรุงการบริการต่อไปค่ะ/ครับ 🙏` 
+              text: `ขอบคุณที่ให้คะแนน ${rating} ดาว นะคะ/ครับ! ✨\nทีมงานได้รับคะแนนความพึงพอใจของคุณเรียบร้อยแล้วค่ะ/ครับ 🙏` 
             }
           ]);
         }
       }
     } else {
-      console.warn("[Postback:Rate] Missing ticketId or invalid rating", { ticketId, rating });
+      console.warn("[Postback:Rate] Invalid params:", { ticketRef, rating });
     }
     return;
   }
@@ -640,7 +647,6 @@ async function handlePostback(event: LineEvent, lineUserId: string): Promise<voi
       .maybeSingle();
 
     if (!user) {
-       // Not registered, same as Step A in handleEvent
        if (event.replyToken) {
          const regUrl = `${process.env.NEXT_PUBLIC_APP_URL}/register/customer?uid=${lineUserId}`;
          await replyMessage(event.replyToken, [{ type: "text", text: `กรุณาลงทะเบียนก่อนแจ้งซ่อมที่นี่นะคะ/ครับ: ${regUrl}` }]);
@@ -648,7 +654,7 @@ async function handlePostback(event: LineEvent, lineUserId: string): Promise<voi
        return;
     }
 
-    // Update state to AWAITING_DESCRIPTION
+    // Update state to AWAITING_DESCRIPTION immediately
     await supabaseAdmin
       .from("users")
       .update({

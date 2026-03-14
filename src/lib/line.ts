@@ -375,13 +375,13 @@ export function createRatingFlex(ticketId: string, ticketNo: string) {
             type: "button",
             action: {
               type: "postback",
-              label: (star === 5 ? "⭐⭐⭐⭐⭐" : star === 4 ? "⭐⭐⭐⭐" : star === 3 ? "⭐⭐⭐" : star === 2 ? "⭐⭐" : "⭐"),
+              label: `${star} ⭐`,
               data: `action=rate&ticket_id=${ticketId}&rating=${star}`,
               displayText: `ให้คะแนน ${star} ดาว ⭐`
             },
             flex: 1,
             color: "#f59e0b",
-            style: "link",
+            style: "secondary",
             height: "sm"
           }))
         },
