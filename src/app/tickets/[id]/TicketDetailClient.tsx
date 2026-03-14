@@ -1445,7 +1445,6 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
               </div>
             );
           })()}
-          </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '100px' }}>
             <div style={{ textAlign: 'center', width: '250px' }}>
