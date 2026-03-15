@@ -9,7 +9,7 @@ import {
 } from "recharts";
 import { 
   Sun, Moon, ArrowUpDown, ArrowUp, ArrowDown, Menu, 
-  LayoutDashboard, PlusCircle, BarChart3, Users, Hospital, Settings,
+  LayoutDashboard, PlusCircle, BarChart3, Users, Hospital, Settings, Building2,
   ChevronLeft, ChevronRight, LogOut, Activity, Search, Trash2, 
   CheckCircle, AlertTriangle, Zap, Clock, User, Plus, Info, Inbox, X, Bell
 } from "lucide-react";
