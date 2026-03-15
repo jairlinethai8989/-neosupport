@@ -53,3 +53,34 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+// POST to bulk create hospitals
+export async function POST(req: Request) {
+  try {
+    const { hospitals } = await req.json(); // Array of names
+    if (!Array.isArray(hospitals)) throw new Error("Invalid data format");
+
+    const insertData = hospitals.map(name => {
+      // Simple abbreviation: first few letters or first chars of each word
+      const abbreviation = name.split(' ').map((word: string) => word[0]).join('').toUpperCase().substring(0, 10);
+      const prefix = abbreviation + "-";
+      return {
+        name,
+        abbreviation: abbreviation || name.substring(0, 3).toUpperCase(),
+        ticket_prefix: prefix,
+        ticket_padding: 6,
+        ticket_format_mode: 'default'
+      };
+    });
+
+    const { data, error } = await supabaseAdmin
+      .from('hospitals')
+      .insert(insertData)
+      .select();
+
+    if (error) throw error;
+    return NextResponse.json({ success: true, data });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

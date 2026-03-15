@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { ArrowLeft, Search, RefreshCw, CheckCircle2, ListOrdered, Settings2, Info } from "lucide-react";
+import { ArrowLeft, Search, RefreshCw, CheckCircle2, ListOrdered, Settings2, Info, Building2, Upload, Plus, X } from "lucide-react";
 
 export default function HospitalsClient({
   initialHospitals,
@@ -19,6 +19,9 @@ export default function HospitalsClient({
   const [search, setSearch] = useState("");
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [successId, setSuccessId] = useState<string | null>(null);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [uploadText, setUploadText] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
 
   const filteredHospitals = useMemo(() => {
     return hospitals.filter(h => 
@@ -49,6 +52,31 @@ export default function HospitalsClient({
       setLoadingId(null);
     }
   };
+  const handleBulkUpload = async () => {
+    const names = uploadText.split("\n").map(n => n.trim()).filter(n => n !== "");
+    if (names.length === 0) return;
+    
+    setIsUploading(true);
+    try {
+      const res = await fetch("/api/admin/hospitals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hospitals: names })
+      });
+      
+      const out = await res.json();
+      if (!res.ok) throw new Error(out.error || "Failed");
+      
+      setHospitals(prev => [...prev, ...(out.data || [])]);
+      setIsUploadModalOpen(false);
+      setUploadText("");
+      alert(`เพิ่มสำเร็จ ${out.data?.length || 0} รายชื่อ`);
+    } catch (err: any) {
+      alert("เกิดข้อผิดพลาด: " + err.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const currentYearMonth = new Date().getFullYear().toString() + (new Date().getMonth() + 1).toString().padStart(2, '0');
   const currentYear = new Date().getFullYear().toString();
@@ -59,38 +87,43 @@ export default function HospitalsClient({
         
         {/* Header */}
         <div className="header animate-fade-in" style={{ marginBottom: "2rem" }}>
-          <Link href="/settings" style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--text-muted)", textDecoration: "none", marginBottom: "1rem" }}>
-            <ArrowLeft size={18} /> ย้อนกลับไปหน้าตั้งค่า
+          <Link href="/" style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--text-muted)", textDecoration: "none", marginBottom: "1rem" }}>
+            <ArrowLeft size={18} /> กลับหน้าหลัก
           </Link>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                <div style={{ padding: "0.75rem", background: "var(--primary-light)", borderRadius: "12px", color: "var(--primary)" }}>
-                    <ListOrdered size={32} />
+                <div style={{ padding: "0.75rem", background: "rgba(99, 102, 241, 0.1)", borderRadius: "14px", color: "var(--primary)" }}>
+                    <Building2 size={32} />
                 </div>
                 <div>
-                    <h1 style={{ fontSize: "1.75rem", fontWeight: "700", marginBottom: "0.25rem" }}>แก้ไขวิธีรันเลขเอกสาร</h1>
-                    <p style={{ color: "var(--text-muted)" }}>ตั้งค่ารูปแบบเลขที่ใบงานและลำดับเลขเริ่มต้นของแต่ละโรงพยาบาล</p>
+                    <h1 style={{ fontSize: "1.75rem", fontWeight: "800", marginBottom: "0.25rem" }}>จัดการโรงพยาบาล</h1>
+                    <p style={{ color: "var(--text-muted)" }}>ตั้งค่ารายชื่อและรูปแบบเลขที่ใบงาน (Seq) แยกสาขา</p>
                 </div>
             </div>
-            {userEmail && (
-              <div style={{ fontSize: "0.9rem", color: "var(--text-muted)", textAlign: "right" }}>
-                เข้าใช้งานโดย: <strong>{userEmail}</strong>
-              </div>
-            )}
+            <button 
+              className="btn-upload"
+              onClick={() => setIsUploadModalOpen(true)}
+              style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.75rem 1.5rem", borderRadius: "12px", background: "var(--primary)", color: "white", border: "none", fontWeight: 700, cursor: "pointer", transition: "all 0.2s" }}
+            >
+              <Upload size={18} /> อัปโหลดรายชื่อจำนวนมาก
+            </button>
           </div>
         </div>
 
         {/* Search & List */}
         <div className="animate-fade-in delay-2">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-                <h3 style={{ fontWeight: "600" }}>📝 ตั้งค่าเลขเริ่มต้นรันเอกสาร</h3>
-                <div style={{ position: "relative", width: "300px" }}>
-                    <Search size={18} style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+                <h3 style={{ fontWeight: "700", color: "var(--text-main)", fontSize: "1.1rem" }}>
+                  📦 รายชื่อโรงพยาบาลทั้งหมด ({hospitals.length})
+                </h3>
+                <div style={{ position: "relative", width: "320px" }}>
+                    <Search size={18} style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
                     <input 
                         className="search-input"
-                        placeholder="ค้นหาโรงพยาบาล..." 
+                        placeholder="Search name or ID..." 
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
+                        style={{ paddingLeft: "2.75rem", fontSize: "0.95rem" }}
                     />
                 </div>
             </div>
@@ -119,6 +152,50 @@ export default function HospitalsClient({
             </div>
         </div>
       </main>
+      {/* Upload Modal */}
+      {isUploadModalOpen && (
+        <div className="modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", backdropFilter: "blur(5px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+          <div className="modal-content" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-color)", padding: "2.5rem", borderRadius: "24px", width: "95%", maxWidth: "600px", boxShadow: "0 20px 50px rgba(0,0,0,0.5)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+              <h2 style={{ fontSize: "1.5rem", fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                <Upload size={24} className="text-primary" /> เลือกอัปโหลดรายชื่อ
+              </h2>
+              <button onClick={() => setIsUploadModalOpen(false)} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer" }}>
+                <X size={24} />
+              </button>
+            </div>
+            
+            <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginBottom: "1rem" }}>
+              กรอกรายชื่อโรงพยาบาลที่ต้องการเพิ่ม โดยแยก 1 ชื่อต่อ 1 บรรทัด (Enter)
+            </p>
+            
+            <textarea 
+              value={uploadText}
+              onChange={(e) => setUploadText(e.target.value)}
+              placeholder="เช่น:&#10;โรงพยาบาลกรุงเทพ&#10;โรงพยาบาลศิริราช&#10;..."
+              style={{ width: "100%", height: "250px", padding: "1rem", borderRadius: "12px", border: "1px solid var(--border-color)", background: "var(--bg-color)", color: "var(--text-main)", fontSize: "1rem", outline: "none", marginBottom: "1.5rem", resize: "none" }}
+            />
+            
+            <div style={{ display: "flex", gap: "1rem" }}>
+              <button 
+                className="btn-secondary" 
+                onClick={() => setIsUploadModalOpen(false)}
+                style={{ flex: 1, padding: "0.85rem", borderRadius: "12px", fontWeight: 600 }}
+              >
+                ยกเลิก
+              </button>
+              <button 
+                className="btn-primary" 
+                disabled={isUploading || !uploadText.trim()}
+                onClick={handleBulkUpload}
+                style={{ flex: 2, padding: "0.85rem", borderRadius: "12px", fontWeight: 700, background: "var(--primary)", border: "none", color: "white", cursor: "pointer" }}
+              >
+                {isUploading ? "กำลังเพิ่มข้อมูล..." : `บันทึกข้อมูล (${uploadText.split("\n").filter(l => l.trim()).length} รายการ)`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style jsx>{`
         .radio-label {
@@ -161,8 +238,9 @@ export default function HospitalsClient({
             overflow: hidden;
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         }
-        .spin {
-            animation: spin 1s linear infinite;
+        .btn-upload:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px var(--primary-glow);
         }
         @keyframes spin {
             from { transform: rotate(0deg); }

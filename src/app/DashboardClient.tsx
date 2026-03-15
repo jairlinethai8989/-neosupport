@@ -11,7 +11,7 @@ import {
   Sun, Moon, ArrowUpDown, ArrowUp, ArrowDown, Menu, 
   LayoutDashboard, PlusCircle, BarChart3, Users, Hospital, Settings,
   ChevronLeft, ChevronRight, LogOut, Activity, Search, Trash2, 
-  CheckCircle, AlertTriangle, Zap, Clock, User, Plus, Info, Inbox
+  CheckCircle, AlertTriangle, Zap, Clock, User, Plus, Info, Inbox, X, Bell
 } from "lucide-react";
 
 import { logout } from "./login/actions";
@@ -265,6 +265,7 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
   const [toast, setToast] = useState<{ message: string, show: boolean }>({ message: "", show: false });
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedHospital, setSelectedHospital] = useState("ALL");
+  const [newTicketNotify, setNewTicketNotify] = useState<any>(null);
   // Removed isNavigating state to improve perceived performance
 
   const showToast = (message: string) => {
@@ -338,6 +339,18 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
 
             if (newTicket) {
               setTickets((prev) => [newTicket, ...prev]);
+              // Trigger Popup
+              setNewTicketNotify(newTicket);
+              // Play Alert Sound
+              try {
+                const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+                audio.volume = 0.5;
+                audio.play();
+              } catch (e) {
+                console.warn("Audio play failed", e);
+              }
+              // Auto hide after 10 seconds
+              setTimeout(() => setNewTicketNotify((prev: any) => (prev?.id === newTicket.id ? null : prev)), 15000);
             } else {
               setTickets((prev) => [payload.new, ...prev]);
             }
@@ -532,6 +545,43 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
 
   return (
     <div className={`dashboard-container ${theme}`}>
+      {/* New Ticket Realtime Notification Popup */}
+      {newTicketNotify && (
+        <div className="new-ticket-popup animate-bounce-in">
+          <div className="popup-header">
+            <div className="popup-title">
+              <Bell size={20} className="animate-pulse" />
+              <span>แจ้งซ่อมใหม่เข้าระบบ!</span>
+            </div>
+            <button className="popup-close" onClick={() => setNewTicketNotify(null)}>
+              <X size={20} />
+            </button>
+          </div>
+          <div className="popup-content">
+            <div className="popup-hospital">
+              {newTicketNotify.users?.hospitals?.name || "โรงพยาบาลไม่ระบุ"}
+            </div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 600, marginBottom: '0.25rem' }}>
+              Ticket: {newTicketNotify.ticket_no}
+            </div>
+            <div className="popup-desc">
+              {newTicketNotify.description}
+            </div>
+          </div>
+          <div className="popup-footer">
+            <button 
+              className="popup-btn-primary" 
+              onClick={() => {
+                router.push(`/tickets/${newTicketNotify.id}`);
+                setNewTicketNotify(null);
+              }}
+            >
+              ดูรายละเอียดงาน
+            </button>
+          </div>
+        </div>
+      )}
+
       <aside className={`sidebar ${!isSidebarOpen ? 'collapsed' : ''}`}>
         <div className="sidebar-logo">
           <div className="logo-icon-container">
@@ -551,24 +601,24 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
             {isSidebarOpen && <span className="nav-label">สร้างตั๋วงาน</span>}
           </Link>
 
-          <div className="nav-group-label" style={{ marginTop: '1rem' }}>{isSidebarOpen ? "วิเคราะห์ข้อมูล" : "•••"}</div>
+          <div className="nav-group-label" style={{ marginTop: '1.5rem' }}>{isSidebarOpen ? "การจัดการและสถิติ" : "•••"}</div>
           <Link href="/graph" className="nav-item">
             <BarChart3 size={20} className="nav-icon" />
-            {isSidebarOpen && <span className="nav-label">สถิติรวม</span>}
-          </Link>
-          <Link href="/settings/hospitals" className="nav-item">
-            <Hospital size={20} className="nav-icon" />
-            {isSidebarOpen && <span className="nav-label">รายชื่อโรงพยาบาล</span>}
+            {isSidebarOpen && <span className="nav-label">สถิติประสิทธิภาพ</span>}
           </Link>
 
-          <div className="nav-group-label" style={{ marginTop: '1rem' }}>{isSidebarOpen ? "จัดการระบบ" : "•••"}</div>
+          <div className="nav-group-label" style={{ marginTop: '1.5rem' }}>{isSidebarOpen ? "การตั้งค่าระบบ" : "•••"}</div>
+          <Link href="/settings/hospitals" className="nav-item">
+            <Building2 size={20} className="nav-icon" />
+            {isSidebarOpen && <span className="nav-label">จัดการโรงพยาบาล</span>}
+          </Link>
           <Link href="/settings/staff-approvals" className="nav-item">
             <Users size={20} className="nav-icon" />
             {isSidebarOpen && <span className="nav-label">อนุมัติพนักงาน</span>}
           </Link>
           <Link href="/settings" className="nav-item">
             <Settings size={20} className="nav-icon" />
-            {isSidebarOpen && <span className="nav-label">ตั้งค่าระบบ</span>}
+            {isSidebarOpen && <span className="nav-label">ตั้งค่าระบบทั่วไป</span>}
           </Link>
 
           <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>

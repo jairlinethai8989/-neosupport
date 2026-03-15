@@ -7,6 +7,7 @@ import {
   pushMessage,
   createStaffAlertFlex,
   createReportPromptFlex,
+  createConfirmTicketFlex,
 } from "@/lib/line";
 import { supabaseAdmin } from "@/lib/supabase";
 import { categorizeTicket, getAIAnswerFromKB } from "@/lib/ai";
@@ -362,16 +363,20 @@ async function handleEvent(event: LineEvent): Promise<void> {
 
   // 2. STATE: AWAITING_DESCRIPTION
   if (currentState === "AWAITING_DESCRIPTION" && !isExpired) {
+    const tempAttachments = metadata.temp_attachments || [];
+    const currentDesc = metadata.temp_description || "";
+
     // If user sends media (Image/Video)
     if (isMediaType) {
-      const newAttachments = [...(metadata.temp_attachments || []), { content: finalContent, type: finalMessageType, id: lineMessageId }];
+      const newAttachments = [...tempAttachments, { content: finalContent, type: finalMessageType, id: lineMessageId }];
       
       await supabaseAdmin
         .from("users")
         .update({
           line_metadata: {
             ...metadata,
-            temp_attachments: newAttachments
+            temp_attachments: newAttachments,
+            state_at: new Date().toISOString() // refresh timeout
           }
         })
         .eq("id", user.id);
@@ -379,17 +384,17 @@ async function handleEvent(event: LineEvent): Promise<void> {
       if (event.replyToken) {
         await replyMessage(event.replyToken, [
           {
-            type: "text",
-            text: "ได้รับไฟล์เรียบร้อยแล้วค่ะ/ครับ รบกวนช่วยพิมพ์สรุปปัญหาที่พบสักนิด เพื่อใช้เป็นหัวข้อและเปิดใบงานให้นะคะ/ครับ"
+            type: "flex",
+            altText: "🚀 ยืนยันการเปิดใบงาน",
+            contents: createConfirmTicketFlex(currentDesc, newAttachments.length)
           }
         ]);
       }
       return;
     }
 
-    // If user sends text -> This becomes the ticket description and OPENS the ticket
+    // If user sends text -> Update description but don't close yet
     if (messageType === "text" && finalContent) {
-      // ─── Extract final description ────────────────────────
       let ticketDescription = finalContent.trim();
       const prefixes = ["เปิดใบงาน:", "ระบุปัญหา:"];
       for (const p of prefixes) {
@@ -398,109 +403,26 @@ async function handleEvent(event: LineEvent): Promise<void> {
         }
       }
 
-      // 🛑 GUARD: Don't create ticket if description is empty
-      if (!ticketDescription && (metadata.temp_attachments || []).length === 0) {
-        if (event.replyToken) {
-          await replyMessage(event.replyToken, [{ 
-            type: "text", 
-            text: "⚠️ กรุณาระบุรายละเอียดปัญหาเพื่อให้ระบบเปิดใบงานได้นะคะ/ครับ" 
-          }]);
-        }
-        return;
-      }
-
-      const tempAttachments = metadata.temp_attachments || [];
-
-      // ─── Create the ticket ────────────────────────────────
-      const { data: newTicket, error: ticketError } = await supabaseAdmin
-        .from("tickets")
-        .insert({
-          description: ticketDescription,
-          reporter_id: user.id,
-          source: "LINE",
-          status: "Pending",
-        })
-        .select(`
-          id, 
-          ticket_no, 
-          description, 
-          priority,
-          users!reporter_id (
-            display_name,
-            hospitals (name)
-          )
-        `)
-        .single();
-
-      if (ticketError || !newTicket) {
-        console.error("Failed to create ticket:", ticketError);
-        if (event.replyToken) {
-          await replyMessage(event.replyToken, [{ type: "text", text: "❌ เกิดข้อผิดพลาดในการสร้าง Ticket กรุณาลองใหม่อีกครั้งนะคะ/ครับ" }]);
-        }
-        return;
-      }
-
-      const ticketId = newTicket.id;
-      const ticketNo = newTicket.ticket_no;
-
-      // ─── Reply to user IMMEDIATELY for perceived speed ───────
-      if (event.replyToken) {
-        const hasMedia = tempAttachments.length > 0;
-        const replyText =
-          `✅ เปิดใบงานใหม่เรียบร้อยแล้วค่ะ/ครับ\n` +
-          `━━━━━━━━━━━━━━━━━\n` +
-          `📋 หมายเลข: ${ticketNo}\n` +
-          `📝 รายละเอียด: ${ticketDescription.substring(0, 100)}${ticketDescription.length > 100 ? "..." : ""}\n` +
-          (hasMedia ? `🖼️ ไฟล์แนบ: ${tempAttachments.length} ไฟล์\n` : "") +
-          `━━━━━━━━━━━━━━━━━\n\n` +
-          `ทีมงานจะรับเรื่องและตรวจสอบให้เร็วที่สุดนะคะ/ครับ 🙏`;
-
-        // Send and await reply before finishing other DB tasks
-        await replyMessage(event.replyToken, [{ type: "text", text: replyText }]);
-      }
-
-      // ─── Run remaining tasks in background or parallel ─────
-      const messagesToInsert = [
-        ...tempAttachments.map((att: any) => ({
-          ticket_id: ticketId,
-          line_uid: lineUserId,
-          content: att.content,
-          message_type: att.type,
-          line_message_id: att.id,
-          direction: "inbound"
-        })),
-        {
-          ticket_id: ticketId,
-          line_uid: lineUserId,
-          content: ticketDescription,
-          message_type: "text",
-          line_message_id: lineMessageId,
-          direction: "inbound"
-        }
-      ];
-
-      // Use Promise.all to run non-dependent operations faster
-      await Promise.all([
-        supabaseAdmin.from("messages").insert(messagesToInsert),
-        supabaseAdmin.from("users").update({ line_metadata: {} }).eq("id", user.id),
-        // Notify Staff Group in background
-        (async () => {
-          const staffGroupId = process.env.LINE_STAFF_GROUP_ID;
-          if (staffGroupId) {
-            const flexContent = createStaffAlertFlex({
-              ticket_no: ticketNo,
-              description: ticketDescription,
-              hospital_name: (newTicket.users as any)?.hospitals?.name || "Unknown Hospital",
-              reporter_name: (newTicket.users as any)?.display_name || "Unknown User",
-              priority: newTicket.priority || "Medium"
-            });
-            await pushMessage(staffGroupId, [{ type: "flex", altText: `🚨 งานใหม่: ${ticketNo}`, contents: flexContent }]);
+      await supabaseAdmin
+        .from("users")
+        .update({
+          line_metadata: {
+            ...metadata,
+            temp_description: ticketDescription,
+            state_at: new Date().toISOString() // refresh timeout
           }
-        })(),
-        // Trigger AI Categorization in background
-        categorizeTicket(ticketId, ticketDescription)
-      ]);
-      
+        })
+        .eq("id", user.id);
+
+      if (event.replyToken) {
+        await replyMessage(event.replyToken, [
+          {
+            type: "flex",
+            altText: "🚀 ยืนยันการเปิดใบงาน",
+            contents: createConfirmTicketFlex(ticketDescription, tempAttachments.length)
+          }
+        ]);
+      }
       return;
     }
   }
@@ -676,5 +598,113 @@ async function handlePostback(event: LineEvent, lineUserId: string): Promise<voi
         }
       ]);
     }
+    return;
+  }
+
+  if (action === "finalize_ticket") {
+    // 1. Look up user
+    const { data: user } = await supabaseAdmin
+      .from("users")
+      .select("id, display_name, line_uid, line_metadata, hospitals(name)")
+      .eq("line_uid", lineUserId)
+      .maybeSingle();
+
+    if (!user) return;
+    const metadata = (user.line_metadata as any) || {};
+    const description = metadata.temp_description || "";
+    const attachments = metadata.temp_attachments || [];
+
+    if (!description && attachments.length === 0) {
+      if (event.replyToken) {
+        await replyMessage(event.replyToken, [{ type: "text", text: "❌ ไม่พบรายละเอียดสำหรับเปิดใบงาน กรุณากดปุ่ม 'แจ้งซ่อม' เพื่อเริ่มใหม่อีกครั้งนะคะ/ครับ" }]);
+      }
+      return;
+    }
+
+    // 2. Create the ticket
+    const { data: newTicket, error: ticketError } = await supabaseAdmin
+      .from("tickets")
+      .insert({
+        description: description || "แจ้งซ่อมผ่านรูปภาพ/วิดีโอ",
+        reporter_id: user.id,
+        source: "LINE",
+        status: "Pending",
+      })
+      .select(`
+        id, 
+        ticket_no, 
+        description, 
+        priority,
+        users!reporter_id (
+          display_name,
+          hospitals (name)
+        )
+      `)
+      .single();
+
+    if (ticketError || !newTicket) {
+      console.error("Finalize ticket error:", ticketError);
+      if (event.replyToken) {
+        await replyMessage(event.replyToken, [{ type: "text", text: "❌ เกิดข้อผิดพลาดในการเปิดใบงาน กรุณาลองใหม่นะคะ/ครับ" }]);
+      }
+      return;
+    }
+
+    const ticketId = newTicket.id;
+    const ticketNo = newTicket.ticket_no;
+
+    // 3. Reply to user
+    if (event.replyToken) {
+      const replyText =
+        `✅ สร้างใบงานสำเร็จแล้วค่ะ/ครับ!\n` +
+        `━━━━━━━━━━━━━━━━━\n` +
+        `📋 หมายเลข: ${ticketNo}\n` +
+        `📝 รายละเอียด: ${description.substring(0, 100)}${description.length > 100 ? "..." : ""}\n` +
+        (attachments.length > 0 ? `🖼️ ไฟล์แนบ: ${attachments.length} ไฟล์\n` : "") +
+        `━━━━━━━━━━━━━━━━━\n\n` +
+        `ทีมงานได้รับเรื่องแล้ว และจะรีบตรวจสอบให้นะคะ/ครับ 🙏`;
+      await replyMessage(event.replyToken, [{ type: "text", text: replyText }]);
+    }
+
+    // 4. Save messages and reset state
+    const messagesToInsert = [
+      ...attachments.map((att: any) => ({
+        ticket_id: ticketId,
+        line_uid: lineUserId,
+        content: att.content,
+        message_type: att.type,
+        line_message_id: att.id,
+        direction: "inbound"
+      })),
+      {
+        ticket_id: ticketId,
+        line_uid: lineUserId,
+        content: description || "[เปิดใบงาน]",
+        message_type: "text",
+        direction: "inbound"
+      }
+    ];
+
+    await Promise.all([
+      supabaseAdmin.from("messages").insert(messagesToInsert),
+      supabaseAdmin.from("users").update({ line_metadata: {} }).eq("id", user.id),
+      // Notify Staff
+      (async () => {
+        const staffGroupId = process.env.LINE_STAFF_GROUP_ID;
+        if (staffGroupId) {
+          const flexContent = createStaffAlertFlex({
+            ticket_no: ticketNo,
+            description: description || "แจ้งซ่อมผ่านภาพประกอบ",
+            hospital_name: (user as any).hospitals?.name || "Unknown Hospital",
+            reporter_name: user.display_name,
+            priority: newTicket.priority || "Medium"
+          });
+          await pushMessage(staffGroupId, [{ type: "flex", altText: `🚨 งานใหม่: ${ticketNo}`, contents: flexContent }]);
+        }
+      })(),
+      categorizeTicket(ticketId, description || "Image/Video Report")
+    ]);
+
+    return;
   }
 }

@@ -26,25 +26,30 @@ export async function POST(req: NextRequest) {
     if (!ticket) return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
 
     // 2. Prepare prompt for Gemini
-    const chatLog = messages?.map(m => `${m.direction === 'inbound' ? 'Customer' : 'Staff'}: ${m.content}`).join('\n') || '';
+    const chatLog = messages?.map(m => `${m.direction === 'inbound' ? 'Customer' : 'Staff'}: ${m.content}`).join('\n') || 'ไม่มีประวัติการสนทนา';
     
     const prompt = `
-      คุณเป็นผู้ช่วยสรุปงาน IT Support กรุณาสรุปเหตุระเบียบการซ่อมในรูปแบบที่เป็นทางการ:
+      คุณเป็นผู้ช่วยผู้เชี่ยวชาญด้าน IT Support ของบริษัท NEO Support
+      หน้าที่ของคุณคือสรุป "ใบแจ้งซ่อม" (Service Report) จากข้อมูลที่ได้รับ
       
-      ข้อมูลเบื้องต้น:
+      ข้อมูลใบแจ้งซ่อม:
       - เลขที่ตั๋ว: ${ticket.ticket_no}
       - ผู้แจ้ง: ${ticket.users?.display_name} (${ticket.users?.hospitals?.name})
-      - อาการที่แจ้ง: ${ticket.description}
+      - อาการที่แจ้ง (Description): ${ticket.description}
+      - บันทึกการแก้ไข (Resolution Notes): ${ticket.notes || 'ยังไม่มีบันทึกการแก้ไข'}
       
-      ประวัติการสนทนา:
+      ประวัติการสนทนาระหว่างลูกค้าและทีมงาน:
       ${chatLog}
       
-      คำสั่ง:
-      1. สรุปปัญหาที่เกิดขึ้นจริง (The Real Issue)
-      2. สรุปวิธีแก้ปัญหาที่ทำไป (The Resolution)
-      3. แนะนำสิ่งที่ควรระวังในอนาคต (Future Advice)
+      คำสั่งสรุปงาน:
+      1. สรุปปัญหาที่เกิดขึ้นจริง (The Real Issue): วิเคราะห์จากรายละเอียดและแชท
+      2. สรุปวิธีแก้ปัญหาที่ทำไป (The Resolution): ดูจากทั้งบันทึกการแก้ไขและขั้นตอนในแชท
+      3. แนะนำสิ่งที่ควรระวังหรือแนวทางในอนาคต (Future Advice): ข้อแนะนำเชิงเทคนิค
       
-      ตอบเป็นภาษาไทย โดยแบ่งเป็นข้อๆ ให้สวยงาม
+      กฎการตอบกลับ:
+      - ตอบเป็นภาษาไทยที่สุภาพและเป็นทางการ
+      - ใช้เครื่องหมายหัวข้อ (Bullet points) ให้ดูง่าย
+      - หากข้อมูลน้อยเกินไป ให้พยายามสรุปจากข้อมูลเท่าที่มีให้ดีที่สุด
     `;
 
     // 3. Call Gemini API
@@ -57,7 +62,13 @@ export async function POST(req: NextRequest) {
     });
 
     const aiData = await response.json();
-    const aiSummary = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "ไม่สามารถสรุปได้";
+    
+    if (aiData.error) {
+      console.error('Gemini API Error:', JSON.stringify(aiData.error, null, 2));
+      return NextResponse.json({ error: `AI API Error: ${aiData.error.message}` }, { status: 500 });
+    }
+
+    const aiSummary = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "ไม่สามารถสรุปได้เนื่องจากข้อมูลไม่เพียงพอ หรือระบบได้รับคำตอบที่ว่างเปล่า";
 
     // 4. Update Ticket with AI Summary
     await supabaseAdmin
@@ -68,7 +79,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ summary: aiSummary });
 
   } catch (error: any) {
-    console.error('AI Summary Error:', error);
+    console.error('AI Summary Backend Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

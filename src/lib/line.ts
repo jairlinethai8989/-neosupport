@@ -483,3 +483,113 @@ export function createReportPromptFlex() {
     }
   };
 }
+/**
+ * Creates a Flex Message for confirming and creating a ticket
+ */
+export function createConfirmTicketFlex(description: string, fileCount: number = 0) {
+  const shortDesc = description.length > 80 ? description.substring(0, 77) + "..." : description;
+  
+  return {
+    type: "bubble" as const,
+    size: "mega" as const,
+    header: {
+      type: "box",
+      layout: "vertical",
+      backgroundColor: "#06C755",
+      paddingAll: "15px",
+      contents: [
+        {
+          type: "text",
+          text: "🚀 พร้อมเปิดใบงานแจ้งซ่อม",
+          weight: "bold",
+          color: "#ffffff",
+          size: "lg",
+          align: "center"
+        }
+      ]
+    },
+    body: {
+      type: "box",
+      layout: "vertical",
+      spacing: "md",
+      paddingAll: "20px",
+      contents: [
+        {
+          type: "text",
+          text: "สรุปรายละเอียดห้อง/อาการ:",
+          weight: "bold",
+          size: "sm",
+          color: "#999999"
+        },
+        {
+          type: "text",
+          text: shortDesc || "(ยังไม่ได้ระบุรายละเอียด)",
+          size: "md",
+          wrap: true,
+          weight: "bold"
+        },
+        {
+          type: "box",
+          layout: "baseline",
+          spacing: "sm",
+          margin: "md",
+          contents: [
+            {
+              type: "text",
+              text: "📎 ไฟล์แนบ:",
+              color: "#aaaaaa",
+              size: "sm",
+              flex: 2
+            },
+            {
+              type: "text",
+              text: `${fileCount} ไฟล์`,
+              color: "#666666",
+              size: "sm",
+              flex: 5
+            }
+          ]
+        },
+        {
+          type: "text",
+          text: "ตรวจสอบความถูกต้องแล้วกดปุ่ม 'สร้างใบงาน' ด้านล่างเพื่อยืนยันนะคะ/ครับ",
+          size: "xs",
+          color: "#ef4444",
+          margin: "lg",
+          wrap: true,
+          align: "center"
+        }
+      ]
+    },
+    footer: {
+      type: "box",
+      layout: "vertical",
+      spacing: "sm",
+      contents: [
+        {
+          type: "button",
+          style: "primary",
+          color: "#06C755",
+          height: "sm",
+          action: {
+            type: "postback",
+            label: "🛠️ สร้างใบงาน (Create Ticket)",
+            data: "action=finalize_ticket",
+            displayText: "กำลังสร้างใบงานแจ้งซ่อม..."
+          }
+        },
+        {
+          type: "button",
+          style: "link",
+          color: "#ef4444",
+          height: "sm",
+          action: {
+            type: "message",
+            label: "❌ ยกเลิกและเริ่มใหม่",
+            text: "แจ้งซ่อม"
+          }
+        }
+      ]
+    }
+  };
+}

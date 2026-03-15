@@ -570,11 +570,13 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
       if (data.summary) {
         setAiSummary(data.summary);
         showToast("AI สรุปงานให้เรียบร้อยแล้ว ✨");
-      } else if (data.error === "AI API Key not configured") {
-        showToast("กรุณาตั้งค่า GOOGLE_GEMINI_API_KEY ก่อนนะคะ/ครับ");
+      } else {
+        const errorMsg = data.error || "ไม่สามารถสรุปงานได้ในขณะนี้";
+        showToast(`❌ ${errorMsg}`);
       }
-    } catch {
-      showToast("AI ทำงานขัดข้อง กรุณาลองใหม่");
+    } catch (e: any) {
+      console.error("AI Summary API error:", e);
+      showToast("❌ ระบบ AI ขัดข้อง กรุณาลองใหม่อีกครั้ง");
     } finally {
       setIsGeneratingAI(false);
     }
@@ -747,7 +749,7 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
       await new Promise(r => setTimeout(r, 800));
 
       const canvas = await html2canvas(reportEl, { 
-        scale: 2.2, // Good balance of quality and size
+        scale: 1.5, // Reduced from 2.2 to significantly shrink file size
         useCORS: true,
         logging: false,
         backgroundColor: "#ffffff",
@@ -775,12 +777,17 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
         parent.style.visibility = originalStyles.visibility;
       }
 
-      const imgData = canvas.toDataURL("image/jpeg", 0.9);
-      const pdf = new jsPDF("p", "mm", "a4");
+      const imgData = canvas.toDataURL("image/jpeg", 0.75); // Reduced quality from 0.9 to 0.75 for better compression
+      const pdf = new jsPDF({
+        orientation: "p",
+        unit: "mm",
+        format: "a4",
+        compress: true // Enable internal PDF compression
+      });
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       
-      pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight);
+      pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
       
       const blob = pdf.output('blob');
       const url = URL.createObjectURL(blob);
@@ -1259,7 +1266,18 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value)}
                 placeholder="พิมพ์ข้อความตอบกลับ..."
-                style={{ flex: 1, padding: "1.1rem 1.5rem", borderRadius: "20px", border: "1px solid var(--border-color)", background: "var(--bg-color)", color: "white", outline: "none", fontSize: "1rem", height: "64px", boxSizing: "border-box" }}
+                style={{ 
+                  flex: 1, 
+                  padding: "1.1rem 1.5rem", 
+                  borderRadius: "20px", 
+                  border: "1px solid var(--border-color)", 
+                  background: "var(--bg-color)", 
+                  color: "var(--text-main)", // Changed from hardcoded white to theme variable
+                  outline: "none", 
+                  fontSize: "1rem", 
+                  height: "64px", 
+                  boxSizing: "border-box" 
+                }}
               />
 
               {/* Send Button */}
@@ -1287,17 +1305,17 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
             <h2 style={{ fontSize: "1.75rem", marginBottom: "1.5rem", display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <CheckCircle size={28} className="text-green-500" /> ปิดงาน / Resolved Ticket
             </h2>
-            <div className="form-group"><label>โมดูล / ระบบ</label><select value={resolveModule} onChange={e => setResolveModule(e.target.value)}>{initialSettings?.modules?.map((m: any, idx: number) => <option key={idx} value={m}>{m}</option>)}</select></div>
-            <div className="form-group"><label>ประเภทงาน</label><select value={resolveIssueType} onChange={e => setResolveIssueType(e.target.value)}>{initialSettings?.issue_types?.map((t: any, idx: number) => <option key={idx} value={t}>{t}</option>)}</select></div>
+            <div className="form-group"><label>โมดูล / ระบบ</label><select value={resolveModule} onChange={e => setResolveModule(e.target.value)} style={{ padding: '0.8rem', background: 'var(--bg-color)', color: 'var(--text-main)', border: '1px solid var(--border-color)' }}>{initialSettings?.modules?.map((m: any, idx: number) => <option key={idx} value={m} style={{ background: 'var(--bg-color)', color: 'var(--text-main)' }}>{m}</option>)}</select></div>
+            <div className="form-group"><label>ประเภทงาน</label><select value={resolveIssueType} onChange={e => setResolveIssueType(e.target.value)} style={{ padding: '0.8rem', background: 'var(--bg-color)', color: 'var(--text-main)', border: '1px solid var(--border-color)' }}>{initialSettings?.issue_types?.map((t: any, idx: number) => <option key={idx} value={t} style={{ background: 'var(--bg-color)', color: 'var(--text-main)' }}>{t}</option>)}</select></div>
             <div className="form-group">
               <label>วิธีแก้ไขปัญหา (Resolution Notes) *</label>
               <div style={{ marginBottom: '0.75rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                 {initialSettings?.resolution_notes?.map((note: any, idx: number) => <button key={idx} type="button" onClick={() => setResolveNotes(note)} style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', borderRadius: '8px', background: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-main)', cursor: 'pointer' }}>+ {note}</button>)}
               </div>
-              <textarea rows={2} value={resolveNotes} onChange={e => setResolveNotes(e.target.value)} placeholder="อธิบายขั้นตอนการแก้ไขงาน..." style={{ borderRadius: "12px", marginBottom: "1rem" }} />
+              <textarea rows={3} value={resolveNotes} onChange={e => setResolveNotes(e.target.value)} placeholder="อธิบายขั้นตอนการแก้ไขงาน..." style={{ borderRadius: "12px", marginBottom: "1rem", background: 'var(--bg-color)', color: 'var(--text-main)', border: '1px solid var(--border-color)', padding: '1rem' }} />
               
               <label>หมายเหตุเพิ่มเติม (Optional)</label>
-              <textarea rows={2} value={extraNotes} onChange={e => setExtraNotes(e.target.value)} placeholder="หมายเหตุถึงทีมงานหรือลูกค้า..." style={{ borderRadius: "12px" }} />
+              <textarea rows={2} value={extraNotes} onChange={e => setExtraNotes(e.target.value)} placeholder="หมายเหตุถึงทีมงานหรือลูกค้า..." style={{ borderRadius: "12px", background: 'var(--bg-color)', color: 'var(--text-main)', border: '1px solid var(--border-color)', padding: '1rem' }} />
             </div>
             <div className="modal-actions">
               <button className="btn-secondary" onClick={() => setIsResolveModalOpen(false)}>ยกเลิก</button>
