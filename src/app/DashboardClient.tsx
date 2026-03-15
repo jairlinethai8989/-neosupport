@@ -601,13 +601,13 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
             {isSidebarOpen && <span className="nav-label">สร้างตั๋วงาน</span>}
           </Link>
 
-          <div className="nav-group-label" style={{ marginTop: '1.5rem' }}>{isSidebarOpen ? "การจัดการและสถิติ" : "•••"}</div>
+          <div className="nav-group-label" style={{ marginTop: '1.5rem' }}>{isSidebarOpen ? "สถิติและข้อมูล" : "•••"}</div>
           <Link href="/graph" className="nav-item">
             <BarChart3 size={20} className="nav-icon" />
             {isSidebarOpen && <span className="nav-label">สถิติประสิทธิภาพ</span>}
           </Link>
 
-          <div className="nav-group-label" style={{ marginTop: '1.5rem' }}>{isSidebarOpen ? "การตั้งค่าระบบ" : "•••"}</div>
+          <div className="nav-group-label" style={{ marginTop: '1.5rem' }}>{isSidebarOpen ? "ตั้งค่าระบบ" : "•••"}</div>
           <Link href="/settings/hospitals" className="nav-item">
             <Building2 size={20} className="nav-icon" />
             {isSidebarOpen && <span className="nav-label">จัดการโรงพยาบาล</span>}
@@ -618,7 +618,7 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
           </Link>
           <Link href="/settings" className="nav-item">
             <Settings size={20} className="nav-icon" />
-            {isSidebarOpen && <span className="nav-label">ตั้งค่าระบบทั่วไป</span>}
+            {isSidebarOpen && <span className="nav-label">ตั้งค่าทั่วไป</span>}
           </Link>
 
           <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
@@ -635,6 +635,7 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
           className="sidebar-toggle-btn"
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           title={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+          style={{ top: '1.2rem', right: '-12px', bottom: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
           {isSidebarOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
         </button>

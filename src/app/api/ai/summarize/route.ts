@@ -64,11 +64,22 @@ export async function POST(req: NextRequest) {
     const aiData = await response.json();
     
     if (aiData.error) {
-      console.error('Gemini API Error:', JSON.stringify(aiData.error, null, 2));
+      console.error('Gemini API Error Payload:', JSON.stringify(aiData.error, null, 2));
       return NextResponse.json({ error: `AI API Error: ${aiData.error.message}` }, { status: 500 });
     }
 
-    const aiSummary = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "ไม่สามารถสรุปได้เนื่องจากข้อมูลไม่เพียงพอ หรือระบบได้รับคำตอบที่ว่างเปล่า";
+    const candidate = aiData.candidates?.[0];
+    const finishReason = candidate?.finishReason;
+    const aiSummary = candidate?.content?.parts?.[0]?.text;
+
+    if (!aiSummary) {
+      console.warn('Gemini returned no content. FinishReason:', finishReason, 'Full Response:', JSON.stringify(aiData));
+      let fallbackMsg = "ไม่สามารถสรุปได้ในขณะนี้";
+      if (finishReason === 'SAFETY') fallbackMsg = "ไม่สามารถสรุปได้เนื่องจากติดข้อจำกัดด้านความปลอดภัยของเนื้อหา";
+      else if (finishReason === 'OTHER') fallbackMsg = "ระบบ AI ขัดข้องชั่วคราว กรุณาลองใหม่อีกครั้ง";
+      
+      return NextResponse.json({ summary: fallbackMsg });
+    }
 
     // 4. Update Ticket with AI Summary
     await supabaseAdmin

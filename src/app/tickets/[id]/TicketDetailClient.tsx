@@ -1305,8 +1305,26 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
             <h2 style={{ fontSize: "1.75rem", marginBottom: "1.5rem", display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <CheckCircle size={28} className="text-green-500" /> ปิดงาน / Resolved Ticket
             </h2>
-            <div className="form-group"><label>โมดูล / ระบบ</label><select value={resolveModule} onChange={e => setResolveModule(e.target.value)} style={{ padding: '0.8rem', background: 'var(--bg-color)', color: 'var(--text-main)', border: '1px solid var(--border-color)' }}>{initialSettings?.modules?.map((m: any, idx: number) => <option key={idx} value={m} style={{ background: 'var(--bg-color)', color: 'var(--text-main)' }}>{m}</option>)}</select></div>
-            <div className="form-group"><label>ประเภทงาน</label><select value={resolveIssueType} onChange={e => setResolveIssueType(e.target.value)} style={{ padding: '0.8rem', background: 'var(--bg-color)', color: 'var(--text-main)', border: '1px solid var(--border-color)' }}>{initialSettings?.issue_types?.map((t: any, idx: number) => <option key={idx} value={t} style={{ background: 'var(--bg-color)', color: 'var(--text-main)' }}>{t}</option>)}</select></div>
+            <div className="form-group">
+              <label style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.4rem', display: 'block' }}>โมดูล / ระบบ</label>
+              <select 
+                value={resolveModule} 
+                onChange={e => setResolveModule(e.target.value)} 
+                style={{ padding: '0.8rem', background: '#ffffff', color: '#1f2937', border: '2px solid #e2e8f0', borderRadius: '12px', width: '100%', fontSize: '1rem' }}
+              >
+                {initialSettings?.modules?.map((m: any, idx: number) => <option key={idx} value={m} style={{ background: '#ffffff', color: '#1f2937' }}>{m}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.4rem', display: 'block' }}>ประเภทงาน</label>
+              <select 
+                value={resolveIssueType} 
+                onChange={e => setResolveIssueType(e.target.value)} 
+                style={{ padding: '0.8rem', background: '#ffffff', color: '#1f2937', border: '2px solid #e2e8f0', borderRadius: '12px', width: '100%', fontSize: '1rem' }}
+              >
+                {initialSettings?.issue_types?.map((t: any, idx: number) => <option key={idx} value={t} style={{ background: '#ffffff', color: '#1f2937' }}>{t}</option>)}
+              </select>
+            </div>
             <div className="form-group">
               <label>วิธีแก้ไขปัญหา (Resolution Notes) *</label>
               <div style={{ marginBottom: '0.75rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -1462,9 +1480,12 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
               <p style={{ marginBottom: '10px' }}><strong>วิธีแก้ไข:</strong> {initialTicket.notes || resolveNotes || 'N/A'}</p>
               {initialTicket.notes?.includes('\nหมายเหตุ:') && <p style={{ marginTop: '10px', borderTop: '1px dashed #10b981', paddingTop: '10px' }}>รายละเอียดเพิ่มเติมตามบันทึกระบบ</p>}
             </div>
-            
+          </div>
+
+          <div style={{ marginBottom: '40px', textAlign: 'left' }}>
+            <h3 style={{ fontSize: '18px', color: '#4f46e5', borderLeft: '4px solid #4f46e5', paddingLeft: '10px', marginBottom: '15px', fontWeight: 700 }}>AI ANALYSIS & SATISFACTION</h3>
             {aiSummary && (
-              <div style={{ marginTop: '20px', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '20px', borderRadius: '8px', lineHeight: '1.6' }}>
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '20px', borderRadius: '8px', lineHeight: '1.6', marginBottom: '20px' }}>
                 <p style={{ marginBottom: '8px', color: '#4f46e5', fontWeight: 700 }}>AI สรุปผลการตรวจสอบ:</p>
                 <div style={{ fontSize: '13px', color: '#475569' }}>
                   {aiSummary.split('\n').map((line: string, i: number) => <p key={i} style={{ margin: '0 0 4px 0' }}>{line}</p>)}
@@ -1472,9 +1493,8 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
               </div>
             )}
 
-            {/* SATISFACTION RATING IN PDF */}
             {(initialTicket.rating || 0) > 0 && (
-              <div style={{ marginTop: '20px', background: '#fffbeb', border: '1px solid #fcd34d', padding: '15px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', padding: '15px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
                   <p style={{ margin: 0, fontWeight: 700, color: '#92400e', fontSize: '14px' }}>ความพึงพอใจของลูกค้า</p>
                   <p style={{ margin: 0, fontSize: '12px', color: '#b45309' }}>ประเมินโดยผู้แจ้งงานเมื่อปิดใบงาน</p>
@@ -1493,12 +1513,22 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
           {(() => {
             const chatImages = messages.filter(m => m.message_type === 'image' && m.content.startsWith('http')).slice(0, 8);
             if (chatImages.length === 0) return null;
-            return (
+             return (
               <div style={{ marginTop: '20px' }}>
                 <h3 style={{ fontSize: '18px', color: '#4f46e5', borderLeft: '4px solid #4f46e5', paddingLeft: '10px', marginBottom: '15px', fontWeight: 700 }}>ATTACHED COMMUNICATIONS</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                   {chatImages.map((img, idx) => (
-                    <div key={idx} style={{ border: '1px solid #eee', borderRadius: '8px', overflow: 'hidden', height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' }}>
+                    <div key={idx} style={{ 
+                      border: '1px solid #eee', 
+                      borderRadius: '12px', 
+                      overflow: 'hidden', 
+                      height: chatImages.length > 2 ? '200px' : '350px', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      background: '#f8fafc',
+                      pageBreakInside: 'avoid'
+                    }}>
                       <img src={img.content} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} crossOrigin="anonymous" />
                     </div>
                   ))}
