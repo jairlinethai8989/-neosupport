@@ -328,6 +328,9 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
   const [annotationImage, setAnnotationImage] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [isPDFPreviewOpen, setIsPDFPreviewOpen] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
   const [toast, setToast] = useState<{ message: string, show: boolean }>({ message: "", show: false });
   const [theme, setTheme] = useState("dark");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -689,6 +692,18 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
     }
   };
 
+  const waitForImages = (element: HTMLElement) => {
+    const images = Array.from(element.querySelectorAll('img'));
+    const promises = images.map(img => {
+      if (img.complete) return Promise.resolve();
+      return new Promise(resolve => {
+        img.onload = resolve;
+        img.onerror = resolve; // Continue even if one image fails
+      });
+    });
+    return Promise.all(promises);
+  };
+
   const handleExportPDF = async () => {
     console.log("PDF Export Triggered. ref:", reportRef.current);
     if (!reportRef.current || isGeneratingPDF) {
@@ -698,19 +713,12 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
     setIsGeneratingPDF(true);
     try {
       console.log("Starting PDF generation flow...");
-      // Ensure fonts are loaded before capturing
-      if (typeof document !== "undefined" && (document as any).fonts) {
-        console.log("Waiting for fonts...");
-        await (document as any).fonts.ready;
-        console.log("Fonts ready.");
-      }
-
+      
       const reportEl = reportRef.current;
       if (!reportEl) throw new Error("Report element found null during process");
       const parent = reportEl.parentElement;
       
       // Temporarily move to a visible but off-screen location with opacity 1 for capture
-      // We use 'fixed' and 'top: 0' but 'visibility: visible' to ensure it's rendered
       const originalStyles = {
         position: parent?.style.position || "",
         top: parent?.style.top || "",
@@ -729,13 +737,19 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
         parent.style.zIndex = "99999";
       }
 
-      // Slightly longer delay to ensure everything is rendered
-      await new Promise(r => setTimeout(r, 1200));
+      // Wait for fonts and images
+      if (typeof document !== "undefined" && (document as any).fonts) {
+        await (document as any).fonts.ready;
+      }
+      await waitForImages(reportEl);
+
+      // Slightly longer delay to ensure layout is settled
+      await new Promise(r => setTimeout(r, 800));
 
       const canvas = await html2canvas(reportEl, { 
-        scale: 2.5, // High quality
+        scale: 2.2, // Good balance of quality and size
         useCORS: true,
-        logging: true,
+        logging: false,
         backgroundColor: "#ffffff",
         allowTaint: false,
         onclone: (clonedDoc) => {
@@ -761,19 +775,47 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
         parent.style.visibility = originalStyles.visibility;
       }
 
-      const imgData = canvas.toDataURL("image/png");
+      const imgData = canvas.toDataURL("image/jpeg", 0.9);
       const pdf = new jsPDF("p", "mm", "a4");
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`Report_${initialTicket.ticket_no || 'Ticket'}.pdf`);
-      showToast("ดาวน์โหลด PDF เรียบร้อยแล้ว ✅");
+      pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight);
+      
+      const blob = pdf.output('blob');
+      const url = URL.createObjectURL(blob);
+      
+      setPdfBlob(blob);
+      setPdfUrl(url);
+      setIsPDFPreviewOpen(true);
+      
+      showToast("สร้างพรีวิว PDF เรียบร้อยแล้ว ✨");
     } catch (err) {
       console.error("PDF Export Error:", err);
       showToast("มีข้อผิดพลาดในการสร้าง PDF ❌");
     } finally {
       setIsGeneratingPDF(false);
+    }
+  };
+
+  const handleDownloadPDF = () => {
+    if (!pdfBlob) return;
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(pdfBlob);
+    link.download = `Report_${initialTicket.ticket_no || 'Ticket'}.pdf`;
+    link.click();
+    showToast("ดาวน์โหลด PDF เรียบร้อยแล้ว ✅");
+  };
+
+  const handlePrintPDF = () => {
+    if (!pdfUrl) return;
+    const printWindow = window.open(pdfUrl, '_blank');
+    if (printWindow) {
+      printWindow.onload = () => {
+        printWindow.print();
+      };
+    } else {
+      showToast("กรุณาอนุญาตให้เปิด Pop-up เพื่อพิมพ์เอกสาร");
     }
   };
 
@@ -917,26 +959,27 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
                   <h2 style={{ fontSize: "1.75rem", fontWeight: 800, fontFamily: "Outfit" }}>{initialTicket.ticket_no}</h2>
                 </div>
                 {["Resolved", "Closed"].includes(currentStatus) && (
-                  <button 
-                    onClick={() => {
-                      console.log("Export Button Clicked");
-                      handleExportPDF();
-                    }} 
-                    className="btn-primary" 
-                    style={{ 
-                      padding: "0.6rem 1rem", 
-                      borderRadius: "14px", 
-                      display: "flex", 
-                      alignItems: "center", 
-                      gap: "0.5rem",
-                      background: "var(--primary)",
-                      boxShadow: "0 4px 12px var(--primary-glow)"
-                    }} 
-                    title="Export PDF Report"
-                  >
-                    <FileText size={18} />
-                    <span style={{ fontSize: "0.85rem", fontWeight: 700 }}>PDF</span>
-                  </button>
+                    <button 
+                      onClick={() => {
+                        console.log("Export Button Clicked");
+                        handleExportPDF();
+                      }} 
+                      className="btn-primary" 
+                      style={{ 
+                        padding: "0.6rem 1rem", 
+                        borderRadius: "14px", 
+                        display: "flex", 
+                        alignItems: "center", 
+                        gap: "0.5rem",
+                        background: "var(--primary)",
+                        boxShadow: "0 4px 12px var(--primary-glow)",
+                        zIndex: 50 // Be SURE it's above any decorative gradients
+                      }} 
+                      title="Export PDF Report"
+                    >
+                      <FileText size={18} />
+                      <span style={{ fontSize: "0.85rem", fontWeight: 700 }}>PDF</span>
+                    </button>
                 )}
             </div>
 
@@ -1430,7 +1473,7 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
 
           {/* CONVERSATION IMAGES IN PDF */}
           {(() => {
-            const chatImages = messages.filter(m => m.message_type === 'image' && m.content.startsWith('http')).slice(0, 4);
+            const chatImages = messages.filter(m => m.message_type === 'image' && m.content.startsWith('http')).slice(0, 8);
             if (chatImages.length === 0) return null;
             return (
               <div style={{ marginTop: '20px' }}>
@@ -1497,6 +1540,66 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
               marginTop: '2rem',
             }}
           />
+        </div>
+      )}
+
+      {/* PDF Preview Modal */}
+      {isPDFPreviewOpen && (
+        <div className="modal-overlay" style={{ zIndex: 10002 }}>
+          <div className="modal-content" style={{ maxWidth: "900px", width: "95%", height: "90vh", display: "flex", flexDirection: "column", padding: "1.5rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <h2 style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700 }}>พรีวิวเอกสาร / PDF Preview</h2>
+              <button 
+                onClick={() => {
+                  setIsPDFPreviewOpen(false);
+                  if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+                  setPdfUrl(null);
+                  setPdfBlob(null);
+                }}
+                className="btn-icon-modern"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div style={{ flex: 1, background: "#f0f0f0", borderRadius: "12px", overflow: "hidden", marginBottom: "1.5rem", display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {pdfUrl ? (
+                <iframe 
+                  src={`${pdfUrl}#toolbar=0`} 
+                  style={{ width: "100%", height: "100%", border: "none" }}
+                  title="PDF Preview"
+                />
+              ) : (
+                <div className="loading-spinner" />
+              )}
+            </div>
+            
+            <div className="modal-actions" style={{ marginTop: 0 }}>
+              <button 
+                className="btn-secondary" 
+                onClick={() => setIsPDFPreviewOpen(false)}
+                style={{ padding: "0.75rem 1.5rem" }}
+              >
+                ยกเลิก
+              </button>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button 
+                  className="btn-secondary" 
+                  onClick={handlePrintPDF}
+                  style={{ padding: "0.75rem 1.5rem", display: 'flex', alignItems: 'center', gap: '0.5rem', borderColor: 'var(--primary)', color: 'var(--primary)' }}
+                >
+                  🖨️ พิมพ์ (Print)
+                </button>
+                <button 
+                  className="btn-primary" 
+                  onClick={handleDownloadPDF}
+                  style={{ padding: "0.75rem 1.5rem", display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--primary)' }}
+                >
+                  💾 บันทึก (Save PDF)
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

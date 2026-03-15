@@ -318,6 +318,7 @@ h6 {
   height: 100px;
   background: radial-gradient(circle at top right, var(--primary-glow), transparent);
   opacity: 0.3;
+  pointer-events: none;
 }
 
 .stat-card:hover {
