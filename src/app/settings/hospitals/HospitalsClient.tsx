@@ -100,13 +100,20 @@ export default function HospitalsClient({
                     <p style={{ color: "var(--text-muted)" }}>ตั้งค่ารายชื่อและรูปแบบเลขที่ใบงาน (Seq) แยกสาขา</p>
                 </div>
             </div>
-            <button 
-              className="btn-upload"
-              onClick={() => setIsUploadModalOpen(true)}
-              style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.75rem 1.5rem", borderRadius: "12px", background: "var(--primary)", color: "white", border: "none", fontWeight: 700, cursor: "pointer", transition: "all 0.2s" }}
-            >
-              <Upload size={18} /> อัปโหลดรายชื่อจำนวนมาก
-            </button>
+            <div style={{ display: "flex", gap: "1rem" }}>
+              <button 
+                className="btn-upload btn-bulk-add"
+                onClick={() => setIsUploadModalOpen(true)}
+              >
+                <Plus size={18} /> เพิ่มโรงพยาบาลใหม่
+              </button>
+              <button 
+                className="btn-upload"
+                onClick={() => setIsUploadModalOpen(true)}
+              >
+                <Upload size={18} /> อัปโหลดจำนวนมาก
+              </button>
+            </div>
           </div>
         </div>
 
@@ -158,10 +165,10 @@ export default function HospitalsClient({
           <div className="modal-content" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-color)", padding: "2.5rem", borderRadius: "24px", width: "95%", maxWidth: "600px", boxShadow: "0 20px 50px rgba(0,0,0,0.5)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
               <h2 style={{ fontSize: "1.5rem", fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                <Upload size={24} className="text-primary" /> เลือกอัปโหลดรายชื่อ
+                <Upload size={24} style={{ color: "var(--primary)" }} /> อัปโหลดรายชื่อโรงพยาบาล
               </h2>
-              <button onClick={() => setIsUploadModalOpen(false)} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer" }}>
-                <X size={24} />
+              <button onClick={() => setIsUploadModalOpen(false)} style={{ background: "rgba(255,255,255,0.05)", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: "0.5rem", borderRadius: "50%" }}>
+                <X size={20} />
               </button>
             </div>
             
@@ -238,9 +245,36 @@ export default function HospitalsClient({
             overflow: hidden;
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         }
+        .btn-upload {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.75rem 1.25rem;
+            border-radius: 12px;
+            background: var(--primary);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.1);
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px var(--primary-glow);
+            position: relative;
+            z-index: 10;
+        }
         .btn-upload:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 16px var(--primary-glow);
+            box-shadow: 0 8px 20px var(--primary-glow);
+            background: var(--primary-hover);
+        }
+        .btn-bulk-add {
+            background: var(--bg-surface);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            box-shadow: none;
+        }
+        .btn-bulk-add:hover {
+            background: var(--primary-glow);
+            color: var(--primary);
         }
         @keyframes spin {
             from { transform: rotate(0deg); }

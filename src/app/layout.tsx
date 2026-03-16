@@ -4,6 +4,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "NEO Support — IT Ticketing System",
   description: "IT Support Ticketing System for 100+ Hospitals",
+  verification: {
+    google: "gv-ewujssymmbq7de.dv.googlehosted.com",
+  },
 };
 
 export default function RootLayout({

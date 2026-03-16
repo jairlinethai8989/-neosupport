@@ -568,15 +568,40 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
               {newTicketNotify.description}
             </div>
           </div>
-          <div className="popup-footer">
+          <div className="popup-footer" style={{ display: 'flex', gap: '0.5rem' }}>
             <button 
-              className="popup-btn-primary" 
+              className="popup-btn-secondary" 
+              style={{ flex: 1, padding: '0.6rem', fontSize: '0.85rem', borderRadius: '8px', border: '1px solid var(--border-color)', color: 'var(--text-main)', background: 'var(--bg-glass)', cursor: 'pointer' }}
               onClick={() => {
                 router.push(`/tickets/${newTicketNotify.id}`);
                 setNewTicketNotify(null);
               }}
             >
-              ดูรายละเอียดงาน
+              ดูรายละเอียด
+            </button>
+            <button 
+              className="popup-btn-primary" 
+              style={{ 
+                flex: 1, 
+                padding: '0.6rem', 
+                fontSize: '0.85rem', 
+                borderRadius: '8px', 
+                background: 'var(--primary)', 
+                color: 'white', 
+                border: 'none', 
+                fontWeight: 700, 
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px'
+              }}
+              onClick={(e) => {
+                handleClaim(e as any, newTicketNotify.id);
+                setNewTicketNotify(null);
+              }}
+            >
+              <Activity size={14} className="animate-pulse" /> รับงานทันที
             </button>
           </div>
         </div>
