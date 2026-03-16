@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { logger } from "@/lib/logger";
 
 /**
  * Maintenance API: Cleanup & Backup
@@ -51,7 +52,7 @@ export async function GET() {
       .remove(filesToDelete);
 
     if (deleteError) {
-      console.error("Storage cleanup error:", deleteError);
+      logger.error("Storage cleanup error:", deleteError);
       // We continue even if storage delete partially fails to update DB for what we found
     }
 
@@ -74,7 +75,7 @@ export async function GET() {
     });
 
   } catch (error: any) {
-    console.error("Cleanup error:", error);
+    logger.error("Cleanup error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

@@ -3,6 +3,7 @@
 import { useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { User, Building2, ShieldCheck, CheckCircle2, RefreshCw } from "lucide-react";
+import Image from "next/image";
 
 function RegisterForm({ hospitals }: { hospitals: any[] }) {
   const searchParams = useSearchParams();
@@ -71,7 +72,13 @@ function RegisterForm({ hospitals }: { hospitals: any[] }) {
     <div style={{ width: "100%", maxWidth: "500px", padding: "2.5rem", background: "var(--bg-surface)", borderRadius: "24px", border: "1px solid var(--border-color)", boxShadow: "0 20px 40px rgba(0,0,0,0.3)" }}>
       <div style={{ textAlign: "center", marginBottom: "2rem" }}>
         {linePic ? (
-          <img src={linePic} style={{ width: "80px", height: "80px", borderRadius: "50%", border: "3px solid var(--primary)", marginBottom: "1rem" }} alt="LINE Profile" />
+          <Image 
+            src={linePic} 
+            alt={`${lineName}'s profile picture`} 
+            width={80} 
+            height={80}
+            style={{ width: "80px", height: "80px", borderRadius: "50%", border: "3px solid var(--primary)", marginBottom: "1rem" }}
+          />
         ) : (
           <div style={{ width: "80px", height: "80px", borderRadius: "50%", background: "var(--bg-color)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1rem" }}>
             <User size={40} color="var(--primary)" />

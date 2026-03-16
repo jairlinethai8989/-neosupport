@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { logger } from "@/lib/logger";
 
 export async function POST() {
   try {
@@ -9,7 +10,7 @@ export async function POST() {
     cutoffDate.setDate(cutoffDate.getDate() - DAYS_THRESHOLD);
     const dateStr = cutoffDate.toISOString();
 
-    console.log("🚀 Starting 30-day cleanup. Threshold date:", dateStr);
+    logger.info("🚀 Starting 30-day cleanup. Threshold date:", dateStr);
 
     // 2. Find messages with media older than cutoff
     // We fetch metadata from the database first so we can "Backup" (log) it.
@@ -65,7 +66,7 @@ export async function POST() {
       .insert(logData);
     
     if (logError) {
-      console.error("Backup log error (skipping deletion to be safe):", logError);
+      logger.error("Backup log error (skipping deletion to be safe):", logError);
       throw new Error("Failed to log backup. Deletion aborted.");
     }
 
@@ -75,7 +76,7 @@ export async function POST() {
       .remove(filesToDelete);
 
     if (deleteError) {
-      console.warn("Storage removal error (some files might be missing):", deleteError);
+      logger.warn("Storage removal error (some files might be missing):", deleteError);
     }
 
     // 5. UPDATE Database records (Mark as deleted)
@@ -89,15 +90,15 @@ export async function POST() {
 
     if (updateError) throw updateError;
 
-    console.log(`✅ Successfully cleaned up and backed up ${filesToDelete.length} files.`);
+    logger.info(`✅ Successfully cleaned up and backed up ${filesToDelete.length} files.`);
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       count: filesToDelete.length,
-      files: filesToDelete 
+      files: filesToDelete
     });
   } catch (error: any) {
-    console.error("Cleanup error:", error);
+    logger.error("Cleanup error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

@@ -1,0 +1,182 @@
+"use client";
+
+import { useState, useRef } from "react";
+import { Send, Image as ImageIcon, X } from "lucide-react";
+
+interface ChatInputProps {
+  ticketId: string;
+  onSendMessage: (content: string, file?: File) => void;
+  isLoading: boolean;
+}
+
+export default function ChatInput({ ticketId, onSendMessage, isLoading }: ChatInputProps) {
+  const [message, setMessage] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+    }
+  };
+
+  const handleSend = () => {
+    if ((!message.trim() && !selectedFile) || isLoading) return;
+    onSendMessage(message.trim(), selectedFile || undefined);
+    setMessage("");
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const clearFile = () => {
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  return (
+    <div style={{
+      background: 'var(--bg-surface)',
+      borderRadius: '24px 24px 0 0',
+      border: '1px solid var(--border-color)',
+      padding: '1.5rem',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '1rem'
+    }}>
+      {/* File Preview */}
+      {previewUrl && (
+        <div style={{
+          position: 'relative',
+          display: 'inline-block',
+          maxWidth: '200px'
+        }}>
+          <img
+            src={previewUrl}
+            alt="Preview"
+            style={{
+              width: '100%',
+              borderRadius: '12px',
+              border: '1px solid var(--border-color)'
+            }}
+          />
+          <button
+            onClick={clearFile}
+            style={{
+              position: 'absolute',
+              top: '-8px',
+              right: '-8px',
+              background: 'var(--status-escalated-text)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '50%',
+              width: '24px',
+              height: '24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer'
+            }}
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* Input Area */}
+      <div style={{
+        display: 'flex',
+        gap: '0.75rem',
+        alignItems: 'flex-end'
+      }}>
+        {/* File Upload Button */}
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isLoading}
+          style={{
+            padding: '0.75rem',
+            background: 'var(--bg-color)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '12px',
+            color: 'var(--text-muted)',
+            cursor: isLoading ? 'not-allowed' : 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 0.2s'
+          }}
+          title="Attach file"
+        >
+          <ImageIcon size={20} />
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,video/*"
+          onChange={handleFileSelect}
+          disabled={isLoading}
+          style={{ display: 'none' }}
+        />
+
+        {/* Text Input */}
+        <textarea
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Type a message... (Enter to send, Shift+Enter for new line)"
+          disabled={isLoading}
+          rows={1}
+          style={{
+            flex: 1,
+            padding: '0.75rem 1rem',
+            borderRadius: '12px',
+            border: '1px solid var(--border-color)',
+            background: 'var(--bg-color)',
+            color: 'var(--text-heading)',
+            fontSize: '0.95rem',
+            resize: 'none',
+            minHeight: '44px',
+            maxHeight: '120px',
+            outline: 'none'
+          }}
+        />
+
+        {/* Send Button */}
+        <button
+          onClick={handleSend}
+          disabled={isLoading || (!message.trim() && !selectedFile)}
+          className="btn-primary"
+          style={{
+            padding: '0.75rem 1.5rem',
+            borderRadius: '12px',
+            border: 'none',
+            fontWeight: 600,
+            cursor: isLoading || (!message.trim() && !selectedFile) ? 'not-allowed' : 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            opacity: isLoading || (!message.trim() && !selectedFile) ? 0.6 : 1
+          }}
+        >
+          {isLoading ? (
+            <div className="spinner-mini" />
+          ) : (
+            <Send size={18} />
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}

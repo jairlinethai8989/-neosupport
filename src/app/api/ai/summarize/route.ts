@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from "@/lib/supabase";
+import { logger } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -62,9 +63,9 @@ export async function POST(req: NextRequest) {
     });
 
     const aiData = await response.json();
-    
+
     if (aiData.error) {
-      console.error('Gemini API Error Payload:', JSON.stringify(aiData.error, null, 2));
+      logger.error('Gemini API Error Payload:', JSON.stringify(aiData.error, null, 2));
       return NextResponse.json({ error: `AI API Error: ${aiData.error.message}` }, { status: 500 });
     }
 
@@ -73,11 +74,11 @@ export async function POST(req: NextRequest) {
     const aiSummary = candidate?.content?.parts?.[0]?.text;
 
     if (!aiSummary) {
-      console.warn('Gemini returned no content. FinishReason:', finishReason, 'Full Response:', JSON.stringify(aiData));
+      logger.warn('Gemini returned no content. FinishReason:', finishReason, 'Full Response:', JSON.stringify(aiData));
       let fallbackMsg = "ไม่สามารถสรุปได้ในขณะนี้";
       if (finishReason === 'SAFETY') fallbackMsg = "ไม่สามารถสรุปได้เนื่องจากติดข้อจำกัดด้านความปลอดภัยของเนื้อหา";
       else if (finishReason === 'OTHER') fallbackMsg = "ระบบ AI ขัดข้องชั่วคราว กรุณาลองใหม่อีกครั้ง";
-      
+
       return NextResponse.json({ summary: fallbackMsg });
     }
 
@@ -90,7 +91,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ summary: aiSummary });
 
   } catch (error: any) {
-    console.error('AI Summary Backend Error:', error);
+    logger.error('AI Summary Backend Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

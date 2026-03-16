@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "./supabase";
+import { logger } from "@/lib/logger";
 
 /**
  * Categorize a ticket using Google Gemini AI
@@ -6,7 +7,7 @@ import { supabaseAdmin } from "./supabase";
 export async function categorizeTicket(ticketId: string, description: string) {
   const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
   if (!apiKey) {
-    console.warn("GOOGLE_GEMINI_API_KEY not configured. Skipping auto-categorization.");
+    logger.warn("GOOGLE_GEMINI_API_KEY not configured. Skipping auto-categorization.");
     return;
   }
 
@@ -68,10 +69,10 @@ export async function categorizeTicket(ticketId: string, description: string) {
       })
       .eq("id", ticketId);
 
-    console.log(`AI Categorized Ticket ${ticketId}: ${prediction.predicted_category} / ${prediction.predicted_priority}`);
+    logger.info(`AI Categorized Ticket ${ticketId}: ${prediction.predicted_category} / ${prediction.predicted_priority}`);
 
   } catch (err) {
-    console.error("AI Categorization Error:", err);
+    logger.error("AI Categorization Error:", err);
   }
 }
 
@@ -132,7 +133,7 @@ export async function summarizeConversation(ticketId: string) {
 
     return { error: "Failed to generate summary" };
   } catch (err: any) {
-    console.error("Summarization Error:", err);
+    logger.error("Summarization Error:", err);
     return { error: err.message };
   }
 }
@@ -180,7 +181,7 @@ export async function getAIAnswerFromKB(query: string, context: any[]) {
     const result = await response.json();
     return result.candidates?.[0]?.content?.parts?.[0]?.text || "ไม่สามารถประมวลผลคำตอบได้ในขณะนี้ค่ะ/ครับ";
   } catch (err) {
-    console.error("KB AI Answer Error:", err);
+    logger.error("KB AI Answer Error:", err);
     return "เกิดข้อผิดพลาดในการค้นหาคำตอบค่ะ/ครับ รบกวนลองใหม่อีกครั้งนะคะ";
   }
 }

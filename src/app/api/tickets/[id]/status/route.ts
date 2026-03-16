@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { pushMessage, createRatingFlex } from "@/lib/line";
+import { logger } from "@/lib/logger";
 
 // POST /api/tickets/[id]/status
 export async function POST(
@@ -34,7 +35,7 @@ export async function POST(
       .single();
 
     if (error || !ticket) {
-      console.error("Failed to update ticket status:", error);
+      logger.error("Failed to update ticket status:", error);
       return NextResponse.json(
         { error: "Failed to update ticket" },
         { status: 500 }
@@ -63,13 +64,13 @@ export async function POST(
           }
         ]);
       } catch (pushError) {
-        console.error("Failed to push status notification:", pushError);
+        logger.error("Failed to push status notification:", pushError);
       }
     }
 
     return NextResponse.json({ success: true, status });
   } catch (error) {
-    console.error("Update status error:", error);
+    logger.error("Update status error:", error);
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 }

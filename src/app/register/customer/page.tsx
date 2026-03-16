@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
+import Image from "next/image";
 
 function RegistrationForm() {
   const searchParams = useSearchParams();
@@ -57,8 +58,10 @@ function RegistrationForm() {
     } else {
       setSuccess(true);
       setTimeout(() => {
-        // Redirect to a landing page or close window
-        window.location.href = "https://line.me/R/ti/p/@your_id"; // Change to your LINE OA ID
+        // Redirect to LINE OA or close window
+        // Uses environment variable for LINE OA redirect URL
+        const lineOaUrl = process.env.NEXT_PUBLIC_LINE_OA_URL || "https://line.me/R/ti/p/@neosupport";
+        window.location.href = lineOaUrl;
       }, 3000);
     }
   };
@@ -86,7 +89,13 @@ function RegistrationForm() {
   return (
     <div style={{ width: "100%", maxWidth: "450px", padding: "2rem", backgroundColor: "var(--bg-surface)", borderRadius: "20px", boxShadow: "0 10px 30px rgba(0,0,0,0.2)", border: "1px solid var(--border-color)" }}>
       <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-        <img src="https://upload.wikimedia.org/wikipedia/commons/4/41/LINE_logo.svg" alt="LINE" style={{ width: "50px", marginBottom: "1rem" }} />
+        <Image 
+          src="https://upload.wikimedia.org/wikipedia/commons/4/41/LINE_logo.svg" 
+          alt="LINE Logo" 
+          width={50} 
+          height={50}
+          style={{ width: "50px", marginBottom: "1rem" }}
+        />
         <h1 style={{ margin: 0, fontSize: "1.5rem", color: "var(--text-heading)" }}>ลงทะเบียนผู้แจ้งซ่อม</h1>
         <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>ผูกบัญชี LINE กับหน่วยงานของคุณ</p>
       </div>

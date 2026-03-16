@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from "@/lib/supabase";
 import { createClient } from "@/utils/supabase/server";
+import { logger } from "@/lib/logger";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error("Transfer Error:", error);
+    logger.error("Transfer Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

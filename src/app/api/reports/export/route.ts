@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import * as XLSX from "xlsx";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error("Export Error:", error);
+    logger.error("Export Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

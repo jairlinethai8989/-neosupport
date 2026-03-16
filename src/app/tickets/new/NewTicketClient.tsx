@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
+import { logger } from "@/lib/logger";
 import { ArrowLeft, Save, Image as ImageIcon, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRef, useEffect } from "react";
@@ -37,7 +39,7 @@ export default function NewTicketClient({
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = (event) => {
-        const img = new Image();
+        const img = new window.Image();
         img.src = event.target?.result as string;
         img.onload = () => {
           const canvas = document.createElement("canvas");
@@ -85,9 +87,9 @@ export default function NewTicketClient({
              cacheControl: '3600',
              upsert: false
           });
-        
+
         if (uploadError) {
-          console.error("Storage upload error:", uploadError);
+          logger.error("Storage upload error:", uploadError);
           throw new Error(`Upload Error: ${uploadError.message}`);
         }
         const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(fileName);
@@ -112,7 +114,7 @@ export default function NewTicketClient({
       showToast(`แจ้งงานสำเร็จ! 📝 หมายเลข: ${data.ticket.ticket_no}`);
       setTimeout(() => router.push(`/`), 1500);
     } catch (err: any) {
-      console.error(err);
+      logger.error(err);
       showToast("❌ " + err.message);
     } finally {
       setIsSubmitting(false);
@@ -183,8 +185,14 @@ export default function NewTicketClient({
             >
               {previewUrl ? (
                 <div style={{ position: "relative", display: "inline-block" }}>
-                  <img src={previewUrl} alt="Preview" style={{ maxWidth: "100%", maxHeight: "200px", borderRadius: "8px" }} />
-                  <button 
+                  <Image 
+                    src={previewUrl} 
+                    alt="File preview" 
+                    width={400} 
+                    height={200}
+                    style={{ maxWidth: "100%", maxHeight: "200px", borderRadius: "8px" }}
+                  />
+                  <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); setSelectedFile(null); setPreviewUrl(null); }}
                     style={{ position: "absolute", top: "-10px", right: "-10px", background: "var(--status-escalated-text)", color: "white", borderRadius: "50%", padding: "0.2rem" }}

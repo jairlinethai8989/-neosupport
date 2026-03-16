@@ -3,7 +3,8 @@
 import { useState, useMemo, useEffect, memo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { 
+import { logger } from "@/lib/logger";
+import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from "recharts";
@@ -327,7 +328,7 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
           table: 'tickets',
         },
         async (payload) => {
-          console.log('Realtime Ticket Change:', payload);
+          logger.info('Realtime Ticket Change:', payload);
 
           if (payload.eventType === 'INSERT') {
             // Need to fetch user nested relationship since realtime payload is flat
@@ -347,7 +348,7 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
                 audio.volume = 0.5;
                 audio.play();
               } catch (e) {
-                console.warn("Audio play failed", e);
+                logger.warn("Audio play failed", e);
               }
               // Auto hide after 10 seconds
               setTimeout(() => setNewTicketNotify((prev: any) => (prev?.id === newTicket.id ? null : prev)), 15000);
@@ -375,15 +376,26 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
           await fetch("/api/admin/cleanup", { method: "POST" });
           localStorage.setItem("lastCleanup", today);
         } catch (e) {
-          console.error("Maintenance failed", e);
+          logger.error("Maintenance failed", e);
         }
       }
     };
     runMaintenance();
     
     return () => {
+      // Cleanup interval timer
       clearInterval(interval);
+      
+      // Cleanup Supabase real-time subscription
       supabase.removeChannel(channel);
+      
+      // Cleanup any pending toast timeouts
+      setToast({ message: "", show: false });
+      
+      // Cleanup new ticket notification timeout
+      setNewTicketNotify(null);
+      
+      logger.debug('DashboardClient cleanup completed');
     };
   }, []);
 
@@ -437,12 +449,12 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
 
   const sortedTickets = useMemo(() => {
     let sortableItems = [...visibleTickets];
-    
+
     // 1. Filter by status if not "ALL"
     if (statusFilter !== "ALL") {
        sortableItems = sortableItems.filter(t => statusFilter === "Unassigned" ? (!t.assignee_name && ["Pending", "Escalated"].includes(t.status)) : t.status === statusFilter);
     }
-    
+
     // 2. Filter by Hospital
     if (selectedHospital !== "ALL") {
       sortableItems = sortableItems.filter(t => (t.users?.hospitals?.name || "Unknown") === selectedHospital);
@@ -451,14 +463,14 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
     // 3. Filter by Search Query
     if (searchQuery.trim() !== "") {
       const q = searchQuery.toLowerCase();
-      sortableItems = sortableItems.filter(t => 
+      sortableItems = sortableItems.filter(t =>
         t.ticket_no.toLowerCase().includes(q) ||
         t.description.toLowerCase().includes(q) ||
         (t.users?.display_name || "").toLowerCase().includes(q) ||
         (t.users?.hospitals?.name || "").toLowerCase().includes(q)
       );
     }
-    
+
     // 4. Sort the filtered items
     if (sortConfig !== null) {
       sortableItems.sort((a, b) => {
@@ -487,7 +499,7 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
       });
     }
     return sortableItems;
-  }, [tickets, sortConfig, searchQuery, statusFilter, selectedHospital, isSmartView, visibleTickets]);
+  }, [visibleTickets, sortConfig, searchQuery, statusFilter, selectedHospital]);
 
   const renderSortIcon = (key: string) => {
     if (sortConfig?.key !== key) return <ArrowUpDown size={14} className="inline-icon opacity-40" />;

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { logger } from "@/lib/logger";
 
 /**
  * Backup API: Export database to JSON
@@ -40,7 +41,7 @@ export async function GET() {
     });
 
   } catch (error: any) {
-    console.error("Backup error:", error);
+    logger.error("Backup error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

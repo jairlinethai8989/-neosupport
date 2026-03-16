@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowLeft, UserCheck, UserX, Clock, Building2, ShieldCheck, Mail, RefreshCw } from "lucide-react";
 
 export default function StaffApprovalsClient({ 
@@ -82,7 +83,13 @@ export default function StaffApprovalsClient({
                 }}>
                   <div style={{ display: "flex", gap: "1.25rem", alignItems: "center" }}>
                     {user.line_picture_url ? (
-                      <img src={user.line_picture_url} alt="" style={{ width: "50px", height: "50px", borderRadius: "50%", border: "2px solid var(--primary)" }} />
+                      <Image 
+                        src={user.line_picture_url} 
+                        alt={`${user.full_name || user.display_name}'s profile`} 
+                        width={50} 
+                        height={50}
+                        style={{ width: "50px", height: "50px", borderRadius: "50%", border: "2px solid var(--primary)" }}
+                      />
                     ) : (
                       <div style={{ width: "50px", height: "50px", borderRadius: "50%", background: "var(--bg-color)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         <UserCheck size={24} color="var(--text-muted)" />
@@ -139,7 +146,19 @@ export default function StaffApprovalsClient({
                     <td style={{ padding: "1rem 1.5rem" }}>
                       <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
                         <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "var(--bg-color)", overflow: "hidden" }}>
-                          {user.line_picture_url ? <img src={user.line_picture_url} style={{ width: "100%" }} /> : <UserCheck size={16} />}
+                          {user.line_picture_url ? (
+                            <Image 
+                              src={user.line_picture_url} 
+                              alt={`${user.full_name || user.display_name}'s profile`} 
+                              width={32} 
+                              height={32}
+                              style={{ width: "100%", height: "100%" }}
+                            />
+                          ) : (
+                            <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <UserCheck size={16} />
+                            </div>
+                          )}
                         </div>
                         <div>
                           <div style={{ fontWeight: 600 }}>{user.full_name || user.display_name}</div>

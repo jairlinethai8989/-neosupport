@@ -12,6 +12,7 @@ import {
 import { supabaseAdmin } from "@/lib/supabase";
 import { categorizeTicket, getAIAnswerFromKB } from "@/lib/ai";
 import { searchKnowledgeBase } from "@/lib/knowledge";
+import { logger } from "@/lib/logger";
 
 // ============================================================
 // LINE Webhook API Route
@@ -32,13 +33,13 @@ export async function POST(request: NextRequest) {
   try {
     // ─── Step 1: Read raw body ──────────────────────────────
     const body = await request.text();
-    console.log("LINE Webhook received body length:", body.length);
+    logger.debug("LINE Webhook received body length:", body.length);
 
     // ─── Step 2: Verify LINE signature ──────────────────────
     const signature = request.headers.get("x-line-signature");
 
     if (!signature) {
-      console.warn("Webhook request missing x-line-signature header");
+      logger.warn("Webhook request missing x-line-signature header");
       return NextResponse.json(
         { error: "Missing signature" },
         { status: 401 },
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     const channelSecret = process.env.LINE_CHANNEL_SECRET;
     if (!channelSecret) {
-      console.error("Missing LINE_CHANNEL_SECRET environment variable");
+      logger.error("Missing LINE_CHANNEL_SECRET environment variable");
       return NextResponse.json(
         { error: "Server configuration error" },
         { status: 500 },
@@ -55,10 +56,10 @@ export async function POST(request: NextRequest) {
     }
 
     const isValid = verifySignature(body, signature, channelSecret);
-    console.log("LINE Webhook signature verification status:", isValid);
+    logger.debug("LINE Webhook signature verification status:", isValid);
 
     if (!isValid) {
-      console.warn("Invalid LINE webhook signature");
+      logger.warn("Invalid LINE webhook signature");
       return NextResponse.json(
         { error: "Invalid signature" },
         { status: 401 },
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
     // Log any failed event handlers
     results.forEach((result, index) => {
       if (result.status === "rejected") {
-        console.error(
+        logger.error(
           `Failed to handle event ${index}:`,
           result.reason,
         );
@@ -93,7 +94,7 @@ export async function POST(request: NextRequest) {
     // success even if individual event processing fails.
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
-    console.error("Webhook fatal error:", error);
+    logger.error("Webhook fatal error:", error);
     // Return 200 to prevent LINE from retrying on unrecoverable errors
     return NextResponse.json({ success: true }, { status: 200 });
   }
@@ -104,7 +105,27 @@ export async function POST(request: NextRequest) {
 // ============================================================
 
 // Memory cache to prevent duplicate webhook processing for the same message ID
-const processingEventIds = new Set<string>();
+// Using a Map with timestamps to enable automatic cleanup
+const processingEventIds = new Map<string, number>();
+const EVENT_CACHE_TTL = 60000; // 1 minute TTL
+
+// Cleanup function to remove old event IDs
+function cleanupOldEventIds() {
+  const now = Date.now();
+  for (const [id, timestamp] of processingEventIds.entries()) {
+    if (now - timestamp > EVENT_CACHE_TTL) {
+      processingEventIds.delete(id);
+    }
+  }
+}
+
+// Run cleanup every 5 minutes
+if (typeof global !== 'undefined') {
+  const CLEANUP_INTERVAL = 5 * 60 * 1000; // 5 minutes
+  if (!(global as any).__lineWebhookCleanup) {
+    (global as any).__lineWebhookCleanup = setInterval(cleanupOldEventIds, CLEANUP_INTERVAL);
+  }
+}
 
 async function handleEvent(event: LineEvent): Promise<void> {
   const lineUserId = event.source?.userId;
@@ -119,7 +140,7 @@ async function handleEvent(event: LineEvent): Promise<void> {
   // 2. Handle MESSAGE events
   const SUPPORTED_TYPES = ["text", "image", "video", "sticker"];
   if (event.type !== "message" || !SUPPORTED_TYPES.includes(event.message?.type || "")) {
-    console.log(`Skipping event type: ${event.type}/${event.message?.type}`);
+    logger.debug(`Skipping event type: ${event.type}/${event.message?.type}`);
     return;
   }
 
@@ -127,7 +148,7 @@ async function handleEvent(event: LineEvent): Promise<void> {
   const lineRoomId = event.source?.type === "room" ? (event.source as any).roomId : null;
   const sourceType = event.source?.type || "user";
   const lineMessageId = event.message?.id;
-  const messageType = event.message?.type || "text"; // "text", "image", or "sticker"
+  const messageType = event.message?.type || "text";
   let messageText = event.message?.text || "";
 
   // 🆔 COMMAND: /id — Let the bot tell its own ID/Group ID
@@ -139,15 +160,14 @@ async function handleEvent(event: LineEvent): Promise<void> {
     return;
   }
 
-  // Helpful logging for discovering Group IDs
+  // Helpful logging for discovering Group IDs (development only)
   if (lineGroupId || lineRoomId) {
-    console.log(`[LINE SOURCE DISCOVERY] Group: ${lineGroupId} | Room: ${lineRoomId} | Type: ${sourceType}`);
+    logger.debug(`[LINE SOURCE DISCOVERY] Group: ${lineGroupId} | Room: ${lineRoomId} | Type: ${sourceType}`);
   }
 
   // ─── Ticketing Restriction ──────────────────────────────────
   // Only process ticket creation for private 1-on-1 chats.
   if (sourceType !== "user") {
-    // console.log(`[LINE Webhook] Skipping ticketing: Source is ${sourceType}`);
     return;
   }
 
@@ -156,28 +176,27 @@ async function handleEvent(event: LineEvent): Promise<void> {
     const packageId = event.message?.packageId;
     const stickerId = event.message?.stickerId;
     if (packageId && stickerId) {
-      // LINE Sticker CDN URL (animated stickers use .gif, regular use .png)
       messageText = `https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerId}/android/sticker.png`;
     } else {
       messageText = "🎭 [สติกเกอร์ / Sticker]";
     }
   }
 
-  console.log(`>>> Handling event: ${lineMessageId} from ${lineUserId} type=${messageType}`);
+  logger.debug(`>>> Handling event: ${lineMessageId} from ${lineUserId} type=${messageType}`);
 
   // For binary media (image/video/sticker), messageText is empty — that's OK
   const isMediaType = ["image", "video", "sticker"].includes(messageType);
   if (!lineUserId || !lineMessageId || (!messageText && !isMediaType)) {
-    console.warn("Event missing userId or required content");
+    logger.warn("Event missing userId or required content");
     return;
   }
 
   // Prevent duplicate processing
   if (processingEventIds.has(lineMessageId)) {
-    console.log(`Duplicate event detected, skipping: ${lineMessageId}`);
+    logger.debug(`Duplicate event detected, skipping: ${lineMessageId}`);
     return;
   }
-  processingEventIds.add(lineMessageId);
+  processingEventIds.set(lineMessageId, Date.now());
 
   let finalContent = messageText;
   let finalMessageType = messageType === "sticker" ? "image" : messageType; // sticker saved as image
@@ -211,36 +230,36 @@ async function handleEvent(event: LineEvent): Promise<void> {
       const { data } = supabaseAdmin.storage.from("attachments").getPublicUrl(fileName);
       finalContent = data.publicUrl;
       finalMessageType = isVideo ? "video" : "image";
-      console.log(`${isVideo ? "Video" : "Image"} uploaded successfully:`, finalContent);
+      logger.info(`${isVideo ? "Video" : "Image"} uploaded successfully:`, finalContent);
     } catch (e) {
-      console.error("Media process error:", e);
+      logger.error("Media process error:", e);
       finalContent = messageType === "video"
         ? "⚠️ [ไม่สามารถโหลดวิดีโอได้]"
         : "⚠️ [ไม่สามารถโหลดรูปภาพได้]";
     }
   }
 
-  console.log(`Processing message from ${lineUserId}: type=${messageType}`);
+  logger.info(`Processing message from ${lineUserId}: type=${messageType}`);
 
   // ─── Step A: Look up user by LINE UID ─────────────────────
   const startTime = Date.now();
-  console.log(`[LINE Webhook] Starting user lookup for ${lineUserId}`);
-  
+  logger.info(`[LINE Webhook] Starting user lookup for ${lineUserId}`);
+
   const { data: user, error: userError } = await supabaseAdmin
     .from("users")
     .select("id, display_name, hospital_id, line_metadata")
     .eq("line_uid", lineUserId)
-    .maybeSingle(); 
-  
-  console.log(`[LINE Webhook] User lookup took ${Date.now() - startTime}ms`);
+    .maybeSingle();
+
+  logger.info(`[LINE Webhook] User lookup took ${Date.now() - startTime}ms`);
 
   if (userError) {
-    console.error("User lookup error in LINE Webhook:", userError);
+    logger.error("User lookup error in LINE Webhook:", userError);
     return;
   }
 
   if (!user) {
-    console.warn(`Unregistered LINE user: ${lineUserId}`);
+    logger.warn(`Unregistered LINE user: ${lineUserId}`);
 
     // REPLY: Invite user to register via Flex Message
     if (event.replyToken) {
@@ -472,7 +491,7 @@ async function handleEvent(event: LineEvent): Promise<void> {
   if (existingTicket) {
     const ticketId = existingTicket.id;
     const ticketNo = existingTicket.ticket_no;
-    console.log(`Appending to existing ticket: ${ticketNo}`);
+    logger.info(`Appending to existing ticket: ${ticketNo}`);
 
     // Save message to database
     await supabaseAdmin
@@ -486,12 +505,7 @@ async function handleEvent(event: LineEvent): Promise<void> {
         direction: "inbound",
       });
 
-    console.log(`✅ Message appended successfully to ticket ${ticketNo}`);
-    
-    // Clean up cache
-    setTimeout(() => {
-      processingEventIds.delete(lineMessageId);
-    }, 10000);
+    logger.info(`✅ Message appended successfully to ticket ${ticketNo}`);
     return;
   }
 
@@ -520,14 +534,14 @@ async function handlePostback(event: LineEvent, lineUserId: string): Promise<voi
     const ticketRef = params.get("ticket_id")?.trim();
     const rating = parseInt(params.get("rating") || "0");
 
-    console.log(`[Postback:Rate] TicketRef: ${ticketRef}, Rating: ${rating}`);
+    logger.info(`[Postback:Rate] TicketRef: ${ticketRef}, Rating: ${rating}`);
 
     if (ticketRef && rating >= 1 && rating <= 5) {
       // Try update by UUID first
       const isUuid = /^[0-9a-f-]{36}$/i.test(ticketRef);
-      let query = supabaseAdmin.from("tickets").update({ 
-        rating, 
-        rated_at: new Date().toISOString() 
+      let query = supabaseAdmin.from("tickets").update({
+        rating,
+        rated_at: new Date().toISOString()
       });
 
       if (isUuid) {
@@ -540,22 +554,22 @@ async function handlePostback(event: LineEvent, lineUserId: string): Promise<voi
 
       if (event.replyToken) {
         if (error) {
-          console.error("[Postback:Rate] DB Update Error:", error);
+          logger.error("[Postback:Rate] DB Update Error:", error);
           await replyMessage(event.replyToken, [{ type: "text", text: "❌ ไม่สามารถบันทึกคะแนนได้ในขณะนี้ (" + (error.message || "DB Error") + ") กรุณาลองใหม่อีกครั้งนะคะ/ครับ" }]);
         } else if (!updated) {
-          console.warn("[Postback:Rate] Ticket not found:", ticketRef);
+          logger.warn("[Postback:Rate] Ticket not found:", ticketRef);
           await replyMessage(event.replyToken, [{ type: "text", text: "❌ ไม่พบข้อมูลใบงานนี้ในระบบ หรือใบงานอาจถูกลบไปแล้วค่ะ/ครับ" }]);
         } else {
           await replyMessage(event.replyToken, [
-            { 
-              type: "text", 
-              text: `ขอบคุณที่ให้คะแนน ${rating} ดาว นะคะ/ครับ! ✨\nทีมงานได้รับคะแนนความพึงพอใจของคุณเรียบร้อยแล้วค่ะ/ครับ 🙏` 
+            {
+              type: "text",
+              text: `ขอบคุณที่ให้คะแนน ${rating} ดาว นะคะ/ครับ! ✨\nทีมงานได้รับคะแนนความพึงพอใจของคุณเรียบร้อยแล้วค่ะ/ครับ 🙏`
             }
           ]);
         }
       }
     } else {
-      console.warn("[Postback:Rate] Invalid params:", { ticketRef, rating });
+      logger.warn("[Postback:Rate] Invalid params:", { ticketRef, rating });
     }
     return;
   }
@@ -643,7 +657,7 @@ async function handlePostback(event: LineEvent, lineUserId: string): Promise<voi
       .single();
 
     if (ticketError || !newTicket) {
-      console.error("Finalize ticket error:", ticketError);
+      logger.error("Finalize ticket error:", ticketError);
       if (event.replyToken) {
         await replyMessage(event.replyToken, [{ type: "text", text: "❌ เกิดข้อผิดพลาดในการเปิดใบงาน กรุณาลองใหม่นะคะ/ครับ" }]);
       }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { logger } from "@/lib/logger";
 import { Star, CheckCircle, Heart, MessageSquare } from "lucide-react";
 
 export default function TicketRatingClient({ ticketNo, ticketId }: { ticketNo: string; ticketId: string }) {
@@ -21,7 +22,7 @@ export default function TicketRatingClient({ ticketNo, ticketId }: { ticketNo: s
       });
       if (resp.ok) setSubmitted(true);
     } catch (err) {
-      console.error(err);
+      logger.error("Rating submission failed", err);
     } finally {
       setIsSubmitting(false);
     }

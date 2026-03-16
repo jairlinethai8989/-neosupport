@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { logger } from "@/lib/logger";
 
 // ============================================================
 // LINE Messaging API Helpers
@@ -118,7 +119,7 @@ export async function getUserProfile(userId: string): Promise<LineUserProfile | 
   });
 
   if (!response.ok) {
-    console.warn(`Could not fetch LINE profile for ${userId} [${response.status}]`);
+    logger.warn(`Could not fetch LINE profile for ${userId} [${response.status}]`);
     return null;
   }
 
@@ -163,7 +164,7 @@ export async function setRichMenuForUser(userId: string, richMenuId: string | nu
 
   if (!response.ok) {
     const errorBody = await response.text();
-    console.error(`LINE RichMenu API error [${response.status}]: ${errorBody}`);
+    logger.error(`LINE RichMenu API error [${response.status}]: ${errorBody}`);
   }
 }
 

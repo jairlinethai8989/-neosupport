@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { setRichMenuForUser } from '@/lib/line';
+import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -46,14 +47,14 @@ export async function POST(request: NextRequest) {
       const existingAuth = authUsers.users.find(u => u.email === email);
 
       if (!existingAuth) {
-        console.log(`Creating auth account for approved staff: ${email}`);
+        logger.info(`Creating auth account for approved staff: ${email}`);
         const { error: createError } = await supabaseAdmin.auth.admin.createUser({
           email,
           password: targetUser.line_uid,
           email_confirm: true,
           user_metadata: { line_uid: targetUser.line_uid }
         });
-        if (createError) console.error('Error creating auth user:', createError.message);
+        if (createError) logger.error('Error creating auth user:', createError.message);
       }
     }
 
@@ -65,7 +66,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
 
   } catch (error: any) {
-    console.error('Staff Action Error:', error);
+    logger.error('Staff Action Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

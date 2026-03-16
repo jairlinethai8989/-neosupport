@@ -3,6 +3,7 @@
 import { useSearchParams } from 'next/navigation'
 import { login, signup } from './actions'
 import { useState, Suspense } from 'react'
+import Image from 'next/image'
 
 // ─── Inner component that uses useSearchParams ───────────────
 // Must be wrapped in <Suspense> by the parent to avoid build errors
@@ -85,7 +86,13 @@ function LoginForm() {
             onMouseOver={(e) => e.currentTarget.style.opacity = '0.9'}
             onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
           >
-            <img src="https://upload.wikimedia.org/wikipedia/commons/4/41/LINE_logo.svg" alt="" style={{ width: '20px', height: '20px' }} />
+            <Image 
+              src="https://upload.wikimedia.org/wikipedia/commons/4/41/LINE_logo.svg" 
+              alt="LINE Logo" 
+              width={20} 
+              height={20}
+              style={{ width: '20px', height: '20px' }}
+            />
             Sign in with LINE
           </a>
         </>

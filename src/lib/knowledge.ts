@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "./supabase";
+import { logger } from "@/lib/logger";
 
 /**
  * Search the knowledge base for relevant articles
@@ -13,7 +14,7 @@ export async function searchKnowledgeBase(query: string) {
     .limit(3);
 
   if (error) {
-    console.error("KB Search Error:", error);
+    logger.error("KB Search Error:", error);
     return [];
   }
 

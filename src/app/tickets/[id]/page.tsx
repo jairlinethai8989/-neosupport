@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { logger } from "@/lib/logger";
 import TicketDetailClient from "./TicketDetailClient";
 import { notFound } from "next/navigation";
 
@@ -38,12 +39,12 @@ async function getTicketDetails(id: string) {
   const { data: settings } = settingsResult;
 
   if (ticketError || !ticket) {
-    console.error("Error fetching ticket:", ticketError);
+    logger.error("Error fetching ticket:", ticketError);
     return null;
   }
 
   if (messageError) {
-    console.error("Error fetching messages:", messageError);
+    logger.error("Error fetching messages:", messageError);
   }
 
   const initialSettings = {
