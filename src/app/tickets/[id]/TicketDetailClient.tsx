@@ -550,7 +550,13 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
           )}
 
           {/* Chat Input Component */}
-          <ChatInput ticketId={initialTicket.id} onSendMessage={handleSendReply} isLoading={isSending || isUploadingImage} />
+          <ChatInput 
+            ticketId={initialTicket.id} 
+            onSendMessage={handleSendReply} 
+            isLoading={isSending || isUploadingImage} 
+            value={replyText}
+            onChange={setReplyText}
+          />
         </div>
       </main>
 

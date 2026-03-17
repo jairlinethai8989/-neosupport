@@ -7,10 +7,11 @@ interface ChatInputProps {
   ticketId: string;
   onSendMessage: (content: string, file?: File) => void;
   isLoading: boolean;
+  value: string;
+  onChange: (val: string) => void;
 }
 
-export default function ChatInput({ ticketId, onSendMessage, isLoading }: ChatInputProps) {
-  const [message, setMessage] = useState("");
+export default function ChatInput({ ticketId, onSendMessage, isLoading, value, onChange }: ChatInputProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -25,9 +26,9 @@ export default function ChatInput({ ticketId, onSendMessage, isLoading }: ChatIn
   };
 
   const handleSend = () => {
-    if ((!message.trim() && !selectedFile) || isLoading) return;
-    onSendMessage(message.trim(), selectedFile || undefined);
-    setMessage("");
+    if ((!value.trim() && !selectedFile) || isLoading) return;
+    onSendMessage(value.trim(), selectedFile || undefined);
+    onChange("");
     setSelectedFile(null);
     setPreviewUrl(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -132,10 +133,10 @@ export default function ChatInput({ ticketId, onSendMessage, isLoading }: ChatIn
 
         {/* Text Input */}
         <textarea
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Type a message... (Enter to send, Shift+Enter for new line)"
+          placeholder="พิมพ์ข้อความ... (Enter เพื่อส่ง, Shift+Enter เพื่อขึ้นบรรทัดใหม่)"
           disabled={isLoading}
           rows={1}
           style={{
@@ -156,18 +157,18 @@ export default function ChatInput({ ticketId, onSendMessage, isLoading }: ChatIn
         {/* Send Button */}
         <button
           onClick={handleSend}
-          disabled={isLoading || (!message.trim() && !selectedFile)}
+          disabled={isLoading || (!value.trim() && !selectedFile)}
           className="btn-primary"
           style={{
             padding: '0.75rem 1.5rem',
             borderRadius: '12px',
             border: 'none',
             fontWeight: 600,
-            cursor: isLoading || (!message.trim() && !selectedFile) ? 'not-allowed' : 'pointer',
+            cursor: isLoading || (!value.trim() && !selectedFile) ? 'not-allowed' : 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: '0.5rem',
-            opacity: isLoading || (!message.trim() && !selectedFile) ? 0.6 : 1
+            opacity: isLoading || (!value.trim() && !selectedFile) ? 0.6 : 1
           }}
         >
           {isLoading ? (
