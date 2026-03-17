@@ -127,6 +127,76 @@ if (typeof global !== 'undefined') {
   }
 }
 
+/**
+ * Unified Helper to Start Ticket Creation Flow
+ */
+async function startTicketFlow(userId: string, replyToken: string | undefined): Promise<void> {
+  const startTime = Date.now();
+  
+  // 1. Update user state in Supabase
+  const { error } = await supabaseAdmin
+    .from("users")
+    .update({
+      line_metadata: {
+        state: "AWAITING_DESCRIPTION",
+        state_at: new Date().toISOString(),
+        temp_attachments: [],
+        temp_description: ""
+      }
+    })
+    .eq("id", userId);
+
+  if (error) {
+    logger.error("Failed to update user state for ticket flow:", error);
+    if (replyToken) {
+      await replyMessage(replyToken, [{ type: "text", text: "❌ ระบบขัดข้องชั่วคราว ไม่สามารถเริ่มแจ้งซ่อมได้ในขณะนี้" }]);
+    }
+    return;
+  }
+
+  // 2. Send the enhanced prompt Flex Message
+  if (replyToken) {
+    const flexContent = createReportPromptFlex();
+    await replyMessage(replyToken, [
+      {
+        type: "flex",
+        altText: "📝 เริ่มต้นระบบแจ้งซ่อม — กรุณาระบุรายละเอียด",
+        contents: flexContent
+      }
+    ]);
+  }
+  
+  logger.info(`[TicketFlow] Started for ${userId} in ${Date.now() - startTime}ms`);
+}
+
+/**
+ * Unified Helper to Start Knowledge Search Flow
+ */
+async function startKnowledgeSearchFlow(userId: string, replyToken: string | undefined): Promise<void> {
+  const startTime = Date.now();
+  
+  await supabaseAdmin
+    .from("users")
+    .update({
+      line_metadata: {
+        state: "AWAITING_KNOWLEDGE_QUERY",
+        state_at: new Date().toISOString()
+      }
+    })
+    .eq("id", userId);
+
+  if (replyToken) {
+    await replyMessage(replyToken, [
+      {
+        type: "text",
+        text: "สวัสดีค่ะ/ครับ รบกวนพิมพ์ปัญหาที่คุณพบ หรือคำถามที่ต้องการให้ AI ช่วยตรวจสอบได้เลยนะคะ/ครับ (เช่น พิมพ์ไม่ได้, เข้าเครื่องไม่ได้)"
+      }
+    ]);
+  }
+  
+  logger.info(`[KnowledgeFlow] Started for ${userId} in ${Date.now() - startTime}ms`);
+}
+
 async function handleEvent(event: LineEvent): Promise<void> {
   const lineUserId = event.source?.userId;
   if (!lineUserId) return;
@@ -328,55 +398,15 @@ async function handleEvent(event: LineEvent): Promise<void> {
   const stateAt = metadata.state_at ? new Date(metadata.state_at) : null;
   const isExpired = stateAt && (Date.now() - stateAt.getTime() > 30 * 60 * 1000); // 30 mins
 
-  // 1. COMMAND: "แจ้งซ่อม" (From Rich Menu)
+  // 1. COMMAND: "แจ้งซ่อม" (From Rich Menu or Typed)
   if (messageText.trim() === "แจ้งซ่อม") {
-    // Start DB update
-    const dbPromise = supabaseAdmin
-      .from("users")
-      .update({
-        line_metadata: {
-          state: "AWAITING_DESCRIPTION",
-          state_at: new Date().toISOString(),
-          temp_attachments: []
-        }
-      })
-      .eq("id", user.id);
-
-    // Reply immediately
-    if (event.replyToken) {
-      const flexContent = createReportPromptFlex();
-      await replyMessage(event.replyToken, [
-        {
-          type: "flex",
-          altText: "📝 แจ้งรายละเอียดปัญหา",
-          contents: flexContent
-        }
-      ]);
-    }
-    await dbPromise; // Ensure DB updated
+    await startTicketFlow(user.id, event.replyToken);
     return;
   }
 
   // 1.1 COMMAND: "ค้นหาวิธีแก้ไข" (From Rich Menu)
   if (messageText.trim() === "ค้นหาวิธีแก้ไข") {
-    await supabaseAdmin
-      .from("users")
-      .update({
-        line_metadata: {
-          state: "AWAITING_KNOWLEDGE_QUERY",
-          state_at: new Date().toISOString()
-        }
-      })
-      .eq("id", user.id);
-
-    if (event.replyToken) {
-      await replyMessage(event.replyToken, [
-        {
-          type: "text",
-          text: "สวัสดีค่ะ/ครับ รบกวนพิมพ์ปัญหาที่คุณพบ หรือคำถามที่ต้องการให้ AI ช่วยตรวจสอบได้เลยนะคะ/ครับ (เช่น พิมพ์ไม่ได้, เข้าเครื่องไม่ได้)"
-        }
-      ]);
-    }
+    await startKnowledgeSearchFlow(user.id, event.replyToken);
     return;
   }
 
@@ -590,27 +620,32 @@ async function handlePostback(event: LineEvent, lineUserId: string): Promise<voi
        return;
     }
 
-    // Update state to AWAITING_DESCRIPTION immediately
+    // Use unified helper to start flow without showing text message on user screen
+    await startTicketFlow(user.id, event.replyToken);
+    return;
+  }
+
+  if (action === "knowledge_search") {
+    const { data: user } = await supabaseAdmin
+      .from("users")
+      .select("id")
+      .eq("line_uid", lineUserId)
+      .maybeSingle();
+
+    if (!user) return;
+    await startKnowledgeSearchFlow(user.id, event.replyToken);
+    return;
+  }
+
+  if (action === "cancel_ticket") {
+    // Clear user metadata state
     await supabaseAdmin
       .from("users")
-      .update({
-        line_metadata: {
-          state: "AWAITING_DESCRIPTION",
-          state_at: new Date().toISOString(),
-          temp_attachments: []
-        }
-      })
-      .eq("id", user.id);
+      .update({ line_metadata: {} })
+      .eq("line_uid", lineUserId);
 
     if (event.replyToken) {
-      const flexContent = createReportPromptFlex();
-      await replyMessage(event.replyToken, [
-        {
-          type: "flex",
-          altText: "📝 แจ้งรายละเอียดปัญหา",
-          contents: flexContent
-        }
-      ]);
+      await replyMessage(event.replyToken, [{ type: "text", text: "ยกเลิกรายการเรียบร้อยแล้วค่ะ/ครับ หากต้องการแจ้งใหม่สามารถกดปุ่มจากเมนูได้ทุกเมื่อค่ะ/ครับ" }]);
     }
     return;
   }

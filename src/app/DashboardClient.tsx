@@ -6,7 +6,7 @@ import Link from "next/link";
 import { logger } from "@/lib/logger";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
-  PieChart, Pie, Cell
+  PieChart, Pie, Cell, AreaChart, Area, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis
 } from "recharts";
 import { 
   Sun, Moon, ArrowUpDown, ArrowUp, ArrowDown, Menu, 
@@ -679,7 +679,7 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
       </aside>
 
       <main className="main-content">
-        <div className="header animate-fade-in">
+        <header className="header hud-header animate-fade-in">
           <div className="header-title" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             {!isSidebarOpen && (
               <button 
@@ -690,92 +690,148 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
               </button>
             )}
             <div>
-              <h1>IT Support Dashboard</h1>
-              <p>Overview of all support tickets across the network.</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <span style={{ fontSize: '0.65rem', color: 'var(--primary)', border: '1px solid var(--primary)', padding: '1px 4px', letterSpacing: '2px' }}>NEO_PROTOCOL_v3</span>
+                <span style={{ fontSize: '0.65rem', color: 'var(--accent)', opacity: 0.8 }}>SYSTEM ACTIVE</span>
+              </div>
+              <h1>COMMAND INTERFACE</h1>
+              <p style={{ letterSpacing: '0.5px' }}>Sector Analysis: All Hospital Network Nodes</p>
             </div>
           </div>
           <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             {userEmail && (
-              <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <User size={14} /> {userEmail}
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px', borderRight: '1px solid var(--border-color)', paddingRight: '1rem' }}>
+                <code>ID: {userEmail.toUpperCase()}</code>
               </div>
             )}
-            <form action={logout}>
-              <button type="submit" className="btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
-                 Sign Out
-              </button>
-            </form>
             {mounted && (
-              <button className="theme-toggle" onClick={toggleTheme} title="Toggle Theme (Dark/Light)">
-                {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+              <button className="theme-toggle" onClick={toggleTheme} title="Toggle Interface" style={{ borderRadius: '0', border: '1px solid var(--border-color)' }}>
+                {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
               </button>
             )}
             <Link href="/tickets/new" style={{ textDecoration: 'none' }}>
-              <button className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                 <Plus size={18} /> Create Ticket
+              <button className="btn-primary">
+                 <Plus size={18} /> INITIALIZE_TICKET
               </button>
             </Link>
           </div>
-        </div>
+        </header>
 
-        <div className="stats-grid">
-          <div 
-            className={`stat-card animate-fade-in delay-1 ${statusFilter === 'ALL' ? 'active-filter' : ''}`} 
-            onClick={() => setStatusFilter("ALL")}
-            style={{ cursor: "pointer", border: statusFilter === 'ALL' ? '2px solid var(--primary)' : undefined }}
-            title="Click to view all tickets"
-          >
-             <div className="stat-card-header">
-                <div className="stat-title">ทั้งหมด</div>
-                <div className="stat-icon-container" style={{ background: 'var(--primary-glow)' }}>
-                  <LayoutDashboard size={20} color="var(--primary)" />
+        <section className="hud-hero animate-fade-in delay-1">
+          <div className="technical-panel" style={{ height: '350px', display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '2rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+               <h3 style={{ fontSize: '0.85rem', color: 'var(--primary)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Activity size={14} /> TICKET_VOLUMETRIC_ANALYSIS
+              </h3>
+               <div style={{ flex: 1, minHeight: 0 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={statusData}>
+                    <defs>
+                      <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" vertical={false} />
+                    <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} axisLine={false} tickLine={false} />
+                    <YAxis stroke="var(--text-muted)" fontSize={10} axisLine={false} tickLine={false} />
+                    <RechartsTooltip content={<CustomTooltip />} />
+                    <Area type="monotone" dataKey="count" stroke="var(--primary)" strokeWidth={3} fillOpacity={1} fill="url(#colorCount)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', borderLeft: '1px solid var(--border-light)', paddingLeft: '2rem' }}>
+              <h3 style={{ fontSize: '0.85rem', color: 'var(--accent)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Zap size={14} /> NODE_LOAD_DISTRIBUTION
+              </h3>
+              <div style={{ flex: 1, minHeight: 0 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart cx="50%" cy="50%" outerRadius="80%" data={hospitalData.slice(0, 6)}>
+                    <PolarGrid stroke="var(--border-color)" />
+                    <PolarAngleAxis dataKey="name" stroke="var(--text-muted)" fontSize={8} />
+                    <Radar
+                      name="Tickets"
+                      dataKey="count"
+                      stroke="var(--accent)"
+                      fill="var(--accent)"
+                      fillOpacity={0.3}
+                    />
+                    <RechartsTooltip content={<CustomTooltip />} />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <aside className="hud-sidebar animate-fade-in delay-2">
+          <div className="technical-panel" style={{ height: '100%', borderTopColor: 'var(--accent)' }}>
+             <h3 style={{ fontSize: '0.85rem', color: 'var(--text-heading)', marginBottom: '1.5rem' }}>SYSTEM_METRICS</h3>
+             
+             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {[
+                  { label: "TOTAL_ASSETS", value: total, color: "var(--text-heading)" },
+                  { label: "PENDING_QUEUE", value: pending, color: "var(--status-pending-text)" },
+                  { label: "ACTIVE_STREAM", value: inProgress, color: "var(--status-progress-text)" },
+                  { label: "ESCALATED_ALERTS", value: escalated, color: "var(--status-escalated-text)" },
+                  { label: "UNCLAIMED_JOB", value: unassignedCount, color: "var(--status-escalated-text)", glow: true }
+                ].map((m, i) => (
+                  <div key={i} style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '0.75rem' }}>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '4px' }}>{m.label}</div>
+                    <div style={{ 
+                      fontSize: '2rem', 
+                      fontWeight: 800, 
+                      color: m.color,
+                      textShadow: m.glow ? `0 0 10px ${m.color}` : 'none'
+                    }}>
+                      {m.value.toString().padStart(2, '0')}
+                    </div>
+                  </div>
+                ))}
+             </div>
+
+             <div style={{ marginTop: '2rem', padding: '1rem', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-light)' }}>
+                <div style={{ fontSize: '0.6rem', color: 'var(--primary)', marginBottom: '8px' }}>REALTIME_HEARTBEAT</div>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  {[...Array(20)].map((_, i) => (
+                    <div key={i} style={{ 
+                      width: '4px', 
+                      height: '12px', 
+                      background: i % 3 === 0 ? 'var(--primary)' : 'var(--border-color)',
+                      animation: 'pulse-glow 2s infinite',
+                      animationDelay: `${i * 0.1}s`
+                    }} />
+                  ))}
                 </div>
              </div>
-            <div className="stat-value">{total}</div>
           </div>
-          <div 
-            className={`stat-card animate-fade-in delay-2 ${statusFilter === 'Pending' ? 'active-filter' : ''}`}
-            onClick={() => setStatusFilter("Pending")}
-            style={{ cursor: "pointer", border: statusFilter === 'Pending' ? '2px solid var(--status-pending-text)' : undefined }}
-            title="Click to view Pending tickets"
-          >
-             <div className="stat-card-header">
-                <div className="stat-title" style={{color: "var(--status-pending-text)"}}>งานใหม่</div>
-                <div className="stat-icon-container" style={{ background: 'var(--status-pending-bg)' }}>
-                  <PlusCircle size={20} color="var(--status-pending-text)" />
+        </aside>
+
+        <section className="hud-content">
+          {/* Mobile Card Layout - Visible only on mobile via CSS */}
+          <div className="mobile-cards-container">
+               {sortedTickets.length === 0 ? (
+                <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <Inbox size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+                  ไม่พบรายการที่ค้นหา
                 </div>
-             </div>
-            <div className="stat-value">{pending}</div>
-          </div>
-          <div 
-            className={`stat-card animate-fade-in delay-3 ${statusFilter === 'In Progress' ? 'active-filter' : ''}`}
-            onClick={() => setStatusFilter("In Progress")}
-            style={{ cursor: "pointer", border: statusFilter === 'In Progress' ? '2px solid var(--status-progress-text)' : undefined }}
-            title="Click to view In Progress tickets"
-          >
-             <div className="stat-card-header">
-                <div className="stat-title" style={{color: "var(--status-progress-text)"}}>กำลังดำเนินการ</div>
-                <div className="stat-icon-container" style={{ background: 'var(--status-progress-bg)' }}>
-                  <Activity size={20} color="var(--status-progress-text)" />
-                </div>
-             </div>
-            <div className="stat-value">{inProgress}</div>
-          </div>
-          <div 
-            className={`stat-card animate-fade-in delay-3 ${statusFilter === 'Escalated' ? 'active-filter' : ''}`}
-            onClick={() => setStatusFilter("Escalated")}
-            style={{ cursor: "pointer", border: statusFilter === 'Escalated' ? '2px solid var(--status-escalated-text)' : undefined }}
-            title="Click to view Escalated tickets"
-          >
-             <div className="stat-card-header">
-                <div className="stat-title" style={{color: "var(--status-escalated-text)"}}>ส่งต่องาน</div>
-                <div className="stat-icon-container" style={{ background: 'var(--status-escalated-bg)' }}>
-                  <ArrowUp size={20} color="var(--status-escalated-text)" />
-                </div>
-             </div>
-            <div className="stat-value">{escalated}</div>
-          </div>
-        </div>
+              ) : (
+                sortedTickets.map(t => (
+                  <TicketCard 
+                    key={t.id} 
+                    ticket={t} 
+                    router={router} 
+                    onClaim={handleClaim} 
+                    isAssigning={isAssigning}
+                    getStatusLabel={getStatusLabel}
+                    slaPolicy={slaPolicy}
+                    now={now}
+                  />
+                ))
+              )}
+            </div>
 
         {/* New Jobs Alert Section */}
         {mounted && unassignedCount > 0 && (
@@ -1009,28 +1065,8 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
         </div>
 
         {/* Mobile Card Layout - Visible only on mobile via CSS */}
-        <div className="mobile-cards-container">
-             {sortedTickets.length === 0 ? (
-              <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <Inbox size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-                ไม่พบรายการที่ค้นหา
-              </div>
-            ) : (
-              sortedTickets.map(t => (
-                <TicketCard 
-                  key={t.id} 
-                  ticket={t} 
-                  router={router} 
-                  onClaim={handleClaim} 
-                  isAssigning={isAssigning}
-                  getStatusLabel={getStatusLabel}
-                  slaPolicy={slaPolicy}
-                  now={now}
-                />
-              ))
-            )}
-          </div>
-        </main>
+        </section>
+      </main>
        {toast.show && (
         <div className="toast-notification">
            <Info size={18} /> {toast.message}

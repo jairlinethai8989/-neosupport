@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <canvas id="canvas" width="2500" height="843"></canvas>
+    <script>
+        async function resizeImage(src) {
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.onload = () => {
+                const ctx = document.getElementById('canvas').getContext('2d');
+                // Center and cover to maintain aspect ratio
+                const scale = Math.max(2500 / img.width, 843 / img.height);
+                const x = (2500 / 2) - (img.width / 2) * scale;
+                const y = (843 / 2) - (img.height / 2) * scale;
+                ctx.fillStyle = '#020617'; // Deep Obsidian
+                ctx.fillRect(0, 0, 2500, 843);
+                ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+                
+                // Add labels again just in case generation missed them or they are blurry
+                ctx.fillStyle = 'rgba(14, 165, 233, 0.8)'; // Electron Blue
+                ctx.font = 'bold 80px sans-serif';
+                ctx.textAlign = 'center';
+                // ctx.fillText('🔍 ค้นหาวิธีแก้ไข', 625, 450);
+                // ctx.fillText('🏥 แจ้งซ่อม', 1875, 450);
+                
+                console.log('DONE_RESIZING');
+            };
+            img.src = src;
+        }
+    </script>
+</body>
+</html>

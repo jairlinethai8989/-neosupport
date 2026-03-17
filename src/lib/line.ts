@@ -428,40 +428,59 @@ export function createReportPromptFlex() {
     header: {
       type: "box",
       layout: "vertical",
-      backgroundColor: "#ef4444",
-      paddingAll: "15px",
+      backgroundColor: "#0ea5e9", // Electron Blue
+      paddingAll: "20px",
       contents: [
         {
           type: "text",
-          text: "📝 แจ้งรายละเอียดปัญหา",
+          text: "🏥 ระบบรับแจ้งปัญหา",
           weight: "bold",
           color: "#ffffff",
           size: "lg",
-          align: "center"
+          align: "center",
+          letterSpacing: "1px"
         }
       ]
     },
     body: {
       type: "box",
       layout: "vertical",
-      spacing: "md",
+      spacing: "lg",
       paddingAll: "20px",
       contents: [
         {
           type: "text",
-          text: "รบกวนระบุปัญหาที่คุณพบ เพื่อเปิดใบงานนะคะ/ครับ",
+          text: "กรุณาส่งข้อมูลเพื่อเปิดใบงาน",
           weight: "bold",
           size: "md",
-          align: "center",
-          wrap: true
+          align: "center"
+        },
+        {
+          type: "box",
+          layout: "vertical",
+          spacing: "sm",
+          contents: [
+            {
+              type: "text",
+              text: "• พิมพ์อาการเสีย/ปัญหาที่พบ",
+              size: "sm",
+              color: "#475569"
+            },
+            {
+              type: "text",
+              text: "• ถ่ายรูป หรือ ส่งวิดีโอประกอบ",
+              size: "sm",
+              color: "#475569"
+            }
+          ]
         },
         {
           type: "text",
-          text: "คุณสามารถส่งเป็นข้อความ หรือถ่ายรูปปัญหาที่เกิดขึ้นส่งมาได้เลยค่ะ/ครับ",
-          size: "sm",
-          color: "#666666",
-          align: "center",
-          wrap: true
+          text: "หากส่งข้อมูลครบแล้ว ระบบจะสรุปข้อมูลให้ยืนยันอีกครั้งค่ะ/ครับ",
+          size: "xs",
+          color: "#94a3b8",
+          wrap: true,
+          align: "center"
         }
       ]
     },
@@ -469,15 +488,28 @@ export function createReportPromptFlex() {
       type: "box",
       layout: "vertical",
       spacing: "sm",
+      paddingAll: "20px",
       contents: [
         {
           type: "button",
           style: "primary",
-          color: "#06C755",
+          color: "#0ea5e9",
+          height: "sm",
           action: {
             type: "message",
             label: "⌨️ พิมพ์รายละเอียด",
             text: "ระบุปัญหา: "
+          }
+        },
+        {
+          type: "button",
+          style: "secondary",
+          height: "sm",
+          action: {
+            type: "postback",
+            label: "❌ ยกเลิก",
+            data: "action=cancel_ticket",
+            displayText: "ยกเลิกการดำเนินงาน"
           }
         }
       ]
