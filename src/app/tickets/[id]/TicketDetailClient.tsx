@@ -122,10 +122,12 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
           }
           return [...prev, payload.new];
         });
+        // Force refresh server components (status, transfer logs, etc.)
+        router.refresh();
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [initialTicket.id]);
+  }, [initialTicket.id, router]);
 
   const handleSendReply = async (content: string, file?: File) => {
     if ((!content && !file) || isSending) return;

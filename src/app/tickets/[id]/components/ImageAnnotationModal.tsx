@@ -155,9 +155,10 @@ export default function ImageAnnotationModal({ imageUrl, onClose, onSend }: Imag
 
     setIsSending(true);
     try {
-      const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+      // Use image/png to preserve transparency and prevent black background
+      const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png', 1.0));
       if (!blob) throw new Error('Canvas to blob failed');
-      const file = new File([blob], 'annotated-image.jpg', { type: 'image/jpeg' });
+      const file = new File([blob], 'annotated-image.png', { type: 'image/png' });
       await onSend(file);
       onClose();
     } catch (err) {
