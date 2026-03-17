@@ -94,9 +94,12 @@ function ArrayEditor({
             style={{
               display: "flex", alignItems: "center", gap: "0.5rem",
               padding: "0.65rem 0.9rem", background: "var(--bg-color)",
-              borderRadius: "10px", border: "1px solid var(--border-color)",
-              transition: "border-color 0.15s",
+              borderRadius: "10px", border: editingIdx === idx ? `1px solid ${accentColor}` : "1px solid var(--border-color)",
+              transition: "all 0.15s",
+              boxShadow: editingIdx === idx ? `0 0 10px ${accentColor}33` : "none",
+              position: "relative"
             }}
+            className="row-container"
           >
             {editingIdx === idx ? (
               <>
@@ -114,30 +117,39 @@ function ArrayEditor({
                     color: "var(--text-heading)", fontSize: "0.95rem", outline: "none",
                   }}
                 />
-                <button onClick={() => commitEdit(idx)} title="บันทึก" style={{ color: "#10b981", background: "none", border: "none", cursor: "pointer", padding: "0.25rem", display: "flex" }}>
-                  <Check size={18} />
-                </button>
-                <button onClick={() => setEditingIdx(null)} title="ยกเลิก" style={{ color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer", padding: "0.25rem", display: "flex" }}>
-                  <X size={18} />
-                </button>
+                <div style={{ display: "flex", gap: "0.25rem" }}>
+                  <button onClick={() => commitEdit(idx)} title="บันทึก" style={{ color: "#10b981", background: "rgba(16,185,129,0.1)", border: "none", cursor: "pointer", padding: "0.4rem", borderRadius: "6px", display: "flex" }}>
+                    <Check size={16} />
+                  </button>
+                  <button onClick={() => setEditingIdx(null)} title="ยกเลิก" style={{ color: "var(--text-muted)", background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", padding: "0.4rem", borderRadius: "6px", display: "flex" }}>
+                    <X size={16} />
+                  </button>
+                </div>
               </>
             ) : (
               <>
                 <span style={{ flex: 1, fontSize: "0.95rem", color: "var(--text-main)" }}>{item}</span>
-                <button onClick={() => startEdit(idx)} title="แก้ไข" style={{ color: "var(--primary)", background: "none", border: "none", cursor: "pointer", padding: "0.25rem", display: "flex", opacity: 0.7 }}>
-                  <Pencil size={15} />
-                </button>
-                <button onClick={() => remove(idx)} title="ลบ" style={{ color: "#ef4444", background: "none", border: "none", cursor: "pointer", padding: "0.25rem", display: "flex", opacity: 0.7 }}>
-                  <Trash2 size={15} />
-                </button>
+                <div style={{ display: "flex", gap: "0.25rem" }} className="row-actions">
+                  <button onClick={() => startEdit(idx)} title="แก้ไข" style={{ color: "var(--primary)", background: "rgba(14,165,233,0.1)", border: "none", cursor: "pointer", padding: "0.4rem", borderRadius: "6px", display: "flex" }}>
+                    <Pencil size={14} />
+                  </button>
+                  <button onClick={() => remove(idx)} title="ลบ" style={{ color: "#ef4444", background: "rgba(239,68,68,0.1)", border: "none", cursor: "pointer", padding: "0.4rem", borderRadius: "6px", display: "flex" }}>
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </>
             )}
           </div>
         ))}
       </div>
+      <style jsx>{`
+        :global(.row-actions) { opacity: 0; transition: opacity 0.2s; }
+        :global(.row-container:hover .row-actions) { opacity: 1; }
+      `}</style>
     </div>
   );
 }
+
 
 // ─── Main Settings Component ─────────────────────────────────
 export default function SettingsClient({
@@ -188,11 +200,32 @@ export default function SettingsClient({
         body: JSON.stringify({ id, ...updates })
       });
       if (!res.ok) throw new Error();
+      
       setSuccessHospitalId(id);
       setTimeout(() => setSuccessHospitalId(null), 2000);
+      
+      // Update both source state and local cache
       setHospitals(prev => prev.map(h => h.id === id ? { ...h, ...updates } : h));
     } catch {
       alert("ไม่สามารถบันทึกข้อมูลโรงพยาบาลได้");
+    } finally {
+      setLoadingHospitalId(null);
+    }
+  };
+
+  const handleHospitalDelete = async (id: string, name: string) => {
+    if (!confirm(`ยืนยันการลบโรงพยาบาล "${name}"? การกระทำนี้ไม่สามารถย้อนกลับได้`)) return;
+    
+    setLoadingHospitalId(id);
+    try {
+      const { createClient } = await import("@/utils/supabase/client");
+      const supabase = createClient();
+      const { error } = await supabase.from("hospitals").delete().eq("id", id);
+      if (error) throw error;
+      
+      setHospitals(prev => prev.filter(h => h.id !== id));
+    } catch (err: any) {
+      alert("ลบไม่สำเร็จ: " + err.message);
     } finally {
       setLoadingHospitalId(null);
     }
@@ -396,12 +429,15 @@ export default function SettingsClient({
             ) : activeMenu === "hospitals" ? (
               <div key="hospitals">
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-                      <h3 style={{ fontSize: "1.1rem", fontWeight: "700" }}>📝 แก้ไขวิธีรันเลขเอกสาร</h3>
+                      <div>
+                        <h3 style={{ fontSize: "1.1rem", fontWeight: "700", marginBottom: "0.25rem" }}>🏢 จัดการข้อมูลและระบบรันเลข</h3>
+                        <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", margin: 0 }}>ตั้งค่าชื่อ ตัวย่อ และรูปแบบหมายเลขใบงาน</p>
+                      </div>
                       <div style={{ position: "relative", width: "260px" }}>
                           <Search size={16} style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
                           <input 
-                              style={{ width: "100%", padding: "0.6rem 1rem 0.6rem 2.5rem", borderRadius: "10px", border: "1px solid var(--border-color)", background: "var(--bg-color)", color: "var(--text-main)", fontSize: "0.85rem" }}
-                              placeholder="ค้นหาโรงพยาบาล..." 
+                              style={{ width: "100%", padding: "0.6rem 1rem 0.6rem 2.5rem", borderRadius: "10px", border: "1px solid var(--border-color)", background: "var(--bg-color)", color: "var(--text-main)", fontSize: "0.85rem", outline: "none" }}
+                              placeholder="ค้นหาชื่อหรือตัวย่อ..." 
                               value={hospitalSearch}
                               onChange={(e) => setHospitalSearch(e.target.value)}
                           />
@@ -413,14 +449,16 @@ export default function SettingsClient({
                       <HospitalRow 
                         key={h.id} 
                         hospital={h} 
-                        onUpdate={handleHospitalUpdate} 
+                        onUpdate={handleHospitalUpdate}
+                        onDelete={handleHospitalDelete}
                         isLoading={loadingHospitalId === h.id}
                         isSuccess={successHospitalId === h.id}
                       />
                     ))}
                     {filteredHospitals.length === 0 && (
-                      <div style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)", fontSize: "0.9rem" }}>
-                        ไม่พบข้อมูลโรงพยาบาล
+                      <div style={{ textAlign: "center", padding: "4rem 2rem", background: "var(--bg-color)", borderRadius: "16px", border: "1px dashed var(--border-color)" }}>
+                        <Building2 size={40} style={{ opacity: 0.2, marginBottom: "1rem" }} />
+                        <div style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>ไม่พบข้อมูลโรงพยาบาลที่ค้นหา</div>
                       </div>
                     )}
                   </div>
@@ -516,53 +554,188 @@ export default function SettingsClient({
   );
 }
 
-function HospitalRow({ hospital, onUpdate, isLoading, isSuccess }: any) {
+function HospitalRow({ hospital, onUpdate, onDelete, isLoading, isSuccess }: any) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: hospital.name,
+    abbreviation: hospital.abbreviation,
+    ticket_prefix: hospital.ticket_prefix || (hospital.abbreviation + "-"),
+    ticket_format_mode: hospital.ticket_format_mode || 'default'
+  });
   const [nextNum, setNextNum] = useState("");
-  const [prefix] = useState(hospital.ticket_prefix || "");
+
+  const handleSave = async () => {
+    await onUpdate(hospital.id, {
+      ...editForm,
+      ...(nextNum ? { next_number: nextNum } : {})
+    });
+    setIsEditing(false);
+    setNextNum("");
+  };
 
   return (
     <div style={{ 
-      padding: "1rem 1.25rem", borderRadius: "15px", border: "1px solid var(--border-color)", 
-      display: "flex", justifyContent: "space-between", alignItems: "center",
-      background: "var(--bg-color)"
-    }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-          <div style={{ width: "40px", height: "40px", background: "rgba(99,102,241,0.1)", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--primary)" }}>
-            <Building2 size={20} />
+      padding: "1.25rem", borderRadius: "16px", border: "1px solid var(--border-color)", 
+      display: "flex", flexDirection: "column", gap: "1.25rem",
+      background: isEditing ? "rgba(99,102,241,0.02)" : "var(--bg-color)",
+      transition: "all 0.2s ease",
+      position: "relative",
+      overflow: "hidden"
+    }} className="hospital-row">
+      {/* Decorative side bar */}
+      <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "4px", background: isEditing ? "var(--primary)" : "transparent" }} />
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          <div style={{ width: "44px", height: "44px", background: "rgba(99,102,241,0.1)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--primary)" }}>
+            <Building2 size={22} />
           </div>
-          <div>
-              <div style={{ fontWeight: "700", fontSize: "0.95rem" }}>{hospital.name}</div>
-              <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{hospital.abbreviation}</div>
+          {isEditing ? (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 700 }}>ชื่อโรงพยาบาล (Hospital Name)</label>
+                <input 
+                  value={editForm.name}
+                  onChange={e => setEditForm({...editForm, name: e.target.value})}
+                  style={{ padding: "0.5rem 0.75rem", borderRadius: "8px", border: "1px solid var(--border-color)", background: "var(--bg-surface)", color: "white", fontSize: "0.9rem", width: "220px", outline: "none" }}
+                />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 700 }}>ตัวย่อ (Code)</label>
+                <input 
+                  value={editForm.abbreviation}
+                  onChange={e => setEditForm({...editForm, abbreviation: e.target.value.toUpperCase()})}
+                  style={{ padding: "0.5rem 0.75rem", borderRadius: "8px", border: "1px solid var(--border-color)", background: "var(--bg-surface)", color: "white", fontSize: "0.9rem", width: "100px", outline: "none" }}
+                />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 700 }}>Ticket Prefix</label>
+                <input 
+                  value={editForm.ticket_prefix}
+                  onChange={e => setEditForm({...editForm, ticket_prefix: e.target.value.toUpperCase()})}
+                  style={{ padding: "0.5rem 0.75rem", borderRadius: "8px", border: "1px solid var(--border-color)", background: "var(--bg-surface)", color: "var(--primary)", fontWeight: 700, fontSize: "0.9rem", width: "120px", outline: "none" }}
+                />
+              </div>
+            </div>
+          ) : (
+            <div>
+              <div style={{ fontWeight: "700", fontSize: "1.05rem", color: "var(--text-heading)" }}>{hospital.name}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "0.2rem" }}>
+                <code style={{ fontSize: "0.8rem", color: "var(--primary)", background: "rgba(14,165,233,0.1)", padding: "1px 6px", borderRadius: "4px", fontWeight: 700 }}>{hospital.abbreviation}</code>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>• Prefix: <strong style={{ color: 'var(--text-main)' }}>{hospital.ticket_prefix}</strong></span>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>• {hospital.ticket_format_mode === 'ym' ? 'YYYYMM Seq' : hospital.ticket_format_mode === 'y' ? 'YYYY Seq' : 'Standard Seq'}</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          {isEditing ? (
+            <>
+              <button 
+                onClick={handleSave}
+                disabled={isLoading}
+                style={{ background: "var(--primary)", color: "black", border: "none", width: "36px", height: "36px", borderRadius: "10px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                title="บันทึก"
+              >
+                {isLoading ? <RefreshCw size={18} className="spin" /> : <Check size={18} />}
+              </button>
+              <button 
+                onClick={() => { 
+                  setIsEditing(false); 
+                  setEditForm({ 
+                    name: hospital.name, 
+                    abbreviation: hospital.abbreviation, 
+                    ticket_prefix: hospital.ticket_prefix,
+                    ticket_format_mode: hospital.ticket_format_mode 
+                  }); 
+                }}
+                style={{ background: "rgba(255,255,255,0.05)", color: "var(--text-muted)", border: "none", width: "36px", height: "36px", borderRadius: "10px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                title="ยกเลิก"
+              >
+                <X size={18} />
+              </button>
+            </>
+          ) : (
+            <>
+              <button 
+                onClick={() => setIsEditing(true)}
+                style={{ background: "transparent", color: "var(--text-muted)", border: "none", width: "36px", height: "36px", borderRadius: "10px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                className="hover-action-btn"
+                title="แก้ไข"
+              >
+                <Pencil size={16} />
+              </button>
+              <button 
+                onClick={() => onDelete(hospital.id, hospital.name)}
+                style={{ background: "transparent", color: "rgba(239,68,68,0.5)", border: "none", width: "36px", height: "36px", borderRadius: "10px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                className="hover-danger-btn"
+                title="ลบ"
+              >
+                <Trash2 size={16} />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", padding: "1.25rem", background: "rgba(255,255,255,0.02)", borderRadius: "12px", border: "1px solid var(--border-color)" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+          <label style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "0.5rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            <Tag size={13} /> รูปแบบเลขใบงาน (Ticket Format)
+          </label>
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            {[
+              { id: 'default', label: 'ปกติ', hint: `${hospital.abbreviation}-0001` },
+              { id: 'ym', label: 'เดือนปี', hint: `${hospital.abbreviation}6703-001` },
+              { id: 'y', label: 'ปี', hint: `${hospital.abbreviation}67-0001` }
+            ].map(fmt => (
+              <button 
+                key={fmt.id}
+                onClick={() => setEditForm({...editForm, ticket_format_mode: fmt.id})}
+                disabled={!isEditing && editForm.ticket_format_mode !== fmt.id}
+                style={{
+                  flex: 1, padding: "0.6rem 0.4rem", borderRadius: "8px", fontSize: "0.8rem", cursor: isEditing ? "pointer" : "default",
+                  background: editForm.ticket_format_mode === fmt.id ? "rgba(14,165,233,0.1)" : "transparent",
+                  border: editForm.ticket_format_mode === fmt.id ? `1px solid var(--primary)` : "1px solid var(--border-color)",
+                  color: editForm.ticket_format_mode === fmt.id ? "var(--primary)" : "var(--text-muted)",
+                  transition: "all 0.2s"
+                }}
+              >
+                <div style={{ fontWeight: 700 }}>{fmt.label}</div>
+                <div style={{ fontSize: "0.6rem", opacity: 0.6, marginTop: "2px" }}>{fmt.hint}</div>
+              </button>
+            ))}
           </div>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+          <label style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "0.5rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            <RefreshCw size={13} /> เริ่มต้นลำดับใหม่ (Reset Sequence)
+          </label>
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <input 
+                type="text"
+                disabled={!isEditing}
+                placeholder="ระบุเลขเริ่มต้น (เช่น 1)"
+                value={nextNum}
+                onChange={(e) => setNextNum(e.target.value.replace(/[^0-9]/g, ''))}
+                style={{ flex: 1, padding: "0.6rem 0.75rem", borderRadius: "8px", border: "1px solid var(--border-color)", background: "var(--bg-surface)", color: "var(--text-main)", fontSize: "0.85rem", opacity: isEditing ? 1 : 0.4, outline: "none" }}
+            />
+            {isSuccess && !isEditing && (
+              <div style={{ color: "#10b981", display: "flex", alignItems: "center", padding: "0 0.5rem" }}>
+                <CheckCircle2 size={20} />
+              </div>
+            )}
+          </div>
+        </div>
       </div>
-      <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
-          <input 
-              type="text"
-              placeholder="PREFIX_00000x"
-              value={prefix || nextNum ? (prefix + (nextNum || "")) : ""}
-              onChange={(e) => setNextNum(e.target.value.replace(/[^0-9]/g, ''))}
-              style={{ width: "200px", padding: "0.5rem 0.75rem", borderRadius: "8px", border: "1px solid var(--border-color)", background: "var(--bg-surface)", color: "var(--text-main)", fontSize: "0.85rem" }}
-          />
-          <button 
-              onClick={() => onUpdate(hospital.id, { 
-                  ticket_format_mode: 'default',
-                  ...(nextNum ? { next_number: nextNum } : {})
-              })}
-              disabled={isLoading}
-              style={{ 
-                background: isSuccess ? "#10b981" : "var(--primary)", 
-                color: "white", border: "none", padding: "0.5rem 1rem", 
-                borderRadius: "8px", fontSize: "0.85rem", fontWeight: 600,
-                cursor: "pointer", display: "flex", alignItems: "center", gap: "0.4rem",
-                transition: "all 0.2s"
-              }}
-          >
-              {isLoading ? <RefreshCw size={14} className="spin" /> : isSuccess ? <CheckCircle2 size={14} /> : "ตั้งค่า"}
-          </button>
-      </div>
+
       <style jsx>{`
         .spin { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .hover-action-btn:hover { color: var(--primary) !important; background: rgba(99,102,241,0.1) !important; }
+        .hover-danger-btn:hover { color: #ef4444 !important; background: rgba(239,68,68,0.1) !important; }
       `}</style>
     </div>
   );

@@ -300,7 +300,16 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
       const originalStyles = { position: parent?.style.position || "", top: parent?.style.top || "", left: parent?.style.left || "", opacity: parent?.style.opacity || "", zIndex: parent?.style.zIndex || "", visibility: parent?.style.visibility || "" };
 
       if (parent) { parent.style.position = "fixed"; parent.style.top = "0"; parent.style.left = "0"; parent.style.opacity = "1"; parent.style.visibility = "visible"; parent.style.zIndex = "99999"; }
-      if (typeof document !== "undefined" && (document as any).fonts) await (document as any).fonts.ready;
+      
+      // Ensure Thai font is fully loaded for the canvas renderer
+      if (typeof document !== "undefined" && (document as any).fonts) {
+        try {
+          await (document as any).fonts.load("1em 'IBM Plex Sans Thai'");
+          await (document as any).fonts.ready;
+        } catch (e) {
+          console.warn("Font loading failed, proceeding with system fonts", e);
+        }
+      }
       await waitForImages(reportEl);
       await new Promise(r => setTimeout(r, 800));
 

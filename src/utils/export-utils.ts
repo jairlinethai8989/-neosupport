@@ -15,27 +15,35 @@ let thaiFontLoaded = false;
  * Load Thai font for jsPDF
  * Call this once on app initialization for best performance
  */
-export async function loadThaiFont(): Promise<void> {
-  if (thaiFontLoaded) return;
+export async function loadThaiFont(doc?: jsPDF): Promise<void> {
+  if (thaiFontLoaded && !doc) return;
   
   try {
-    // Load Sarabun font from Google Fonts
-    const fontUrl = 'https://fonts.gstatic.com/s/sarabun/v15/NuFcD_tP6k7F5A7c5p5q5p5q5p5q5p5q.woff2';
+    // Use Noto Sans Thai as a reliable direct TTF source
+    const fontUrl = 'https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts@master/hinted/ttf/NotoSansThai/NotoSansThai-Regular.ttf';
     const response = await fetch(fontUrl);
     if (!response.ok) throw new Error('Failed to load Thai font');
     
     const fontBuffer = await response.arrayBuffer();
-    const fontBase64 = btoa(String.fromCharCode(...new Uint8Array(fontBuffer)));
+    const uint8Array = new Uint8Array(fontBuffer);
     
-    const doc = new jsPDF();
-    doc.addFileToVFS('Sarabun-Regular.ttf', fontBase64);
-    doc.addFont('Sarabun-Regular.ttf', 'Sarabun', 'normal');
-    doc.setFont('Sarabun');
+    // Efficiently convert to base64
+    let binary = '';
+    const len = uint8Array.byteLength;
+    for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(uint8Array[i]);
+    }
+    const fontBase64 = btoa(binary);
+    
+    // If a doc instance is provided, add font to it immediately
+    const targetDoc = doc || new jsPDF();
+    targetDoc.addFileToVFS('ThaiFont.ttf', fontBase64);
+    targetDoc.addFont('ThaiFont.ttf', 'ThaiFont', 'normal');
     
     thaiFontLoaded = true;
+    console.log('Thai font (Noto Sans Thai) loaded successfully for jsPDF');
   } catch (error) {
     console.warn('Thai font loading failed, falling back to default font:', error);
-    // Font loading failed - will use fallback rendering
   }
 }
 
@@ -68,15 +76,12 @@ export const exportTicketsPDF = async (tickets: any[], title: string) => {
   const doc = new jsPDF({ orientation: 'landscape' });
   
   // Try to load Thai font if not already loaded
-  if (!thaiFontLoaded) {
-    await loadThaiFont();
-  }
+  await loadThaiFont(doc);
 
   // Set Thai font if available
   try {
-    doc.setFont('Sarabun');
+    doc.setFont('ThaiFont');
   } catch (e) {
-    // Fallback: Use default font (Thai will show as boxes)
     console.warn('Thai font not available, using default font');
   }
 
@@ -94,7 +99,7 @@ export const exportTicketsPDF = async (tickets: any[], title: string) => {
     head: [['Ticket No', 'รายละเอียด', 'โรงพยาบาล', 'แผนก', 'สถานะ', 'ความสำคัญ', 'ผู้รับงาน']],
     body: tableData,
     styles: { 
-      font: thaiFontLoaded ? 'Sarabun' : 'helvetica',
+      font: thaiFontLoaded ? 'ThaiFont' : 'helvetica',
       fontSize: 9,
       cellPadding: 3
     },
@@ -119,7 +124,7 @@ export const exportTicketsPDF = async (tickets: any[], title: string) => {
         const cellText = data.cell.raw;
         if (typeof cellText === 'string' && /[\u0E00-\u0E7F]/.test(cellText)) {
           // Contains Thai characters - ensure proper rendering
-          data.cell.styles.font = thaiFontLoaded ? 'Sarabun' : 'helvetica';
+          data.cell.styles.font = thaiFontLoaded ? 'ThaiFont' : 'helvetica';
         }
       }
     }

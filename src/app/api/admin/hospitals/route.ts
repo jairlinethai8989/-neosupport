@@ -20,11 +20,13 @@ export async function GET() {
 export async function PATCH(req: Request) {
   try {
     const body = await req.json();
-    const { id, ticket_prefix, ticket_padding, ticket_format_mode, next_number } = body;
+    const { id, name, abbreviation, ticket_prefix, ticket_padding, ticket_format_mode, next_number } = body;
 
     // 1. Update text fields if provided
-    if (ticket_prefix !== undefined || ticket_padding !== undefined || ticket_format_mode !== undefined) {
+    if (name !== undefined || abbreviation !== undefined || ticket_prefix !== undefined || ticket_padding !== undefined || ticket_format_mode !== undefined) {
       const updateData: any = {};
+      if (name !== undefined) updateData.name = name;
+      if (abbreviation !== undefined) updateData.abbreviation = abbreviation;
       if (ticket_prefix !== undefined) updateData.ticket_prefix = ticket_prefix;
       if (ticket_padding !== undefined) updateData.ticket_padding = ticket_padding;
       if (ticket_format_mode !== undefined) updateData.ticket_format_mode = ticket_format_mode;
