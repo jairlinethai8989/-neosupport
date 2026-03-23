@@ -123,11 +123,41 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
           }
           return [...prev, payload.new];
         });
-        // Only refresh for status changes, not every message (causes slow UX)
-        // router.refresh(); ← removed intentionally
       })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+
+    // ── Polling fallback: fetch new inbound messages every 5s ──
+    // This ensures LINE messages appear even if Supabase realtime misses them
+    let lastMsgId = initialMessages.length > 0 ? initialMessages[initialMessages.length - 1].id : null;
+    const pollInterval = setInterval(async () => {
+      const supabaseClient = supabase;
+      let query = supabaseClient
+        .from("messages")
+        .select("*")
+        .eq("ticket_id", initialTicket.id)
+        .order("created_at", { ascending: true });
+
+      if (lastMsgId) {
+        // Only fetch records created after the last known message
+        query = query.gt("id", String(lastMsgId).startsWith('opt-') ? '0' : lastMsgId);
+      }
+      const { data: newMsgs } = await query;
+
+      if (newMsgs && newMsgs.length > 0) {
+        setMessages(prev => {
+          const existingIds = new Set(prev.map(m => m.id));
+          const toAdd = newMsgs.filter(m => !existingIds.has(m.id) && !String(m.id).startsWith('opt-'));
+          if (toAdd.length === 0) return prev;
+          lastMsgId = toAdd[toAdd.length - 1].id;
+          return [...prev, ...toAdd];
+        });
+      }
+    }, 5000);
+
+    return () => { 
+      supabase.removeChannel(channel);
+      clearInterval(pollInterval);
+    };
   }, [initialTicket.id, router]);
 
   const handleSendReply = async (content: string, file?: File) => {

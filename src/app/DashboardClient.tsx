@@ -319,19 +319,18 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
 
     // Supabase Real-time Subscription for Tickets
     const channel = supabase
-      .channel('schema-db-changes')
+      .channel(`dashboard-tickets-${Date.now()}`)
       .on(
         'postgres_changes',
         {
-          event: '*', // Listen to INSERT, UPDATE, DELETE
+          event: '*',
           schema: 'public',
           table: 'tickets',
         },
         async (payload) => {
-          logger.info('Realtime Ticket Change:', payload);
+          console.log('[Dashboard Realtime] Ticket change:', payload.eventType);
 
           if (payload.eventType === 'INSERT') {
-            // Need to fetch user nested relationship since realtime payload is flat
             const { data: newTicket } = await supabase
               .from('tickets')
               .select(`*, users!reporter_id(display_name, department, hospitals(name))`)
@@ -340,9 +339,7 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
 
             if (newTicket) {
               setTickets((prev) => [newTicket, ...prev]);
-              // Trigger Popup
               setNewTicketNotify(newTicket);
-              // Play Alert Sound
               try {
                 const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
                 audio.volume = 0.5;
@@ -350,13 +347,11 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
               } catch (e) {
                 logger.warn("Audio play failed", e);
               }
-              // Auto hide after 10 seconds
               setTimeout(() => setNewTicketNotify((prev: any) => (prev?.id === newTicket.id ? null : prev)), 15000);
             } else {
               setTickets((prev) => [payload.new, ...prev]);
             }
           } else if (payload.eventType === 'UPDATE') {
-            // Merge update into existing ticket to keep relational data
             setTickets((prev) =>
               prev.map((t) => (t.id === payload.new.id ? { ...t, ...payload.new } : t))
             );
@@ -365,7 +360,9 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[Dashboard Realtime] Status:', status);
+      });
 
     // Run maintenance (Option A: Auto-Cleanup)
     const runMaintenance = async () => {
