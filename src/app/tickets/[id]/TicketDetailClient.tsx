@@ -123,8 +123,8 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
           }
           return [...prev, payload.new];
         });
-        // Force refresh server components (status, transfer logs, etc.)
-        router.refresh();
+        // Only refresh for status changes, not every message (causes slow UX)
+        // router.refresh(); ← removed intentionally
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -326,9 +326,10 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
 
+      // Use data URL instead of blob URL to avoid CSP blob: restriction
       const blob = pdf.output('blob');
-      const url = URL.createObjectURL(blob);
-      setPdfBlob(blob); setPdfUrl(url); setIsPDFPreviewOpen(true);
+      const dataUrl = pdf.output('datauristring');
+      setPdfBlob(blob); setPdfUrl(dataUrl); setIsPDFPreviewOpen(true);
       showToast("สร้างพรีวิว PDF เรียบร้อยแล้ว ✨");
     } catch { showToast("มีข้อผิดพลาดในการสร้าง PDF ❌"); }
     finally { setIsGeneratingPDF(false); }
@@ -663,10 +664,10 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
           <div className="modal-content" style={{ maxWidth: "900px", width: "95%", height: "90vh", display: "flex", flexDirection: "column", padding: "1.5rem" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
               <h2 style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700 }}>พรีวิวเอกสาร / PDF Preview</h2>
-              <button onClick={() => { setIsPDFPreviewOpen(false); if (pdfUrl) URL.revokeObjectURL(pdfUrl); setPdfUrl(null); setPdfBlob(null); }} className="btn-icon-modern"><X size={20} /></button>
+              <button onClick={() => { setIsPDFPreviewOpen(false); setPdfUrl(null); setPdfBlob(null); }} className="btn-icon-modern"><X size={20} /></button>
             </div>
             <div style={{ flex: 1, background: "#f0f0f0", borderRadius: "12px", overflow: "hidden", marginBottom: "1.5rem", display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {pdfUrl ? <iframe src={`${pdfUrl}#toolbar=0`} style={{ width: "100%", height: "100%", border: "none" }} title="PDF Preview" /> : <div className="loading-spinner" />}
+              {pdfUrl ? <iframe src={pdfUrl} style={{ width: "100%", height: "100%", border: "none" }} title="PDF Preview" /> : <div className="loading-spinner" />}
             </div>
             <div className="modal-actions" style={{ marginTop: 0 }}>
               <button className="btn-secondary" onClick={() => setIsPDFPreviewOpen(false)} style={{ padding: "0.75rem 1.5rem" }}>ยกเลิก</button>

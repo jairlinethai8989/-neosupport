@@ -16,7 +16,8 @@ export async function middleware(request: NextRequest) {
     font-src 'self' https://fonts.gstatic.com;
     img-src 'self' blob: data: https://*.wikimedia.org https://images.unsplash.com https://*.supabase.co https://stickershop.line-scdn.net;
     media-src 'self' https://*.supabase.co https://assets.mixkit.co;
-    connect-src 'self' https://*.supabase.co https://api.line.me https://api-data.line.me;
+    connect-src 'self' https://*.supabase.co https://api.line.me https://api-data.line.me https://generativelanguage.googleapis.com;
+    frame-src 'self' data: blob:;
     frame-ancestors 'none';
   `.replace(/\s{2,}/g, ' ').trim())
 
