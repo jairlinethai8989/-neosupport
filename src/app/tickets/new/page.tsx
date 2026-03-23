@@ -1,7 +1,18 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { Metadata } from "next";
 import NewTicketClient from "./NewTicketClient";
 
 export const revalidate = 0;
+
+export const metadata: Metadata = {
+  title: "Create Ticket — NEO Support",
+  description: "Open a new IT support ticket manually.",
+  openGraph: {
+    title: "Create Ticket — NEO Support",
+    description: "Manual ticket creation for staff members.",
+    type: "website",
+  }
+};
 
 export default async function NewTicketPage() {
   // Fetch hospitals for dropdown

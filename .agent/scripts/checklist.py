@@ -23,8 +23,13 @@ Priority Order:
 import sys
 import subprocess
 import argparse
+import io
 from pathlib import Path
 from typing import List, Tuple, Optional
+
+# Force UTF-8 encoding for stdout to prevent UnicodeEncodeError on Windows
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
 
 # ANSI colors for terminal output
 class Colors:

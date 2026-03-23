@@ -399,13 +399,15 @@ async function handleEvent(event: LineEvent): Promise<void> {
   const isExpired = stateAt && (Date.now() - stateAt.getTime() > 30 * 60 * 1000); // 30 mins
 
   // 1. COMMAND: "แจ้งซ่อม" (From Rich Menu or Typed)
-  if (messageText.trim() === "แจ้งซ่อม") {
+  const ticketCommands = ["แจ้งซ่อม", "แจ้งเหตุเสีย-แจ้งปัญหา"];
+  if (ticketCommands.includes(messageText.trim())) {
     await startTicketFlow(user.id, event.replyToken);
     return;
   }
 
   // 1.1 COMMAND: "ค้นหาวิธีแก้ไข" (From Rich Menu)
-  if (messageText.trim() === "ค้นหาวิธีแก้ไข") {
+  const kbCommands = ["ค้นหาวิธีแก้ไข", "ค้นหาวิธีแก้ไขปัญหาเบื้องต้น"];
+  if (kbCommands.includes(messageText.trim())) {
     await startKnowledgeSearchFlow(user.id, event.replyToken);
     return;
   }
@@ -499,7 +501,7 @@ async function handleEvent(event: LineEvent): Promise<void> {
           },
           {
             type: "text",
-            text: "หากข้อมูลข้างต้นยังไม่สามารถแก้ปัญหาได้ คุณสามารถกดเมนู 'แจ้งซ่อม' เพื่อเปิดใบงานหาเจ้าหน้าที่ได้ทันทีนะคะ/ครับ"
+            text: "หากข้อมูลข้างต้นยังไม่สามารถแก้ปัญหาได้ คุณสามารถกดปุ่ม 'แจ้งเหตุเสีย-แจ้งปัญหา' เพื่อเปิดใบงานส่งข้อมูลให้เจ้าหน้าที่ได้ทันทีนะคะ/ครับ"
           }
         ]);
       }
@@ -543,7 +545,7 @@ async function handleEvent(event: LineEvent): Promise<void> {
   // If no open ticket and not in a command state, we can either prompt them to click "แจ้งซ่อม"
   // or just ignore if it's random chat.
   if (event.replyToken && messageType === "text" && !isExpired) {
-    await replyMessage(event.replyToken, [{ type: "text", text: "ต้องการแจ้งซ่อมหรือไม่คะ? กรุณากดปุ่ม 'แจ้งซ่อม' จากเมนู Rich Menu หรือพิมพ์ 'แจ้งซ่อม' เพื่อเริ่มแจ้งงานนะคะ/ครับ" }]);
+    await replyMessage(event.replyToken, [{ type: "text", text: "ต้องการทิ้งข้อความแจ้งเรื่องให้เจ้าหน้าที่หรือไม่คะ? กรุณากดปุ่ม 'แจ้งเหตุเสีย-แจ้งปัญหา' จากหน้าเมนูด้านล่างก่อนนะคะ/ครับ" }]);
   }
 
   // Clean up cache for handled event
@@ -665,7 +667,7 @@ async function handlePostback(event: LineEvent, lineUserId: string): Promise<voi
 
     if (!description && attachments.length === 0) {
       if (event.replyToken) {
-        await replyMessage(event.replyToken, [{ type: "text", text: "❌ ไม่พบรายละเอียดสำหรับเปิดใบงาน กรุณากดปุ่ม 'แจ้งซ่อม' เพื่อเริ่มใหม่อีกครั้งนะคะ/ครับ" }]);
+        await replyMessage(event.replyToken, [{ type: "text", text: "❌ ไม่พบรายละเอียดสำหรับเปิดใบงาน กรุณากดปุ่ม 'แจ้งเหตุเสีย-แจ้งปัญหา' เพื่อเริ่มใหม่อีกครั้งนะคะ/ครับ" }]);
       }
       return;
     }

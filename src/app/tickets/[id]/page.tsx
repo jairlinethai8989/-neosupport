@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { logger } from "@/lib/logger";
+import { Metadata } from "next";
 import TicketDetailClient from "./TicketDetailClient";
 import { notFound } from "next/navigation";
 
@@ -61,6 +62,22 @@ async function getTicketDetails(id: string) {
   };
 
   return { ticket, messages: messages || [], initialSettings };
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const data = await getTicketDetails(id);
+  if (!data) return { title: "Ticket Not Found" };
+
+  return {
+    title: `Ticket ${data.ticket.ticket_no} — NEO Support`,
+    description: `Details and conversation for ticket ${data.ticket.ticket_no}: ${data.ticket.description?.substring(0, 100)}...`,
+    openGraph: {
+      title: `Ticket Details: ${data.ticket.ticket_no}`,
+      description: data.ticket.description?.substring(0, 150),
+      type: "website",
+    }
+  };
 }
 
 export default async function TicketPage({ params }: { params: Promise<{ id: string }> }) {

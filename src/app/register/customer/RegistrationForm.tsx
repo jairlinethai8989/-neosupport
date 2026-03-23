@@ -63,7 +63,7 @@ export default function RegistrationForm() {
   if (success) {
     return (
       <div style={{ textAlign: "center", padding: "3rem", animation: "fade-in 0.5s" }}>
-        <h1 style={{ fontSize: "4rem", marginBottom: "1rem" }}>✅</h1>
+        <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>✅</div>
         <h2 style={{ color: "var(--status-done-text)" }}>ลงทะเบียนสำเร็จ!</h2>
         <p>ตอนนี้คุณสามารถเริ่มแจ้งปัญหาผ่าน LINE ได้ทันทีค่ะ/ครับ</p>
         <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "2rem" }}>กำลังพาวนกลับไปยัง LINE...</p>

@@ -42,10 +42,13 @@ export default function ImageAnnotationModal({ imageUrl, onClose, onSend }: Imag
 
   const initCanvas = useCallback(() => {
     const canvas = getCanvas();
+    const ctx = getCtx();
     const img = imgRef.current;
-    if (!canvas || !img || !img.complete) return;
+    if (!canvas || !ctx || !img || !img.complete) return;
     canvas.width = img.naturalWidth || img.width;
     canvas.height = img.naturalHeight || img.height;
+    // Draw the base image onto the canvas so annotations composite on top
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
   }, []);
 
   const pushHistory = () => {
@@ -105,6 +108,8 @@ export default function ImageAnnotationModal({ imageUrl, onClose, onSend }: Imag
       ctx.lineTo(pos.x, pos.y);
       ctx.lineWidth = lineWidth * 3;
       ctx.stroke();
+      ctx.globalCompositeOperation = 'source-over';
+      lastPos.current = pos;
       return;
     }
 
@@ -151,12 +156,22 @@ export default function ImageAnnotationModal({ imageUrl, onClose, onSend }: Imag
 
   const handleSend = async () => {
     const canvas = getCanvas();
-    if (!canvas) return;
+    const img = imgRef.current;
+    if (!canvas || !img) return;
 
     setIsSending(true);
     try {
-      // Use image/png to preserve transparency and prevent black background
-      const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png', 1.0));
+      // Composite: base image + annotation layer onto a temp canvas
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = canvas.width;
+      tempCanvas.height = canvas.height;
+      const tempCtx = tempCanvas.getContext('2d')!;
+      // Draw original image first
+      tempCtx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      // Draw annotations on top
+      tempCtx.drawImage(canvas, 0, 0);
+
+      const blob = await new Promise<Blob | null>(resolve => tempCanvas.toBlob(resolve, 'image/png', 1.0));
       if (!blob) throw new Error('Canvas to blob failed');
       const file = new File([blob], 'annotated-image.png', { type: 'image/png' });
       await onSend(file);
@@ -302,6 +317,7 @@ export default function ImageAnnotationModal({ imageUrl, onClose, onSend }: Imag
           onChange={e => setColor(e.target.value)}
           style={{ width: '32px', height: '32px', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
           title="Color"
+          aria-label="Select annotation color"
         />
 
         {/* Line width */}
@@ -313,6 +329,7 @@ export default function ImageAnnotationModal({ imageUrl, onClose, onSend }: Imag
           onChange={e => setLineWidth(Number(e.target.value))}
           style={{ width: '80px' }}
           title="Line width"
+          aria-label="Adjust line width"
         />
 
         {/* Actions */}

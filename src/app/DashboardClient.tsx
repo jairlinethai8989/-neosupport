@@ -533,8 +533,8 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
     return acc;
   }, {} as Record<string, number>);
   
-  const hospitalColorsDark = ['#58a6ff', '#bc8cff', '#3fb950', '#d29922', '#f85149'];
-  const hospitalColorsLight = ['#0969da', '#8250df', '#1a7f37', '#9a6700', '#d1242f'];
+  const hospitalColorsDark = ['#58a6ff', '#14b8a6', '#3fb950', '#d29922', '#f85149'];
+  const hospitalColorsLight = ['#0969da', '#0fb9b1', '#1a7f37', '#9a6700', '#d1242f'];
   const currentColors = theme === 'dark' ? hospitalColorsDark : hospitalColorsLight;
 
   const hospitalData = Object.keys(hospitalCounts).map((key, index) => ({
@@ -559,63 +559,59 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
     <div className={`dashboard-container ${theme}`}>
       {/* New Ticket Realtime Notification Popup */}
       {newTicketNotify && (
-        <div className="new-ticket-popup animate-bounce-in">
-          <div className="popup-header">
-            <div className="popup-title">
-              <Bell size={20} className="animate-pulse" />
-              <span>แจ้งซ่อมใหม่เข้าระบบ!</span>
+        <div className="new-ticket-popup animate-bounce-in hud-style" style={{ borderLeft: '4px solid var(--primary)', borderRadius: '2px 14px 14px 2px' }}>
+          <div className="popup-header" style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '0.75rem', marginBottom: '0.75rem' }}>
+            <div className="popup-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ padding: '6px', background: 'var(--primary-glow)', borderRadius: '8px' }}>
+                <Bell size={18} className="animate-pulse" color="var(--primary)" />
+              </div>
+              <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-heading)', letterSpacing: '0.5px' }}>NEW_INCOMING_TICKET</span>
             </div>
-            <button className="popup-close" onClick={() => setNewTicketNotify(null)}>
-              <X size={20} />
+            <button className="popup-close" onClick={() => setNewTicketNotify(null)} style={{ opacity: 0.5 }}>
+              <X size={18} />
             </button>
           </div>
-          <div className="popup-content">
-            <div className="popup-hospital">
-              {newTicketNotify.users?.hospitals?.name || "โรงพยาบาลไม่ระบุ"}
+          <div className="popup-content" style={{ padding: '0.5rem 0' }}>
+            <div className="popup-hospital" style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>
+              Origin: {newTicketNotify.users?.hospitals?.name || "EXTERNAL_SOURCE"}
             </div>
-            <div style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 600, marginBottom: '0.25rem' }}>
-              Ticket: {newTicketNotify.ticket_no}
+            <div style={{ fontSize: '1.1rem', color: 'var(--primary)', fontWeight: 900, marginBottom: '0.5rem', fontFamily: 'monospace' }}>
+              #{newTicketNotify.ticket_no}
             </div>
-            <div className="popup-desc">
+            <div className="popup-desc" style={{ fontSize: '0.9rem', color: 'var(--text-main)', lineHeight: 1.5, opacity: 0.9 }}>
               {newTicketNotify.description}
             </div>
           </div>
-          <div className="popup-footer" style={{ display: 'flex', gap: '0.5rem' }}>
+          <div className="popup-footer" style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem' }}>
             <button 
-              className="popup-btn-secondary" 
-              style={{ flex: 1, padding: '0.6rem', fontSize: '0.85rem', borderRadius: '8px', border: '1px solid var(--border-color)', color: 'var(--text-main)', background: 'var(--bg-glass)', cursor: 'pointer' }}
+              className="btn-secondary" 
+              style={{ flex: 1, padding: '0.75rem', fontSize: '0.8rem', borderRadius: '10px' }}
               onClick={() => {
                 router.push(`/tickets/${newTicketNotify.id}`);
                 setNewTicketNotify(null);
               }}
             >
-              ดูรายละเอียด
+              INVESTIGATE
             </button>
             <button 
-              className="popup-btn-primary" 
+              className="btn-primary" 
               style={{ 
-                flex: 1, 
-                padding: '0.6rem', 
-                fontSize: '0.85rem', 
-                borderRadius: '8px', 
-                background: 'var(--primary)', 
-                color: 'white', 
-                border: 'none', 
-                fontWeight: 700, 
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '4px'
+                flex: 1.2, 
+                padding: '0.75rem', 
+                fontSize: '0.8rem', 
+                borderRadius: '10px',
+                background: 'var(--primary)',
+                boxShadow: '0 4px 15px var(--primary-glow)'
               }}
-              onClick={(e) => {
-                handleClaim(e as any, newTicketNotify.id);
+              onClick={async (e) => {
+                await handleClaim(e as any, newTicketNotify.id);
                 setNewTicketNotify(null);
               }}
             >
-              <Activity size={14} className="animate-pulse" /> รับงานทันที
+              <Zap size={14} /> CLAIM_NODE
             </button>
           </div>
+          <div className="scanner-line" style={{ background: 'var(--primary)', opacity: 0.5 }} />
         </div>
       )}
 
@@ -629,40 +625,40 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
         
         <nav className="sidebar-nav">
           <div className="nav-group-label">{isSidebarOpen ? "หลัก" : "•••"}</div>
-          <Link href="/" className="nav-item active">
+          <Link href="/" className="nav-item active" data-label="Dashboard">
             <LayoutDashboard size={20} className="nav-icon" />
-            {isSidebarOpen && <span className="nav-label">Dashboard</span>}
+            <span className="nav-label">Dashboard</span>
           </Link>
-          <Link href="/tickets/new" className="nav-item">
+          <Link href="/tickets/new" className="nav-item" data-label="สร้างตั๋วงาน">
             <PlusCircle size={20} className="nav-icon" />
-            {isSidebarOpen && <span className="nav-label">สร้างตั๋วงาน</span>}
+            <span className="nav-label">สร้างตั๋วงาน</span>
           </Link>
 
           <div className="nav-group-label" style={{ marginTop: '1.5rem' }}>{isSidebarOpen ? "สถิติและข้อมูล" : "•••"}</div>
-          <Link href="/graph" className="nav-item">
+          <Link href="/graph" className="nav-item" data-label="สถิติประสิทธิภาพ">
             <BarChart3 size={20} className="nav-icon" />
-            {isSidebarOpen && <span className="nav-label">สถิติประสิทธิภาพ</span>}
+            <span className="nav-label">สถิติประสิทธิภาพ</span>
           </Link>
 
           <div className="nav-group-label" style={{ marginTop: '1.5rem' }}>{isSidebarOpen ? "ตั้งค่าระบบ" : "•••"}</div>
-          <Link href="/settings/hospitals" className="nav-item">
+          <Link href="/settings/hospitals" className="nav-item" data-label="จัดการโรงพยาบาล">
             <Building2 size={20} className="nav-icon" />
-            {isSidebarOpen && <span className="nav-label">จัดการโรงพยาบาล</span>}
+            <span className="nav-label">จัดการโรงพยาบาล</span>
           </Link>
-          <Link href="/settings/staff-approvals" className="nav-item">
+          <Link href="/settings/staff-approvals" className="nav-item" data-label="อนุมัติพนักงาน">
             <Users size={20} className="nav-icon" />
-            {isSidebarOpen && <span className="nav-label">อนุมัติพนักงาน</span>}
+            <span className="nav-label">อนุมัติพนักงาน</span>
           </Link>
-          <Link href="/settings" className="nav-item">
+          <Link href="/settings" className="nav-item" data-label="ตั้งค่าทั่วไป">
             <Settings size={20} className="nav-icon" />
-            {isSidebarOpen && <span className="nav-label">ตั้งค่าทั่วไป</span>}
+            <span className="nav-label">ตั้งค่าทั่วไป</span>
           </Link>
 
           <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
               <form action={logout}>
-                <button type="submit" className="nav-item hover-danger" style={{ width: '100%', background: 'none', border: 'none' }}>
+                <button type="submit" className="nav-item hover-danger" style={{ width: '100%', background: 'none', border: 'none' }} data-label="ออกจากระบบ">
                   <LogOut size={20} className="nav-icon" />
-                  {isSidebarOpen && <span className="nav-label">ออกจากระบบ</span>}
+                  <span className="nav-label">ออกจากระบบ</span>
                 </button>
               </form>
           </div>
@@ -672,7 +668,15 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
           className="sidebar-toggle-btn"
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           title={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
-          style={{ top: '1.2rem', right: '-12px', bottom: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ 
+            top: '70px', 
+            right: '-12px', 
+            background: 'var(--primary)', 
+            color: 'white', 
+            boxShadow: '0 4px 10px var(--primary-glow)',
+            border: 'none',
+            zIndex: 100
+          }}
         >
           {isSidebarOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
         </button>
@@ -717,99 +721,35 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
           </div>
         </header>
 
-        <section className="hud-hero animate-fade-in delay-1">
-          <div className="technical-panel" style={{ height: '350px', display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '2rem' }}>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-               <h3 style={{ fontSize: '0.85rem', color: 'var(--primary)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Activity size={14} /> TICKET_VOLUMETRIC_ANALYSIS
-              </h3>
-               <div style={{ flex: 1, minHeight: 0 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={statusData}>
-                    <defs>
-                      <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" vertical={false} />
-                    <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} axisLine={false} tickLine={false} />
-                    <YAxis stroke="var(--text-muted)" fontSize={10} axisLine={false} tickLine={false} />
-                    <RechartsTooltip content={<CustomTooltip />} />
-                    <Area type="monotone" dataKey="count" stroke="var(--primary)" strokeWidth={3} fillOpacity={1} fill="url(#colorCount)" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', borderLeft: '1px solid var(--border-light)', paddingLeft: '2rem' }}>
-              <h3 style={{ fontSize: '0.85rem', color: 'var(--accent)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Zap size={14} /> NODE_LOAD_DISTRIBUTION
-              </h3>
-              <div style={{ flex: 1, minHeight: 0 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <RadarChart cx="50%" cy="50%" outerRadius="80%" data={hospitalData.slice(0, 6)}>
-                    <PolarGrid stroke="var(--border-color)" />
-                    <PolarAngleAxis dataKey="name" stroke="var(--text-muted)" fontSize={8} />
-                    <Radar
-                      name="Tickets"
-                      dataKey="count"
-                      stroke="var(--accent)"
-                      fill="var(--accent)"
-                      fillOpacity={0.3}
-                    />
-                    <RechartsTooltip content={<CustomTooltip />} />
-                  </RadarChart>
-                </ResponsiveContainer>
+        <section className="dashboard-summary-ribbon animate-fade-in delay-1" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '2.5rem' }}>
+          {[
+            { label: "TOTAL_ASSETS", value: total, color: "var(--primary)", icon: <Activity size={18} /> },
+            { label: "PENDING_QUEUE", value: pending, color: "var(--status-pending-text)", icon: <Clock size={18} /> },
+            { label: "ACTIVE_STREAM", value: inProgress, color: "var(--status-progress-text)", icon: <Zap size={18} /> },
+            { label: "ESCALATED_ALERTS", value: escalated, color: "var(--status-escalated-text)", icon: <AlertTriangle size={18} /> },
+            { label: "UNCLAIMED_JOB", value: unassignedCount, color: "var(--status-escalated-text)", glow: true, icon: <Zap size={18} /> }
+          ].map((m, i) => (
+            <div key={i} className="technical-panel" style={{ padding: '1.25rem', borderTop: m.glow ? '2px solid var(--status-escalated-text)' : '1px solid var(--border-color)', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', letterSpacing: '1px' }}>{m.label}</div>
+                <div style={{ color: m.color, opacity: 0.8 }}>{m.icon}</div>
               </div>
+              <div style={{ 
+                fontSize: '2.2rem', 
+                fontWeight: 800, 
+                color: m.color,
+                textShadow: m.glow ? `0 0 15px ${m.color}80` : 'none',
+                fontFamily: 'monospace'
+              }}>
+                {m.value.toString().padStart(2, '0')}
+              </div>
+              {m.glow && <div className="scanner-line" style={{ top: 0, height: '2px', background: m.color }} />}
             </div>
-          </div>
+          ))}
         </section>
 
-        <aside className="hud-sidebar animate-fade-in delay-2">
-          <div className="technical-panel" style={{ height: '100%', borderTopColor: 'var(--accent)' }}>
-             <h3 style={{ fontSize: '0.85rem', color: 'var(--text-heading)', marginBottom: '1.5rem' }}>SYSTEM_METRICS</h3>
-             
-             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                {[
-                  { label: "TOTAL_ASSETS", value: total, color: "var(--text-heading)" },
-                  { label: "PENDING_QUEUE", value: pending, color: "var(--status-pending-text)" },
-                  { label: "ACTIVE_STREAM", value: inProgress, color: "var(--status-progress-text)" },
-                  { label: "ESCALATED_ALERTS", value: escalated, color: "var(--status-escalated-text)" },
-                  { label: "UNCLAIMED_JOB", value: unassignedCount, color: "var(--status-escalated-text)", glow: true }
-                ].map((m, i) => (
-                  <div key={i} style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '0.75rem' }}>
-                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '4px' }}>{m.label}</div>
-                    <div style={{ 
-                      fontSize: '2rem', 
-                      fontWeight: 800, 
-                      color: m.color,
-                      textShadow: m.glow ? `0 0 10px ${m.color}` : 'none'
-                    }}>
-                      {m.value.toString().padStart(2, '0')}
-                    </div>
-                  </div>
-                ))}
-             </div>
-
-             <div style={{ marginTop: '2rem', padding: '1rem', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-light)' }}>
-                <div style={{ fontSize: '0.6rem', color: 'var(--primary)', marginBottom: '8px' }}>REALTIME_HEARTBEAT</div>
-                <div style={{ display: 'flex', gap: '4px' }}>
-                  {[...Array(20)].map((_, i) => (
-                    <div key={i} style={{ 
-                      width: '4px', 
-                      height: '12px', 
-                      background: i % 3 === 0 ? 'var(--primary)' : 'var(--border-color)',
-                      animation: 'pulse-glow 2s infinite',
-                      animationDelay: `${i * 0.1}s`
-                    }} />
-                  ))}
-                </div>
-             </div>
-          </div>
-        </aside>
-
-        <section className="hud-content">
+        <section className="hud-content" style={{ width: '100%', maxWidth: 'none' }}>
           {/* Mobile Card Layout - Visible only on mobile via CSS */}
           <div className="mobile-cards-container">
                {sortedTickets.length === 0 ? (
@@ -956,13 +896,14 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
                     width: '100%',
                     padding: '0.75rem 1rem 0.75rem 2.8rem',
                     borderRadius: '14px',
-                    border: '1px solid var(--border-color)',
                     background: 'var(--bg-surface)',
-                    color: 'var(--text-main)',
-                    fontSize: '0.95rem',
+                    color: 'var(--text-heading)',
+                    fontSize: '1rem',
+                    fontWeight: '600',
                     transition: 'all 0.2s ease',
                     outline: 'none',
-                    boxShadow: '0 2px 5px rgba(0,0,0,0.05)'
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                    border: '2px solid var(--border-color)'
                   }}
                   className="search-input-modern"
                 />
@@ -1075,6 +1016,57 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
 
       <style jsx>{`
         @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .sidebar.collapsed .nav-item {
+          position: relative;
+        }
+
+        .sidebar.collapsed .nav-item::after {
+          content: attr(data-label);
+          position: absolute;
+          left: 100%;
+          top: 50%;
+          transform: translateY(-50%) translateX(10px);
+          background: var(--bg-surface);
+          color: var(--text-heading);
+          padding: 0.5rem 0.8rem;
+          border-radius: 6px;
+          font-size: 0.8rem;
+          white-space: nowrap;
+          opacity: 0;
+          pointer-events: none;
+          transition: all 0.2s ease;
+          box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+          border: 1px solid var(--border-color);
+          z-index: 1000;
+        }
+
+        .sidebar.collapsed .nav-item:hover::after {
+          opacity: 1;
+          transform: translateY(-50%) translateX(15px);
+        }
+
+        .hud-style {
+          background: var(--bg-glass);
+          backdrop-filter: blur(20px);
+          box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+          border: 1px solid var(--border-light);
+        }
+
+        .scanner-line {
+          position: absolute;
+          left: 0;
+          width: 100%;
+          height: 2px;
+          background: var(--primary);
+          box-shadow: 0 0 10px var(--primary);
+          animation: scan 3s linear infinite;
+        }
+
+        @keyframes scan {
+          0% { top: 0; }
+          100% { top: 100%; }
+        }
       `}</style>
     </div>
   );

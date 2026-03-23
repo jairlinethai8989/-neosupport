@@ -34,7 +34,7 @@ export default function TicketRatingClient({ ticketNo, ticketId }: { ticketNo: s
         <div className="success-icon-container" style={{ width: "80px", height: "80px", background: "rgba(34, 197, 94, 0.1)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 2rem" }}>
           <Heart size={40} className="text-done" style={{ color: "var(--status-done-text)" }} />
         </div>
-        <h1 style={{ fontSize: "2rem", marginBottom: "1rem" }}>ขอบคุณสำหรับคะแนนประเมิน!</h1>
+        <h2 style={{ fontSize: "2rem", marginBottom: "1rem" }}>ขอบคุณสำหรับคะแนนประเมิน!</h2>
         <p style={{ color: "var(--text-muted)", fontSize: "1.1rem" }}>ความคิดเห็นของคุณช่วยให้เราพัฒนาบริการให้ดียิ่งขึ้น</p>
       </div>
     );

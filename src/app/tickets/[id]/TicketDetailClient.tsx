@@ -696,7 +696,7 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
       <div style={{ position: "fixed", top: "-20000px", left: "-20000px", opacity: 0, pointerEvents: "none", zIndex: -100 }} data-pdf-report>
         <div ref={reportRef} style={{ width: "800px", padding: "60px", background: "white", color: "black", fontFamily: "'IBM Plex Sans Thai', sans-serif", display: "block", textAlign: "left" }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '40px', borderBottom: '2px solid #4f46e5', paddingBottom: '20px' }}>
-            <div style={{ textAlign: 'left' }}><h1 style={{ color: "#4f46e5", margin: 0, fontSize: "28px", fontWeight: 700 }}>NEO SUPPORT</h1><p style={{ color: "#666", margin: "5px 0", fontSize: "14px" }}>Service Report & Technical Summary</p></div>
+            <div style={{ textAlign: 'left' }}><div style={{ color: "#4f46e5", margin: 0, fontSize: "28px", fontWeight: 700 }}>NEO SUPPORT</div><p style={{ color: "#666", margin: "5px 0", fontSize: "14px" }}>Service Report & Technical Summary</p></div>
             <div style={{ textAlign: 'right' }}><p style={{ fontWeight: 700, margin: 0, fontSize: "18px" }}>Ticket: {initialTicket.ticket_no}</p><p style={{ color: "#666", margin: "5px 0" }}>Date: {new Date().toLocaleDateString('th-TH')}</p></div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '40px' }}>

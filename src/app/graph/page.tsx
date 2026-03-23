@@ -1,8 +1,19 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { createClient } from "@/utils/supabase/server";
+import { Metadata } from "next";
 import GraphClient from "./GraphClient";
 
-export const revalidate = 0; // Disable caching to fetch real-time data on load
+export const revalidate = 0;
+
+export const metadata: Metadata = {
+  title: "Analytics — NEO Support",
+  description: "View ticket trends, SLA compliance, and hospital performance statistics.",
+  openGraph: {
+    title: "Analytics Dashboard — NEO Support",
+    description: "Detailed analytics for IT support tickets.",
+    type: "website",
+  }
+};
 
 // Supabase fetching helper
 async function getDashboardData() {

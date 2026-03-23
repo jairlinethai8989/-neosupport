@@ -207,7 +207,7 @@ export default function NewTicketClient({
                 </div>
               )}
             </div>
-            <input type="file" accept="image/*" ref={fileInputRef} hidden onChange={handleFileChange} />
+            <input type="file" accept="image/*" ref={fileInputRef} hidden onChange={handleFileChange} aria-label="Upload ticket image" />
           </div>
 
           <button 

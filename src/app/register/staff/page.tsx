@@ -41,7 +41,7 @@ function StaffRegForm() {
   if (success) {
     return (
       <div style={{ textAlign: "center", padding: "3rem" }}>
-        <h1 style={{ fontSize: "4rem" }}>⏳</h1>
+        <div style={{ fontSize: "4rem" }}>⏳</div>
         <h2 style={{ color: "var(--primary)" }}>ส่งคำขอลงทะเบียนแล้ว</h2>
         <p>กรุณารอ Admin อนุมัติสิทธิ์เข้าใช้งานแดชบอร์ดนะคะ/ครับ</p>
         <button onClick={() => router.push("/login")} className="btn-secondary" style={{ marginTop: "2rem" }}>กลับไปหน้า Login</button>
