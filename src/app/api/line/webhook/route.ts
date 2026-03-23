@@ -399,15 +399,17 @@ async function handleEvent(event: LineEvent): Promise<void> {
   const isExpired = stateAt && (Date.now() - stateAt.getTime() > 30 * 60 * 1000); // 30 mins
 
   // 1. COMMAND: "แจ้งซ่อม" (From Rich Menu or Typed)
-  const ticketCommands = ["แจ้งซ่อม", "แจ้งเหตุเสีย-แจ้งปัญหา"];
-  if (ticketCommands.includes(messageText.trim())) {
+  const ticketCommands = ["แจ้งซ่อม", "แจ้งเหตุเสีย-แจ้งปัญหา", "แจ้งเหตุเสีย", "แจ้งปัญหา"];
+  const rawMsg = messageText.trim().toLowerCase();
+  
+  if (ticketCommands.some(cmd => rawMsg.includes(cmd.toLowerCase()))) {
     await startTicketFlow(user.id, event.replyToken);
     return;
   }
 
   // 1.1 COMMAND: "ค้นหาวิธีแก้ไข" (From Rich Menu)
-  const kbCommands = ["ค้นหาวิธีแก้ไข", "ค้นหาวิธีแก้ไขปัญหาเบื้องต้น"];
-  if (kbCommands.includes(messageText.trim())) {
+  const kbCommands = ["ค้นหาวิธีแก้ไข", "ค้นหาวิธีแก้ไขปัญหาเบื้องต้น", "ค้นหาวิธีแก้ปัญหา"];
+  if (kbCommands.some(cmd => rawMsg.includes(cmd.toLowerCase()))) {
     await startKnowledgeSearchFlow(user.id, event.replyToken);
     return;
   }
