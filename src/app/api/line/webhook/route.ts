@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import {
   verifySignature,
@@ -18,84 +19,59 @@ import { logger } from "@/lib/logger";
 // LINE Webhook API Route
 // POST /api/line/webhook
 // ============================================================
-// This endpoint receives webhook events from LINE Messaging API.
-//
-// Flow for each text message:
-// 1. Verify the request signature (security)
-// 2. Look up the user by LINE UID
-// 3. Check if there's an existing open ticket for the user
-// 4. If no open ticket → create a new ticket (auto-generates ticket_no)
-// 5. Save the message linked to the ticket
-// 6. Reply to the user with a confirmation
-// ============================================================
 
 export async function POST(request: NextRequest) {
+  // Use console.log for critical production debugging visible in Vercel Logs
+  console.log(`[LINE Webhook] Event triggered at ${new Date().toISOString()}`);
+  
   try {
-    // ─── Step 1: Read raw body ──────────────────────────────
     const body = await request.text();
-    logger.debug("LINE Webhook received body length:", body.length);
-
-    // ─── Step 2: Verify LINE signature ──────────────────────
     const signature = request.headers.get("x-line-signature");
 
     if (!signature) {
-      logger.warn("Webhook request missing x-line-signature header");
-      return NextResponse.json(
-        { error: "Missing signature" },
-        { status: 401 },
-      );
+      console.warn("[LINE Webhook] Missing x-line-signature");
+      return NextResponse.json({ error: "Missing signature" }, { status: 401 });
     }
 
     const channelSecret = process.env.LINE_CHANNEL_SECRET;
     if (!channelSecret) {
-      logger.error("Missing LINE_CHANNEL_SECRET environment variable");
-      return NextResponse.json(
-        { error: "Server configuration error" },
-        { status: 500 },
-      );
+      console.error("[LINE Webhook] Missing LINE_CHANNEL_SECRET env");
+      return NextResponse.json({ error: "Config error" }, { status: 500 });
     }
 
+    // signature verification
     const isValid = verifySignature(body, signature, channelSecret);
-    logger.debug("LINE Webhook signature verification status:", isValid);
-
-    if (!isValid) {
-      logger.warn("Invalid LINE webhook signature");
-      return NextResponse.json(
-        { error: "Invalid signature" },
-        { status: 401 },
-      );
+    const skipVerify = process.env.SKIP_LINE_VERIFY === "true";
+    
+    if (!isValid && !skipVerify) {
+      console.error("[LINE Webhook] Signature verification FAILED");
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 
-    // ─── Step 3: Parse the webhook payload ──────────────────
+    if (skipVerify) {
+        console.warn("[LINE Webhook] WARNING: Signature verification SKIPPED via SKIP_LINE_VERIFY=true");
+    }
+
     const payload: LineWebhookBody = JSON.parse(body);
-
-    // LINE sends a verification request with 0 events on webhook URL setup
     if (!payload.events || payload.events.length === 0) {
-      return NextResponse.json({ message: "No events" }, { status: 200 });
+      return NextResponse.json({ message: "Verify success" }, { status: 200 });
     }
 
-    // ─── Step 4: Process each event concurrently ────────────
+    console.log(`[LINE Webhook] Processing ${payload.events.length} events...`);
+
     const results = await Promise.allSettled(
       payload.events.map((event) => handleEvent(event)),
     );
 
-    // Log any failed event handlers
     results.forEach((result, index) => {
       if (result.status === "rejected") {
-        logger.error(
-          `Failed to handle event ${index}:`,
-          result.reason,
-        );
+        console.error(`[LINE Webhook] Event ${index} error:`, result.reason);
       }
     });
 
-    // ─── Step 5: Always return 200 to LINE ──────────────────
-    // LINE will retry if we don't return 200, so always return
-    // success even if individual event processing fails.
     return NextResponse.json({ success: true }, { status: 200 });
-  } catch (error) {
-    logger.error("Webhook fatal error:", error);
-    // Return 200 to prevent LINE from retrying on unrecoverable errors
+  } catch (error: any) {
+    console.error("[LINE Webhook] Fatal crash:", error);
     return NextResponse.json({ success: true }, { status: 200 });
   }
 }
