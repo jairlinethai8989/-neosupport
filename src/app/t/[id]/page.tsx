@@ -4,10 +4,30 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { Activity, Clock, Hospital, User, FileText, CheckCircle, Zap } from 'lucide-react';
 import PublicTicketForm from './PublicTicketForm';
 
-export const metadata: Metadata = {
-  title: 'Service Request Detail | NEO Support',
-  description: 'External Department Ticket View',
-};
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  
+  const { data: ticket } = await supabaseAdmin
+    .from("tickets")
+    .select("ticket_no, description, users!reporter_id(hospitals(name))")
+    .eq("id", id)
+    .single();
+
+  if (!ticket) return { title: "ไม่พบใบงาน - NEO Support" };
+
+  const hospital = (ticket.users as any)?.hospitals?.name || "ไม่ระบุหน่วยงาน";
+  const desc = ticket.description.length > 50 ? ticket.description.substring(0, 47) + "..." : ticket.description;
+
+  return {
+    title: `[งานส่งต่อ] #${ticket.ticket_no} - ${hospital}`,
+    description: `🏥 ${hospital}\n🛠️ ปัญหา: ${desc}`,
+    openGraph: {
+      title: `🛠️ งานส่งต่อ #${ticket.ticket_no}`,
+      description: `แจ้งโดย: ${hospital}\nอาการ: ${desc}`,
+      type: "website",
+    }
+  };
+}
 
 export default async function PublicTicketPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

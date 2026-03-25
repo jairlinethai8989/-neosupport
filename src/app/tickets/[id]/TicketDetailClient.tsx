@@ -443,8 +443,12 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
   const handleCopyMagicLink = async () => {
     try {
       const url = `${window.location.origin}/t/${initialTicket.id}`;
-      await navigator.clipboard.writeText(url);
-      showToast("คัดลอกลิงก์สำหรับส่งต่อให้ผู้ปฏิบัติงานเรียบร้อยแล้ว!");
+      const hospital = initialTicket.users?.hospitals?.name || "ไม่ระบุหน่วยงาน";
+      const desc = initialTicket.description || "ไม่มีรายละเอียด";
+      const shareText = `🛠️ *ส่งต่องานแจ้งซ่อม*\n🏥 หน่วยงาน: ${hospital}\n🆔 เลขที่: #${initialTicket.ticket_no}\n📝 ปัญหา: ${desc}\n\n👉 *ดูรายละเอียดและปิดงานได้ที่นี่:*\n${url}`;
+      
+      await navigator.clipboard.writeText(shareText);
+      showToast("คัดลอกข้อมูลและ Magic Link เรียบร้อยแล้ว!");
     } catch { showToast("ไม่สามารถคัดลอกลิงก์ได้"); }
   };
 
