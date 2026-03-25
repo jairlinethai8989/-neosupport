@@ -130,7 +130,7 @@ export default function NewTicketClient({
           </Link>
           <div>
             <h1>➕ สร้างทิคเก็ตใหม่ (Create Ticket)</h1>
-            <p>หน้าสำหรับเปิดตั๋วงานใหม่เองของเจ้าหน้าที่</p>
+            <p>หน้าสำหรับเปิดใบงานใหม่เองของเจ้าหน้าที่</p>
           </div>
         </div>
 

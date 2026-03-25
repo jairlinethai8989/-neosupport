@@ -121,7 +121,7 @@ function HospitalStats() {
             </div>
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: "2.5rem", fontWeight: "bold", color: "var(--primary)" }}>{tickets.length}</div>
-              <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>ตั๋วงานทั้งหมด</div>
+              <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>ใบงานทั้งหมด</div>
             </div>
           </div>
         </div>

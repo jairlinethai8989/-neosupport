@@ -263,11 +263,11 @@ export default function GraphClient({
               </div>
             )}
           </Link>
-          <Link href="/tickets/new" prefetch={true} className="nav-item" data-label="สร้างตั๋วงาน (New Ticket)">
+          <Link href="/tickets/new" prefetch={true} className="nav-item" data-label="สร้างใบงาน (New Ticket)">
             <PlusCircle size={20} className="nav-icon" />
             {isSidebarOpen && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                <span className="nav-label">สร้างตั๋วงาน</span>
+                <span className="nav-label">สร้างใบงาน</span>
                 <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>New Ticket</span>
               </div>
             )}

@@ -662,11 +662,11 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
               </div>
             )}
           </Link>
-          <Link href="/tickets/new" prefetch={true} className="nav-item" data-label="สร้างตั๋วงาน (New Ticket)">
+          <Link href="/tickets/new" prefetch={true} className="nav-item" data-label="สร้างใบงาน (New Ticket)">
             <PlusCircle size={20} className="nav-icon" />
             {isSidebarOpen && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                <span className="nav-label">สร้างตั๋วงาน</span>
+                <span className="nav-label">สร้างใบงาน</span>
                 <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>New Ticket</span>
               </div>
             )}
@@ -758,7 +758,7 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
             <Link href="/tickets/new" style={{ textDecoration: 'none' }}>
               <button className="btn-primary" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0.5rem 1rem', lineHeight: 1.2 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Plus size={16} /> สร้างตั๋วงาน
+                  <Plus size={16} /> สร้างใบงาน
                 </div>
                 <span style={{ fontSize: '0.6rem', opacity: 0.8, letterSpacing: '1px' }}>INITIALIZE_TICKET</span>
               </button>
@@ -769,7 +769,7 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
 
         <section className="dashboard-summary-ribbon animate-fade-in delay-1" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '2.5rem' }}>
           {[
-            { label: "ตั๋วงานทั้งหมด", sub: "TOTAL_ASSETS", value: total, color: "var(--primary)", icon: <Activity size={18} /> },
+            { label: "ใบงานทั้งหมด", sub: "TOTAL_ASSETS", value: total, color: "var(--primary)", icon: <Activity size={18} /> },
             { label: "รอดำเนินการ", sub: "PENDING_QUEUE", value: pending, color: "var(--status-pending-text)", icon: <Clock size={18} /> },
             { label: "กำลังแก้ไข", sub: "ACTIVE_STREAM", value: inProgress, color: "var(--status-progress-text)", icon: <Zap size={18} /> },
             { label: "แก้ไขล่าช้า", sub: "ESCALATED_ALERTS", value: escalated, color: "var(--status-escalated-text)", icon: <AlertTriangle size={18} /> },
@@ -857,7 +857,7 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
               <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', margin: 0 }}>
                 <Activity size={24} color="var(--primary)" />
                 <span style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem', flexWrap: 'wrap' }}>
-                  รายการตั๋วงานล่าสุด <span style={{ fontSize: '1.1rem', color: 'var(--text-muted)', fontWeight: 500 }}>Recent Tickets</span>
+                  รายการใบงานล่าสุด <span style={{ fontSize: '1.1rem', color: 'var(--text-muted)', fontWeight: 500 }}>Recent Tickets</span>
                 </span>
                 {statusFilter !== "ALL" && (
                   <span style={{ fontSize: '0.75rem', padding: '0.3rem 0.7rem', backgroundColor: 'var(--primary-glow)', color: 'var(--primary)', borderRadius: '20px', fontWeight: 600, border: '1px solid var(--primary)' }}>
