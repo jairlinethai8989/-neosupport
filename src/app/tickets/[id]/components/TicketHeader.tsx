@@ -91,12 +91,13 @@ export default function TicketHeader({ ticket, onCopyTicketId }: TicketHeaderPro
         }
         .id-label { font-size: 0.7rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
         .id-value { 
-          font-size: 1.65rem; 
+          font-size: clamp(1.2rem, 4.5vw, 1.65rem); 
           font-weight: 800; 
           color: var(--text-heading); 
           margin-top: 4px; 
           letter-spacing: -1.25px;
           word-break: break-word;
+          overflow-wrap: anywhere;
           line-height: 1.1;
         }
         
