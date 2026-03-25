@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle, Clock, AlertTriangle, Zap, User, Share2, Info } from "lucide-react";
+import { CheckCircle, Clock, AlertTriangle, Zap, Share2, Info } from "lucide-react";
 
 interface TicketHeaderProps {
   ticket: any;
@@ -9,291 +9,119 @@ interface TicketHeaderProps {
   onCopyTicketId: () => void;
 }
 
-const statusConfig: Record<string, { icon: any; color: string; label: string }> = {
-  'Pending': { icon: Clock, color: 'var(--status-pending-text)', label: 'รอการแก้ไข' },
-  'In Progress': { icon: Zap, color: 'var(--status-in-progress-text)', label: 'กำลังดำเนินการ' },
-  'Escalated': { icon: AlertTriangle, color: 'var(--status-escalated-text)', label: 'ส่งต่อ' },
-  'Resolved': { icon: CheckCircle, color: 'var(--status-done-text)', label: 'แก้ไขเสร็จสิ้น' },
-  'Closed': { icon: CheckCircle, color: 'var(--status-done-text)', label: 'ปิดงาน' }
+const statusConfig: Record<string, { icon: any; color: string; bg: string; label: string }> = {
+  'Pending': { icon: Clock, color: 'var(--status-pending-text)', bg: 'var(--status-pending-bg)', label: 'รอการแก้ไข' },
+  'In Progress': { icon: Zap, color: 'var(--status-progress-text)', bg: 'var(--status-progress-bg)', label: 'กำลังดำเนินการ' },
+  'Escalated': { icon: AlertTriangle, color: 'var(--status-escalated-text)', bg: 'var(--status-escalated-bg)', label: 'ส่งต่อ' },
+  'Resolved': { icon: CheckCircle, color: 'var(--status-done-text)', bg: 'var(--status-done-bg)', label: 'แก้ไขเสร็จสิ้น' },
+  'Closed': { icon: CheckCircle, color: 'var(--status-done-text)', bg: 'var(--status-done-bg)', label: 'ปิดงาน' }
 };
 
-const priorityConfig: Record<string, { color: string; label: string }> = {
-  'Critical': { color: 'var(--prio-critical-text)', label: 'วิกฤต' },
-  'High': { color: 'var(--prio-high-text)', label: 'สูง' },
-  'Medium': { color: 'var(--prio-medium-text)', label: 'ปานกลาง' },
-  'Low': { color: 'var(--prio-low-text)', label: 'ต่ำ' }
-};
-
-export default function TicketHeader({ ticket, assigneeName, onCopyTicketId }: TicketHeaderProps) {
+export default function TicketHeader({ ticket, onCopyTicketId }: TicketHeaderProps) {
   const [showDetails, setShowDetails] = useState(false);
   const status = ticket.status || 'Pending';
-  const priority = ticket.priority || 'Medium';
   const StatusIcon = statusConfig[status]?.icon || Clock;
-  const statusColor = statusConfig[status]?.color || 'var(--text-muted)';
 
   return (
-    <>
-      <div className="hud-header-container">
-        <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-            <div className="ticket-id-badge">
-              <span className="badge-label">TICKET_ID</span>
-              <h1 className="badge-value">{ticket.ticket_no}</h1>
-            </div>
-            <button
-              onClick={onCopyTicketId}
-              className="btn-action-small"
-              title="Copy ticket ID"
-            >
-              <Share2 size={12} />
-              <span>COPY_REF</span>
-            </button>
-          </div>
-
-          <p className="ticket-description">
-            {ticket.description}
-          </p>
-
-          <div className="badge-row">
-            <span className="status-indicator" style={{ borderLeftColor: statusColor, background: `${statusColor}10`, color: statusColor }}>
-              <StatusIcon size={12} />
-              {statusConfig[status]?.label.toUpperCase() || status}
-            </span>
-
-            <span className="prio-indicator" style={{ borderColor: priorityConfig[priority]?.color, color: priorityConfig[priority]?.color }}>
-              {priorityConfig[priority]?.label || priority}
-            </span>
-
-            {ticket.issue_type && <span className="meta-tag">{ticket.issue_type}</span>}
-            {ticket.module && <span className="meta-tag">{ticket.module}</span>}
-          </div>
+    <div className="clean-header">
+      <div className="header-top">
+        <div className="id-section">
+          <span className="id-label">Ticket ID</span>
+          <h1 className="id-value">#{ticket.ticket_no}</h1>
         </div>
-
-        <div className="header-operator-panel">
-          <div className="operator-card">
-            <div className="operator-label">CURRENT_OPERATOR</div>
-            <div className="operator-value" style={{ color: assigneeName ? 'var(--primary)' : 'var(--text-muted)' }}>
-              <User size={16} />
-              <span>{assigneeName?.toUpperCase() || 'UNA_NODE'}</span>
-            </div>
-
-            <button
-              onClick={() => setShowDetails(!showDetails)}
-              className="btn-details-toggle"
-            >
-              <Info size={12} />
-              {showDetails ? 'COLLAPSE_LOG' : 'EXPAND_LOG'}
-            </button>
-          </div>
+        
+        <div className="action-row">
+          <button onClick={onCopyTicketId} className="btn-copy">
+            <Share2 size={14} /> <span>คัดลอก ID</span>
+          </button>
+          <button onClick={() => setShowDetails(!showDetails)} className="btn-info">
+            <Info size={14} /> {showDetails ? 'ซ่อนรายละเอียด' : 'ดูข้อมูเพิ่มเติม'}
+          </button>
         </div>
       </div>
 
+      <div className="badge-row">
+        <div className="status-badge" style={{ backgroundColor: statusConfig[status]?.bg, color: statusConfig[status]?.color }}>
+          <StatusIcon size={14} />
+          {statusConfig[status]?.label}
+        </div>
+        {ticket.priority && (
+          <div className="priority-badge" style={{ 
+            backgroundColor: `var(--prio-${ticket.priority.toLowerCase()}-bg)`, 
+            color: `var(--prio-${ticket.priority.toLowerCase()}-text)`,
+            borderColor: `var(--prio-${ticket.priority.toLowerCase()}-text)`
+          }}>
+            {ticket.priority.toUpperCase()}
+          </div>
+        )}
+      </div>
+
       {showDetails && (
-        <div className="details-log-panel animate-slide-down">
-          <div className="panel-header">TICKET_LOG_METADATA</div>
-          <div className="details-grid">
-            <div className="detail-item">
-              <div className="item-label">TIMESTAMP_CREATE</div>
-              <div className="item-value">{new Date(ticket.created_at).toLocaleString('th-TH')}</div>
-            </div>
-            {ticket.updated_at && (
-              <div className="detail-item">
-                <div className="item-label">TIMESTAMP_UPDATE</div>
-                <div className="item-value">{new Date(ticket.updated_at).toLocaleString('th-TH')}</div>
-              </div>
-            )}
-            {ticket.reporter_name && (
-              <div className="detail-item">
-                <div className="item-label">SOURCE_ENTITY</div>
-                <div className="item-value">{ticket.reporter_name}</div>
-              </div>
-            )}
-            {ticket.hospital_name && (
-              <div className="detail-item">
-                <div className="item-label">LOCATION_NODE</div>
-                <div className="item-value">{ticket.hospital_name}</div>
-              </div>
-            )}
+        <div className="details-grid animate-fade-in">
+          <div className="detail-item">
+            <label>หน่วยงาน</label>
+            <p>{ticket.users?.hospitals?.name || 'ไม่ระบุ'}</p>
+          </div>
+          <div className="detail-item">
+            <label>ผู้แจ้ง</label>
+            <p>{ticket.users?.display_name || 'ไม่ระบุ'} ({ticket.users?.department || '-'})</p>
+          </div>
+          <div className="detail-item">
+            <label>กลุ่มงานที่รับผิดชอบ</label>
+            <p>{ticket.departments?.name || 'ยังไม่ระบุ'}</p>
+          </div>
+          <div className="detail-item">
+            <label>วันที่สร้าง</label>
+            <p>{new Date(ticket.created_at).toLocaleString('th-TH')}</p>
           </div>
         </div>
       )}
 
       <style jsx>{`
-        .hud-header-container {
-          background: var(--bg-surface);
-          backdrop-filter: blur(10px);
-          border-radius: var(--radius-sharp);
-          padding: 1.5rem;
-          margin-bottom: 0;
+        .clean-header {
+          padding: 2rem;
           border-bottom: 1px solid var(--border-color);
+          background: white;
+        }
+        .header-top {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
-          gap: 1.5rem;
-          position: relative;
-          overflow: hidden;
+          margin-bottom: 1.25rem;
         }
-        .hud-header-container::after {
-          content: "";
-          position: absolute;
-          top: 0; left: 0; width: 100%; height: 100%;
-          background: repeating-linear-gradient(0deg, var(--hud-scanline), var(--hud-scanline) 1px, transparent 1px, transparent 2px);
-          pointer-events: none;
-        }
-
-        .ticket-id-badge {
-          display: flex;
-          flex-direction: column;
-        }
-        .badge-label {
-          font-size: 0.55rem;
-          font-weight: 800;
-          color: var(--primary);
-          letter-spacing: 2px;
-          margin-bottom: 2px;
-          font-family: monospace;
-        }
-        .badge-value {
-          margin: 0;
-          font-size: 1.75rem;
-          color: var(--text-heading);
-          font-weight: 800;
-          line-height: 1;
-        }
-
-        .btn-action-small {
-          padding: 0.4rem 0.6rem;
-          background: rgba(14, 165, 233, 0.1);
-          border: 1px solid var(--border-color);
-          border-radius: 2px;
-          font-size: 0.65rem;
-          color: var(--primary);
-          cursor: pointer;
-          font-weight: 800;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          transition: all 0.2s;
-        }
-        .btn-action-small:hover { background: var(--primary); color: black; }
-
-        .ticket-description {
-          margin: 0 0 1.25rem 0;
+        .id-label { font-size: 0.7rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+        .id-value { font-size: 1.75rem; font-weight: 800; color: var(--text-heading); margin-top: 4px; letter-spacing: -1px; }
+        
+        .action-row { display: flex; gap: 0.75rem; }
+        .btn-copy, .btn-info {
+          display: flex; gap: 0.5rem; align-items: center;
+          padding: 0.6rem 1rem; border-radius: 10px; border: 1px solid var(--border-color);
+          font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: 0.2s;
+          background: white;
           color: var(--text-main);
-          font-size: 1rem;
-          line-height: 1.6;
-          border-left: 2px solid var(--primary);
-          padding-left: 1rem;
         }
+        .btn-copy:hover, .btn-info:hover { background: var(--bg-surface-hover); border-color: var(--primary); color: var(--primary); }
 
-        .badge-row { display: flex; flex-wrap: wrap; gap: 0.6rem; }
-        
-        .status-indicator {
-          padding: 0.2rem 0.6rem;
-          border-left: 3px solid transparent;
-          font-size: 0.7rem;
-          font-weight: 800;
-          display: flex;
-          align-items: center;
-          gap: 0.4rem;
+        .badge-row { display: flex; gap: 0.75rem; align-items: center; margin-top: 0.5rem; }
+        .status-badge {
+          display: flex; align-items: center; gap: 6px;
+          padding: 0.4rem 1.25rem; border-radius: 20px; font-size: 0.8rem; font-weight: 700;
         }
-        
-        .prio-indicator {
-          padding: 0.2rem 0.6rem;
+        .priority-badge {
+          padding: 0.4rem 1.25rem; border-radius: 20px; font-size: 0.8rem; font-weight: 700;
           border: 1px solid transparent;
-          font-size: 0.7rem;
-          font-weight: 800;
         }
         
-        .meta-tag {
-          padding: 0.2rem 0.6rem;
-          background: rgba(0,0,0,0.2);
-          color: var(--text-muted);
-          font-size: 0.7rem;
-          font-weight: 700;
-          border: 1px solid var(--border-light);
-        }
-
-        .operator-card {
-          padding: 1rem;
-          background: var(--bg-color);
-          border: 1px solid var(--border-color);
-          border-radius: 2px;
-          min-width: 220px;
-        }
-        
-        .operator-label {
-          font-size: 0.55rem;
-          color: var(--text-muted);
-          font-weight: 800;
-          margin-bottom: 0.5rem;
-          font-family: monospace;
-        }
-        
-        .operator-value {
-          display: flex;
-          align-items: center;
-          gap: 0.6rem;
-          font-weight: 800;
-          font-size: 0.95rem;
-          margin-bottom: 0.75rem;
-        }
-
-        .btn-details-toggle {
-          width: 100%;
-          padding: 0.4rem;
-          background: transparent;
-          border: 1px solid var(--border-light);
-          color: var(--text-muted);
-          font-size: 0.65rem;
-          font-weight: 800;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 0.5rem;
-          transition: all 0.2s;
-        }
-        .btn-details-toggle:hover { border-color: var(--primary); color: var(--primary); }
-
-        .details-log-panel {
-          background: var(--bg-surface);
-          border: 1px solid var(--border-color);
-          border-top: none;
-          padding: 1.25rem;
-          position: relative;
-        }
-        
-        .panel-header {
-          font-size: 0.6rem;
-          color: var(--primary);
-          font-weight: 800;
-          margin-bottom: 1rem;
-          font-family: monospace;
-          opacity: 0.6;
-        }
-
         .details-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-          gap: 1.25rem;
+          display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+          gap: 1.5rem; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px dashed var(--border-color);
         }
+        .detail-item label { font-size: 0.65rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; }
+        .detail-item p { font-size: 0.95rem; font-weight: 600; color: var(--text-heading); margin-top: 4px; }
         
-        .detail-item {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-        }
-        
-        .item-label { font-size: 0.55rem; color: var(--text-muted); font-weight: 800; }
-        .item-value { font-size: 0.85rem; font-weight: 600; color: var(--text-main); }
-
-        @keyframes slide-down {
-          from { opacity: 0; transform: translateY(-10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-slide-down { animation: slide-down 0.3s cubic-bezier(0.23, 1, 0.32, 1); }
+        @keyframes fade-in { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fade-in 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
       `}</style>
-    </>
+    </div>
   );
 }

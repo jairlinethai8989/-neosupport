@@ -505,9 +505,8 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
             
             <div style={{ flex: 1, overflowY: "auto", padding: "1.25rem" }}>
                <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                 {/* Assigned Staff Section (HUD Style) */}
-                 <div style={{ padding: "1rem", background: "rgba(14, 165, 233, 0.05)", borderRadius: "var(--radius-sharp)", border: "1px solid var(--border-light)" }}>
-                    <label style={{ color: "var(--primary)", fontSize: "0.6rem", display: "block", marginBottom: "0.5rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "1px" }}>[ CURRENT_OPERATOR ]</label>
+                  <div style={{ padding: "1.25rem", background: "var(--bg-surface-hover)", borderRadius: "var(--radius-sharp)", border: "1px solid var(--border-color)" }}>
+                    <label style={{ color: "var(--text-muted)", fontSize: "0.65rem", display: "block", marginBottom: "0.6rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>Current Operator</label>
                     <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                        <div className="logo-icon-container" style={{ width: "32px", height: "32px", border: "1px solid var(--primary)" }}>
                           <UserCheck size={16} color="var(--primary)" />
@@ -577,11 +576,11 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
           display: "flex", 
           flexDirection: "column", 
           minWidth: 0, 
-          background: "var(--bg-surface)", 
+          background: "white", 
           borderRadius: "var(--radius-sharp)", 
           border: "1px solid var(--border-color)", 
           overflow: "hidden", 
-          boxShadow: "0 4px 30px rgba(0,0,0,0.4)",
+          boxShadow: "var(--shadow-md)",
           position: 'relative'
         }}>
           {/* HUD Scanline Effect for Chat */}
@@ -595,7 +594,7 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
             display: "flex", 
             flexDirection: "column", 
             gap: "0.5rem",
-            background: `repeating-linear-gradient(0deg, var(--hud-scanline), var(--hud-scanline) 1px, transparent 1px, transparent 3px)`
+            background: "#f8fafc"
           }}>
             {messages.map((msg, idx) => (
               <MessageBubble key={msg.id ?? idx} msg={msg} isIT={msg.direction === "outbound"} setAnnotationImage={setAnnotationImage} setSelectedImage={setSelectedImage} />

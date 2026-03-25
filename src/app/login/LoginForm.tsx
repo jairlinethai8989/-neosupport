@@ -11,45 +11,42 @@ export default function LoginForm() {
   const [isLogin, setIsLogin] = useState(true)
 
   return (
-    <div className="technical-panel" style={{ width: '100%', maxWidth: '400px', padding: '2.5rem', background: 'var(--bg-glass)', backdropFilter: 'blur(12px)', border: '1px solid var(--border-color)', position: 'relative', overflow: 'hidden' }}>
-      <div className="scanner-line" style={{ background: 'var(--primary)', opacity: 0.3 }} />
+    <div className="technical-panel" style={{ width: '100%', maxWidth: '440px', padding: '3rem', background: 'white', border: '1px solid var(--border-color)', borderRadius: '24px', boxShadow: 'var(--shadow-lg)', position: 'relative' }}>
       
       <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-        <div style={{ display: 'inline-block', padding: '10px', background: 'var(--primary-glow)', borderRadius: 'var(--radius-sharp)', marginBottom: '1rem' }}>
-          <h1 style={{ margin: 0, color: 'var(--primary)', fontSize: '1.75rem', fontWeight: 900, letterSpacing: '2px' }}>NEO_SUPPORT_v3</h1>
-        </div>
-        <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.8rem', letterSpacing: '1px' }}>SECURE_COMMAND_INTERFACE // ENTER_CREDENTIALS</p>
+        <h1 style={{ margin: 0, color: 'var(--primary)', fontSize: '2.25rem', fontWeight: 800 }}>NEO Support</h1>
+        <p style={{ margin: '0.5rem 0 0 0', color: 'var(--text-muted)', fontSize: '1rem', fontWeight: 500 }}>ระบบจัดการงาน IT สำหรับโรงพยาบาล</p>
       </div>
 
       {errorMsg && (
-        <div style={{ padding: '0.75rem', marginBottom: '1.5rem', backgroundColor: 'rgba(255, 123, 114, 0.1)', border: '1px solid var(--status-escalated-text)', borderRadius: 'var(--radius-sharp)', color: 'var(--status-escalated-text)', fontSize: '0.8rem', textAlign: 'center', fontFamily: 'monospace' }}>
-          [AUTH_ERROR]: {errorMsg.toUpperCase()}
+        <div style={{ padding: '1rem', marginBottom: '1.5rem', backgroundColor: 'var(--status-escalated-bg)', border: '1px solid var(--status-escalated-text)', borderRadius: '12px', color: 'var(--status-escalated-text)', fontSize: '0.9rem', textAlign: 'center', fontWeight: 600 }}>
+          เกิดข้อผิดพลาด: {errorMsg}
         </div>
       )}
 
       <form action={isLogin ? login : signup} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         <div style={{ position: 'relative' }}>
-          <label htmlFor="username" style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-main)', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '1px' }}>USER_ID</label>
+          <label htmlFor="username" style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-main)', fontSize: '0.85rem', fontWeight: 700 }}>ชื่อผู้ใช้งาน (Username)</label>
           <input 
             id="username" 
             name="username" 
             type="text" 
             required 
             className="input-base"
-            style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: 'var(--radius-sharp)', border: '1px solid var(--border-color)', backgroundColor: 'rgba(0,0,0,0.3)', color: 'var(--text-heading)', outline: 'none', fontFamily: 'monospace' }} 
-            placeholder="e.g. admin"
+            style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: '12px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-color)', color: 'var(--text-heading)', outline: 'none', fontWeight: 600 }} 
+            placeholder="เช่น: admin"
           />
         </div>
 
         <div style={{ position: 'relative' }}>
-          <label htmlFor="password" style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-main)', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '1px' }}>AUTH_KEY</label>
+          <label htmlFor="password" style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-main)', fontSize: '0.85rem', fontWeight: 700 }}>รหัสผ่าน (Password)</label>
           <input 
             id="password" 
             name="password" 
             type="password" 
             required 
             className="input-base"
-            style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: 'var(--radius-sharp)', border: '1px solid var(--border-color)', backgroundColor: 'rgba(0,0,0,0.3)', color: 'var(--text-heading)', outline: 'none', fontFamily: 'monospace' }} 
+            style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: '12px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-color)', color: 'var(--text-heading)', outline: 'none', fontWeight: 600 }} 
             placeholder="••••••••"
           />
         </div>
@@ -63,11 +60,10 @@ export default function LoginForm() {
             fontSize: '1rem', 
             fontWeight: 800, 
             width: '100%', 
-            letterSpacing: '2px',
-            boxShadow: '0 0 20px var(--primary-glow)',
-            border: 'none'
+            border: 'none',
+            borderRadius: '12px'
           }}>
-          {isLogin ? 'INITIALIZE_SESSION' : 'REGISTER_NODE'}
+          {isLogin ? 'เข้าสู่ระบบ' : 'ลงชื่อใช้งาน'}
         </button>
       </form>
 
@@ -75,7 +71,7 @@ export default function LoginForm() {
         <>
           <div style={{ margin: '1.5rem 0', display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-color)' }} />
-            <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', letterSpacing: '2px' }}>SECONDARY_AUTH</span>
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>หรือ</span>
             <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-color)' }} />
           </div>
 
@@ -86,16 +82,15 @@ export default function LoginForm() {
               alignItems: 'center', 
               justifyContent: 'center', 
               gap: '0.75rem', 
-              padding: '0.85rem', 
+              padding: '0.9rem', 
               backgroundColor: '#06C755', 
               color: 'white', 
-              borderRadius: 'var(--radius-sharp)', 
+              borderRadius: '12px', 
               textDecoration: 'none', 
               fontWeight: 700,
-              fontSize: '0.85rem',
-              letterSpacing: '1px',
+              fontSize: '0.9rem',
               transition: 'opacity 0.2s',
-              border: '1px solid rgba(255,255,255,0.1)'
+              border: 'none'
             }}
           >
             <Image 
@@ -103,20 +98,20 @@ export default function LoginForm() {
               alt="LINE Logo" 
               width={20} 
               height={20}
-              style={{ width: '18px', height: '18px' }}
+              style={{ width: '20px', height: '20px' }}
             />
-            LINK_VIA_LINE_PROTOCOL
+            เข้าสู่ระบบด้วย LINE
           </a>
         </>
       )}
 
       <div style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.7rem', color: 'var(--text-muted)', letterSpacing: '1px' }}>
-        {isLogin ? "UNREGISTERED_ENTITY? " : "EXISTING_NODE? "}
+        {isLogin ? "ยังไม่มีบัญชี? " : "มีบัญชีอยู่แล้ว? "}
         <button 
           type="button"
           onClick={() => setIsLogin(!isLogin)}
-          style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: 0, fontWeight: 900, textDecoration: 'underline' }}>
-          {isLogin ? 'CREATE_ACCOUNT' : 'VALIDATE_IDENTITY'}
+          style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: 0, fontWeight: 700, textDecoration: 'underline' }}>
+          {isLogin ? 'สมัครสมาชิกใหม่' : 'ไปที่หน้าเข้าสู่ระบบ'}
         </button>
       </div>
     </div>
