@@ -425,7 +425,7 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
       
       logger.debug('DashboardClient cleanup completed');
     };
-  }, []);
+  }, [router]);
 
   const toggleTheme = () => {
     const newTheme = theme === "dark" ? "light" : "dark";

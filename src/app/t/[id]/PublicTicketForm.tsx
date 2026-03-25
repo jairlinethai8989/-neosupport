@@ -49,7 +49,7 @@ export default function PublicTicketForm({ ticketId, currentTicketId }: { ticket
         <h3 className="text-xl font-bold text-[#0369a1]">อัปเดตงาน (Action Center)</h3>
       </div>
       
-      <p className="text-sm text-[#075985] mb-6">กรอกสรุปการแก้ไขปัญหาด้านล่างเพื่อทำการ **"ปิดงาน"** ใบงานชิ้นนี้</p>
+      <p className="text-sm text-[#075985] mb-6">กรอกสรุปการแก้ไขปัญหาด้านล่างเพื่อทำการ **&quot;ปิดงาน&quot;** ใบงานชิ้นนี้</p>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-2">

@@ -126,7 +126,7 @@ export default async function PublicTicketPage({ params }: { params: Promise<{ i
                 <h3 className="font-bold text-[#0f172a]">รายละเอียดปัญหา (Objective)</h3>
               </div>
               <div className="bg-[#f8fafc] p-6 rounded-xl border border-[#e2e8f0] text-[#334155] leading-relaxed italic">
-                "{ticket.description}"
+                &quot;{ticket.description}&quot;
               </div>
             </div>
 
@@ -163,13 +163,6 @@ export default async function PublicTicketPage({ params }: { params: Promise<{ i
           SYSTEM_MANAGED_BY_NEO_PROTOCOL • © 2026
         </p>
       </main>
-
-      <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap');
-        body {
-          font-family: 'IBM Plex Sans Thai', sans-serif;
-        }
-      `}</style>
     </div>
   );
 }
