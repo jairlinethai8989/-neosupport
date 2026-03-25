@@ -43,53 +43,62 @@ export default function PublicTicketForm({ ticketId, currentTicketId }: { ticket
   };
 
   return (
-    <div className="bg-[#f0f9ff] border border-[#bae6fd] p-8 rounded-2xl shadow-inner-sm">
-      <div className="flex items-center gap-2 mb-4">
-        <Zap size={20} className="text-[#0ea5e9] animate-pulse" />
-        <h3 className="text-xl font-bold text-[#0369a1]">อัปเดตงาน (Action Center)</h3>
+    <div className="bg-blue-50/50 border border-blue-100 p-8 md:p-10 rounded-3xl transition-all">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="bg-blue-600 p-2 rounded-xl text-white shadow-lg shadow-blue-200">
+          <Zap size={20} fill="currentColor" />
+        </div>
+        <div>
+          <h3 className="text-xl font-bold text-slate-800">ส่งมอบผลลัพธ์ (Resolution Center)</h3>
+          <p className="text-sm text-slate-500 font-medium">กรอกสรุปการแก้ไขปัญหาเพื่อทำการปิดงานชิ้นนี้</p>
+        </div>
       </div>
-      
-      <p className="text-sm text-[#075985] mb-6">กรอกสรุปการแก้ไขปัญหาด้านล่างเพื่อทำการ **&quot;ปิดงาน&quot;** ใบงานชิ้นนี้</p>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="space-y-2">
-          <label className="text-[11px] font-black text-[#0c4a6e] uppercase tracking-wider block">สรุปการซ่อม / วิธีแก้ไขปัญหา (Resolution Notes) *</label>
+        <div className="space-y-3">
+          <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block ml-1">สรุปการแก้ไข / วิธีการ (Resolution Notes) *</label>
           <textarea
-            rows={4}
+            rows={5}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            className="w-100 p-4 rounded-xl border-2 border-[#bae6fd] bg-white text-[#0f172a] focus:border-[#0284c7] focus:ring-4 focus:ring-[#bae6fd] transition-all outline-none text-md placeholder-[#94a3b8]"
-            placeholder="เช่น: ติดตั้งไดรเวอร์ใหม่ / เปลี่ยนสายไฟจอภาพ..."
+            className="w-full p-5 rounded-2xl border-2 border-slate-100 bg-white text-slate-800 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none text-lg placeholder-slate-300 font-medium leading-relaxed"
+            placeholder="อธิบายสิ่งที่คุณทำ... เช่น ติดตั้งไดรเวอร์ใหม่ / แก้ไขสายสัญญาณ"
             disabled={isSubmitting}
           />
         </div>
 
         {error && (
-          <div className="bg-[#fef2f2] border border-[#fecaca] p-4 rounded-xl text-red-700 text-sm flex items-center gap-2 animate-bounce-in">
-             <AlertTriangle size={18} />
+          <div className="bg-red-50 border border-red-100 p-5 rounded-2xl text-red-600 text-sm font-bold flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+             <AlertTriangle size={20} />
              {error}
           </div>
         )}
 
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-100 bg-[#0284c7] hover:bg-[#0369a1] text-white py-5 rounded-xl font-black text-lg shadow-lg hover:shadow-[#0284c7]40 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:grayscale"
-        >
-          {isSubmitting ? (
-             <div className="spinner-border animate-spin w-6 h-6 border-4 border-t-white border-transparent rounded-full" />
-          ) : (
-            <div className="flex items-center gap-2">
-              <CheckCircle size={20} />
-              บันทึกและปิดงาน (SUBMIT_RESOLVE)
-            </div>
-          )}
-        </button>
-
-        <p className="text-center text-[10px] text-[#64748b] font-bold">
-          <Clock size={10} className="inline mr-1" />
-          การกดปุ่มนี้จะส่งผลลัพธ์ไปยังเจ้าหน้าที่ IT ทันที
-        </p>
+        <div className="pt-2">
+          <button
+            type="submit"
+            disabled={isSubmitting || !notes.trim()}
+            className={`w-full py-5 rounded-2xl font-bold text-lg shadow-xl transition-all flex items-center justify-center gap-3 active:scale-[0.97]
+              ${isSubmitting || !notes.trim() 
+                ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' 
+                : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200'
+              }`}
+          >
+            {isSubmitting ? (
+               <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <>
+                <CheckCircle size={22} />
+                บันทึกและส่งมอบงาน (Complete Task)
+              </>
+            )}
+          </button>
+          
+          <p className="text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-6 flex items-center justify-center gap-2">
+            <Clock size={12} />
+            ผลลัพธ์จะถูกส่งไปยังระบบส่วนกลางทันทีที่กดบันทึก
+          </p>
+        </div>
       </form>
     </div>
   );
