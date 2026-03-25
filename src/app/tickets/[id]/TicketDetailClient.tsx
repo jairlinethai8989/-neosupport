@@ -499,7 +499,7 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
 
       <main className="main-content" style={{ display: "flex", gap: "1rem", padding: "1rem", flex: 1, minHeight: 0, overflow: "hidden", background: "var(--bg-color)" }}>
         {/* Box 1 (Left Column): Management Panel */}
-        <div className="left-column" style={{ width: "380px", display: "flex", flexDirection: "column", gap: "1rem", flexShrink: 0 }}>
+        <div className="left-column" style={{ width: "50%", display: "flex", flexDirection: "column", gap: "1rem", flexShrink: 0 }}>
           <div className="technical-panel" style={{ padding: "0", display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden", borderRadius: "var(--radius-sharp)", border: "1px solid var(--border-color)", borderTop: "4px solid var(--primary)", background: "var(--bg-surface)", boxShadow: "0 4px 20px rgba(0,0,0,0.3)" }}>
             <TicketHeader ticket={initialTicket} assigneeName={assigneeName} onCopyTicketId={handleCopyTicketId} />
             
