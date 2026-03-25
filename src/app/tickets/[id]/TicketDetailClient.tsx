@@ -519,7 +519,7 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
                  <div style={{ padding: "1rem", background: "var(--bg-glass)", border: "1px solid var(--border-light)", borderRadius: "var(--radius-sharp)" }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', opacity: 0.6 }}>
                       <FileText size={12} />
-                      <span style={{ fontSize: '0.6rem', fontWeight: 800 }}>OBJECTIVE_DATA</span>
+                      <span style={{ fontSize: '0.7rem', fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>Issue Description</span>
                     </div>
                     <p style={{ fontSize: "0.85rem", color: "var(--text-main)", lineHeight: "1.6", whiteSpace: "pre-wrap" }}>{initialTicket.description}</p>
                  </div>
@@ -606,8 +606,8 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
           <div style={{ borderTop: "1px solid var(--border-color)", background: "var(--bg-glass)", backdropFilter: 'blur(10px)' }}>
             {initialSettings?.quick_replies?.length > 0 && (
               <div style={{ padding: "0.75rem 1rem", background: "rgba(0,0,0,0.2)", display: "flex", gap: "0.5rem", flexWrap: "wrap", borderBottom: "1px solid var(--border-light)" }}>
-                <span style={{ fontSize: "0.55rem", color: "var(--primary)", display: "flex", alignItems: "center", gap: "6px", marginRight: "8px", fontWeight: 800, letterSpacing: '1px' }}>
-                  <Zap size={10} /> MACROS:
+                <span style={{ fontSize: "0.7rem", color: "var(--primary)", display: "flex", alignItems: "center", gap: "6px", marginRight: "12px", fontWeight: 700 }}>
+                  <Zap size={12} /> Macros:
                 </span>
                 {initialSettings.quick_replies.map((reply: string, idx: number) => (
                   <button 
@@ -615,7 +615,7 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
                     onClick={() => setReplyText(reply)} 
                     className="btn-macro"
                   >
-                    {reply.toUpperCase()}
+                    {reply}
                   </button>
                 ))}
               </div>
@@ -627,22 +627,20 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
 
       <style jsx>{`
         .btn-macro {
-          padding: 0.25rem 0.75rem;
-          border-radius: 2px;
-          background: var(--bg-color);
+          padding: 0.4rem 1rem;
+          border-radius: 8px;
+          background: white;
           border: 1px solid var(--border-color);
-          font-size: 0.65rem;
+          font-size: 0.8rem;
           color: var(--text-main);
-          font-weight: 700;
+          font-weight: 600;
           cursor: pointer;
           transition: all 0.2s;
-          font-family: monospace;
         }
         .btn-macro:hover {
-          background: var(--primary);
-          color: black;
-          box-shadow: 0 0 10px var(--primary-glow);
           border-color: var(--primary);
+          color: var(--primary);
+          background: var(--bg-surface-hover);
         }
         .scanner-line-fixed {
           position: absolute;

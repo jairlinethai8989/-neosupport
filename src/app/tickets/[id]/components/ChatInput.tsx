@@ -66,7 +66,7 @@ export default function ChatInput({ onSendMessage, isLoading, value, onChange }:
             <button onClick={clearFile} className="btn-clear-preview">
               <X size={12} />
             </button>
-            <div className="preview-tag">[ ATTACHMENT_READY ]</div>
+            <div className="preview-tag">พร้อมส่งไฟล์ (Attachment)</div>
           </div>
         </div>
       )}
@@ -87,7 +87,7 @@ export default function ChatInput({ onSendMessage, isLoading, value, onChange }:
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="TYPE_MESSAGE_HERE..."
+          placeholder="พิมพ์ข้อความของคุณที่นี่..."
           disabled={isLoading}
           rows={1}
           className="text-input"
@@ -210,11 +210,11 @@ export default function ChatInput({ onSendMessage, isLoading, value, onChange }:
 
         .btn-send {
           padding: 0.75rem 1rem;
-          border-radius: 2px;
+          border-radius: 8px;
           border: none;
           background: var(--primary);
-          color: black;
-          font-weight: 800;
+          color: white;
+          font-weight: 700;
           cursor: pointer;
           display: flex;
           align-items: center;

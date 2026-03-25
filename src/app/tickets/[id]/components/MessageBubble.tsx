@@ -104,7 +104,7 @@ export default function MessageBubble({ msg, isIT, setAnnotationImage, setSelect
         
         .bubble-user {
           background: #ffffff;
-          color: var(--text-main);
+          color: #0f172a;
           border-radius: 18px 18px 18px 4px;
         }
 
