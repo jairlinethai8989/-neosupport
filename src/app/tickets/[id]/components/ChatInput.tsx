@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Send, Image as ImageIcon, X } from "lucide-react";
+import { Send, Image as ImageIcon, X, Paperclip } from "lucide-react";
 
 interface ChatInputProps {
   ticketId: string;
@@ -11,7 +11,7 @@ interface ChatInputProps {
   onChange: (val: string) => void;
 }
 
-export default function ChatInput({ ticketId, onSendMessage, isLoading, value, onChange }: ChatInputProps) {
+export default function ChatInput({ onSendMessage, isLoading, value, onChange }: ChatInputProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -48,136 +48,226 @@ export default function ChatInput({ ticketId, onSendMessage, isLoading, value, o
   };
 
   return (
-    <div style={{
-      background: 'var(--bg-surface)',
-      borderRadius: '24px 24px 0 0',
-      border: '1px solid var(--border-color)',
-      padding: '1.5rem',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '1rem'
-    }}>
-      {/* File Preview */}
+    <div className="input-container">
+      {/* Zero-Cost Warning */}
+      <div className="quota-warning">
+        <span className="warning-icon">⚠️</span> 
+        โหมดประหยัดโควต้า: การตอบแชทที่นี่จะเสียโควต้า LINE 
+        <a href="https://manager.line.biz" target="_blank" rel="noreferrer" className="link-oa">
+          [ เปิด LINE OA Manager เพื่อแชทฟรี ]
+        </a>
+      </div>
+
+      {/* File Preview Context */}
       {previewUrl && (
-        <div style={{
-          position: 'relative',
-          display: 'inline-block',
-          maxWidth: '200px'
-        }}>
-          <img
-            src={previewUrl}
-            alt="Preview"
-            style={{
-              width: '100%',
-              borderRadius: '12px',
-              border: '1px solid var(--border-color)'
-            }}
-          />
-          <button
-            onClick={clearFile}
-            style={{
-              position: 'absolute',
-              top: '-8px',
-              right: '-8px',
-              background: 'var(--status-escalated-text)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '50%',
-              width: '24px',
-              height: '24px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer'
-            }}
-          >
-            <X size={14} />
-          </button>
+        <div className="preview-overlay">
+          <div className="preview-card">
+            <img src={previewUrl} alt="Preview" className="preview-img" />
+            <button onClick={clearFile} className="btn-clear-preview">
+              <X size={12} />
+            </button>
+            <div className="preview-tag">[ ATTACHMENT_READY ]</div>
+          </div>
         </div>
       )}
 
-      {/* Input Area */}
-      <div style={{
-        display: 'flex',
-        gap: '0.75rem',
-        alignItems: 'flex-end'
-      }}>
-        {/* File Upload Button */}
+      {/* Main Input Controls */}
+      <div className="input-row">
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={isLoading}
-          style={{
-            padding: '0.75rem',
-            background: 'var(--bg-color)',
-            border: '1px solid var(--border-color)',
-            borderRadius: '12px',
-            color: 'var(--text-muted)',
-            cursor: isLoading ? 'not-allowed' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'all 0.2s'
-          }}
-          title="Attach file"
+          className="btn-action"
+          title="Attach Media"
         >
-          <ImageIcon size={20} />
+          <Paperclip size={20} />
         </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*,video/*"
-          onChange={handleFileSelect}
-          disabled={isLoading}
-          style={{ display: 'none' }}
-        />
+        <input ref={fileInputRef} type="file" accept="image/*,video/*" onChange={handleFileSelect} disabled={isLoading} style={{ display: 'none' }} />
 
-        {/* Text Input */}
         <textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="พิมพ์ข้อความ... (Enter เพื่อส่ง, Shift+Enter เพื่อขึ้นบรรทัดใหม่)"
+          placeholder="TYPE_MESSAGE_HERE..."
           disabled={isLoading}
           rows={1}
-          style={{
-            flex: 1,
-            padding: '0.75rem 1rem',
-            borderRadius: '12px',
-            border: '1px solid var(--border-color)',
-            background: 'var(--bg-color)',
-            color: 'var(--text-heading)',
-            fontSize: '0.95rem',
-            resize: 'none',
-            minHeight: '44px',
-            maxHeight: '120px',
-            outline: 'none'
-          }}
+          className="text-input"
         />
 
-        {/* Send Button */}
         <button
           onClick={handleSend}
           disabled={isLoading || (!value.trim() && !selectedFile)}
-          className="btn-primary"
-          style={{
-            padding: '0.75rem 1.5rem',
-            borderRadius: '12px',
-            border: 'none',
-            fontWeight: 600,
-            cursor: isLoading || (!value.trim() && !selectedFile) ? 'not-allowed' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            opacity: isLoading || (!value.trim() && !selectedFile) ? 0.6 : 1
-          }}
+          className="btn-send"
         >
-          {isLoading ? (
-            <div className="spinner-mini" />
-          ) : (
-            <Send size={18} />
-          )}
+          {isLoading ? <div className="spinner-mini" /> : <Send size={18} />}
         </button>
       </div>
+
+      <style jsx>{`
+        .input-container {
+          background: var(--bg-surface);
+          padding: 1rem 1.25rem;
+          width: 100%;
+          position: relative;
+          border-top: 1px solid var(--border-color);
+        }
+
+        .preview-overlay {
+          position: absolute;
+          bottom: 100%;
+          left: 1.25rem;
+          margin-bottom: 1rem;
+          z-index: 20;
+          animation: slide-up 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes slide-up {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .preview-card {
+          position: relative;
+          background: var(--bg-color);
+          padding: 6px;
+          border: 1px solid var(--primary);
+          border-radius: var(--radius-sharp);
+          box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        
+        .preview-img {
+          max-width: 160px;
+          max-height: 160px;
+          display: block;
+          border-radius: 2px;
+        }
+
+        .preview-tag {
+          font-size: 0.55rem;
+          color: var(--primary);
+          font-weight: 800;
+          text-align: center;
+          margin-top: 4px;
+          font-family: monospace;
+        }
+
+        .btn-clear-preview {
+          position: absolute;
+          top: -8px;
+          right: -8px;
+          background: #ef4444;
+          color: white;
+          border: none;
+          border-radius: 50%;
+          width: 20px;
+          height: 20px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        .input-row {
+          display: flex;
+          align-items: flex-end;
+          background: var(--bg-color);
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-sharp);
+          padding: 0.25rem;
+          gap: 0.25rem;
+          transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .input-row:focus-within {
+          border-color: var(--primary);
+          box-shadow: 0 0 15px var(--primary-glow);
+        }
+
+        .btn-action {
+          padding: 0.75rem;
+          background: transparent;
+          border: none;
+          color: var(--text-muted);
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: color 0.2s;
+        }
+        .btn-action:hover { color: var(--primary); }
+
+        .text-input {
+          flex: 1;
+          padding: 0.75rem 0.5rem;
+          border: none;
+          background: transparent;
+          color: var(--text-main);
+          font-size: 0.95rem;
+          resize: none;
+          minHeight: 44px;
+          maxHeight: 150px;
+          outline: none;
+          font-family: inherit;
+        }
+
+        .btn-send {
+          padding: 0.75rem 1rem;
+          border-radius: 2px;
+          border: none;
+          background: var(--primary);
+          color: black;
+          font-weight: 800;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s;
+          margin: 2px;
+        }
+        .btn-send:hover:not(:disabled) {
+          transform: scale(1.02);
+          box-shadow: 0 0 20px var(--primary-glow);
+        }
+        .btn-send:disabled {
+          background: var(--border-color);
+          color: var(--text-muted);
+          cursor: not-allowed;
+        }
+
+        .spinner-mini {
+          width: 18px;
+          height: 18px;
+          border: 2px solid rgba(0,0,0,0.1);
+          border-top-color: black;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .quota-warning {
+          background: rgba(245, 158, 11, 0.1);
+          border: 1px solid rgba(245, 158, 11, 0.3);
+          padding: 0.5rem 0.75rem;
+          border-radius: var(--radius-sharp);
+          margin-bottom: 0.75rem;
+          font-size: 0.75rem;
+          color: #f59e0b;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-family: inherit;
+        }
+        .warning-icon {
+          font-size: 1rem;
+        }
+        .link-oa {
+          color: #10b981;
+          text-decoration: underline;
+          font-weight: bold;
+          margin-left: 4px;
+        }
+        .link-oa:hover {
+          color: #06c755;
+        }
+      `}</style>
     </div>
   );
 }

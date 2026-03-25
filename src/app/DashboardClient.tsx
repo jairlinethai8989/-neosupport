@@ -317,6 +317,13 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
 
     const supabase = createClient();
 
+    // Request Browser Notification Permission
+    if (typeof window !== "undefined" && "Notification" in window) {
+      if (Notification.permission === "default") {
+        Notification.requestPermission();
+      }
+    }
+
     // Supabase Real-time Subscription for Tickets
     const channel = supabase
       .channel(`dashboard-tickets-${Date.now()}`)
@@ -328,18 +335,23 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
           table: 'tickets',
         },
         async (payload) => {
-          console.log('[Dashboard Realtime] Ticket change:', payload.eventType);
+          console.log('[Dashboard Realtime] Ticket change:', payload.eventType, payload);
 
           if (payload.eventType === 'INSERT') {
-            const { data: newTicket } = await supabase
+            const { data: newTicket, error: fetchErr } = await supabase
               .from('tickets')
               .select(`*, users!reporter_id(display_name, department, hospitals(name))`)
               .eq('id', payload.new.id)
               .single();
 
             if (newTicket) {
-              setTickets((prev) => [newTicket, ...prev]);
+              setTickets((prev) => {
+                if (prev.some(t => t.id === newTicket.id)) return prev;
+                return [newTicket, ...prev];
+              });
               setNewTicketNotify(newTicket);
+              
+              // 1. Play Sound
               try {
                 const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
                 audio.volume = 0.5;
@@ -347,9 +359,30 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
               } catch (e) {
                 logger.warn("Audio play failed", e);
               }
+
+              // 2. Browser Push Notification (Native Windows/OS Toast)
+              if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+                const notification = new Notification(`🚨 มีงานแจ้งซ่อมใหม่: #${newTicket.ticket_no}`, {
+                  body: `โรงพยาบาล: ${newTicket.users?.hospitals?.name || 'ลูกค้า'}\nแจ้งปัญหา: ${newTicket.description.substring(0, 100)}${newTicket.description.length > 100 ? '...' : ''}`,
+                  tag: newTicket.id, // Prevent duplicate if multiple tabs open
+                  icon: '/favicon.ico', // Use favicon as notification icon
+                  requireInteraction: true, // Keep notification open until user clicks or dismisses
+                });
+
+                notification.onclick = (e) => {
+                  e.preventDefault();
+                  window.focus();
+                  router.push(`/tickets/${newTicket.id}`);
+                  notification.close();
+                };
+              }
+
               setTimeout(() => setNewTicketNotify((prev: any) => (prev?.id === newTicket.id ? null : prev)), 15000);
             } else {
-              setTickets((prev) => [payload.new, ...prev]);
+              setTickets((prev) => {
+                if (prev.some(t => t.id === payload.new.id)) return prev;
+                return [payload.new, ...prev];
+              });
             }
           } else if (payload.eventType === 'UPDATE') {
             setTickets((prev) =>
@@ -360,9 +393,7 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
           }
         }
       )
-      .subscribe((status) => {
-        console.log('[Dashboard Realtime] Status:', status);
-      });
+      .subscribe();
 
     // Run maintenance (Option A: Auto-Cleanup)
     const runMaintenance = async () => {
@@ -622,33 +653,45 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
         
         <nav className="sidebar-nav">
           <div className="nav-group-label">{isSidebarOpen ? "หลัก" : "•••"}</div>
-          <Link href="/" className="nav-item active" data-label="Dashboard">
+          <Link href="/" prefetch={true} className="nav-item active" data-label="หน้าหลัก (Dashboard)">
             <LayoutDashboard size={20} className="nav-icon" />
-            <span className="nav-label">Dashboard</span>
+            {isSidebarOpen && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <span className="nav-label">หน้าหลัก</span>
+                <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>Dashboard</span>
+              </div>
+            )}
           </Link>
-          <Link href="/tickets/new" className="nav-item" data-label="สร้างตั๋วงาน">
+          <Link href="/tickets/new" prefetch={true} className="nav-item" data-label="สร้างตั๋วงาน (New Ticket)">
             <PlusCircle size={20} className="nav-icon" />
-            <span className="nav-label">สร้างตั๋วงาน</span>
+            {isSidebarOpen && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <span className="nav-label">สร้างตั๋วงาน</span>
+                <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>New Ticket</span>
+              </div>
+            )}
           </Link>
 
           <div className="nav-group-label" style={{ marginTop: '1.5rem' }}>{isSidebarOpen ? "สถิติและข้อมูล" : "•••"}</div>
-          <Link href="/graph" className="nav-item" data-label="สถิติประสิทธิภาพ">
+          <Link href="/graph" prefetch={true} className="nav-item" data-label="สถิติประสิทธิภาพ (Analytics)">
             <BarChart3 size={20} className="nav-icon" />
-            <span className="nav-label">สถิติประสิทธิภาพ</span>
+            {isSidebarOpen && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <span className="nav-label">สถิติประสิทธิภาพ</span>
+                <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>Analytics</span>
+              </div>
+            )}
           </Link>
 
           <div className="nav-group-label" style={{ marginTop: '1.5rem' }}>{isSidebarOpen ? "ตั้งค่าระบบ" : "•••"}</div>
-          <Link href="/settings/hospitals" className="nav-item" data-label="จัดการโรงพยาบาล">
-            <Building2 size={20} className="nav-icon" />
-            <span className="nav-label">จัดการโรงพยาบาล</span>
-          </Link>
-          <Link href="/settings/staff-approvals" className="nav-item" data-label="อนุมัติพนักงาน">
-            <Users size={20} className="nav-icon" />
-            <span className="nav-label">อนุมัติพนักงาน</span>
-          </Link>
-          <Link href="/settings" className="nav-item" data-label="ตั้งค่าทั่วไป">
+          <Link href="/settings" prefetch={true} className="nav-item" data-label="ตั้งค่าทั่วไป (Settings)">
             <Settings size={20} className="nav-icon" />
-            <span className="nav-label">ตั้งค่าทั่วไป</span>
+            {isSidebarOpen && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <span className="nav-label">ตั้งค่าทั่วไป</span>
+                <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>System Settings</span>
+              </div>
+            )}
           </Link>
 
           <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
@@ -695,14 +738,16 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
                 <span style={{ fontSize: '0.65rem', color: 'var(--primary)', border: '1px solid var(--primary)', padding: '1px 4px', letterSpacing: '2px' }}>NEO_PROTOCOL_v3</span>
                 <span style={{ fontSize: '0.65rem', color: 'var(--accent)', opacity: 0.8 }}>SYSTEM ACTIVE</span>
               </div>
-              <h1>COMMAND INTERFACE</h1>
-              <p style={{ letterSpacing: '0.5px' }}>Sector Analysis: All Hospital Network Nodes</p>
+              <h1 style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
+                แผงควบคุมหลัก <span style={{ fontSize: '1rem', color: 'var(--text-muted)', fontWeight: 500, letterSpacing: '2px' }}>COMMAND INTERFACE</span>
+              </h1>
+              <p style={{ letterSpacing: '0.5px', margin: 0 }}>ภาพรวมระบบและใบแจ้งซ่อมจากทุกสาขา <span style={{ opacity: 0.5, fontSize: '0.85em' }}>(Sector Analysis: All Hospital Network Nodes)</span></p>
             </div>
           </div>
           <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             {userEmail && (
               <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px', borderRight: '1px solid var(--border-color)', paddingRight: '1rem' }}>
-                <code>ID: {userEmail.toUpperCase()}</code>
+                <code>ผู้ใช้งาน (ID): {userEmail.toUpperCase()}</code>
               </div>
             )}
             {mounted && (
@@ -711,8 +756,11 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
               </button>
             )}
             <Link href="/tickets/new" style={{ textDecoration: 'none' }}>
-              <button className="btn-primary">
-                 <Plus size={18} /> INITIALIZE_TICKET
+              <button className="btn-primary" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0.5rem 1rem', lineHeight: 1.2 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Plus size={16} /> สร้างตั๋วงาน
+                </div>
+                <span style={{ fontSize: '0.6rem', opacity: 0.8, letterSpacing: '1px' }}>INITIALIZE_TICKET</span>
               </button>
             </Link>
           </div>
@@ -721,15 +769,18 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
 
         <section className="dashboard-summary-ribbon animate-fade-in delay-1" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '2.5rem' }}>
           {[
-            { label: "TOTAL_ASSETS", value: total, color: "var(--primary)", icon: <Activity size={18} /> },
-            { label: "PENDING_QUEUE", value: pending, color: "var(--status-pending-text)", icon: <Clock size={18} /> },
-            { label: "ACTIVE_STREAM", value: inProgress, color: "var(--status-progress-text)", icon: <Zap size={18} /> },
-            { label: "ESCALATED_ALERTS", value: escalated, color: "var(--status-escalated-text)", icon: <AlertTriangle size={18} /> },
-            { label: "UNCLAIMED_JOB", value: unassignedCount, color: "var(--status-escalated-text)", glow: true, icon: <Zap size={18} /> }
+            { label: "ตั๋วงานทั้งหมด", sub: "TOTAL_ASSETS", value: total, color: "var(--primary)", icon: <Activity size={18} /> },
+            { label: "รอดำเนินการ", sub: "PENDING_QUEUE", value: pending, color: "var(--status-pending-text)", icon: <Clock size={18} /> },
+            { label: "กำลังแก้ไข", sub: "ACTIVE_STREAM", value: inProgress, color: "var(--status-progress-text)", icon: <Zap size={18} /> },
+            { label: "แก้ไขล่าช้า", sub: "ESCALATED_ALERTS", value: escalated, color: "var(--status-escalated-text)", icon: <AlertTriangle size={18} /> },
+            { label: "ยังไม่จ่ายงาน", sub: "UNCLAIMED_JOB", value: unassignedCount, color: "var(--status-escalated-text)", glow: true, icon: <Zap size={18} /> }
           ].map((m, i) => (
             <div key={i} className="technical-panel" style={{ padding: '1.25rem', borderTop: m.glow ? '2px solid var(--status-escalated-text)' : '1px solid var(--border-color)', position: 'relative', overflow: 'hidden' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', letterSpacing: '1px' }}>{m.label}</div>
+                <div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '2px' }}>{m.label}</div>
+                  <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', letterSpacing: '1px' }}>{m.sub}</div>
+                </div>
                 <div style={{ color: m.color, opacity: 0.8 }}>{m.icon}</div>
               </div>
               <div style={{ 
@@ -805,7 +856,9 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
               <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', margin: 0 }}>
                 <Activity size={24} color="var(--primary)" />
-                Recent Tickets 
+                <span style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  รายการตั๋วงานล่าสุด <span style={{ fontSize: '1.1rem', color: 'var(--text-muted)', fontWeight: 500 }}>Recent Tickets</span>
+                </span>
                 {statusFilter !== "ALL" && (
                   <span style={{ fontSize: '0.75rem', padding: '0.3rem 0.7rem', backgroundColor: 'var(--primary-glow)', color: 'var(--primary)', borderRadius: '20px', fontWeight: 600, border: '1px solid var(--primary)' }}>
                     {getStatusLabel(statusFilter)}
@@ -956,22 +1009,33 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
               <thead>
                 <tr>
                   <th className="sortable" onClick={() => handleSort('ticket_no')}>
-                    Ticket No. {renderSortIcon('ticket_no')}
+                    <span style={{ display: 'block' }}>เลขที่ใบงาน</span>
+                    <span style={{ fontSize: '0.65em', opacity: 0.6, display: 'block', fontWeight: 'normal' }}>Ticket No.</span>
+                    {renderSortIcon('ticket_no')}
                   </th>
                   <th className="sortable" onClick={() => handleSort('description')}>
-                    Description {renderSortIcon('description')}
+                    <span style={{ display: 'block' }}>รายละเอียด</span>
+                    <span style={{ fontSize: '0.65em', opacity: 0.6, display: 'block', fontWeight: 'normal' }}>Description</span>
+                    {renderSortIcon('description')}
                   </th>
                   <th className="sortable" onClick={() => handleSort('hospitalName')}>
-                    Hospital/User {renderSortIcon('hospitalName')}
+                    <span style={{ display: 'block' }}>โรงพยาบาล/ผู้แจ้ง</span>
+                    <span style={{ fontSize: '0.65em', opacity: 0.6, display: 'block', fontWeight: 'normal' }}>Hospital / User</span>
+                    {renderSortIcon('hospitalName')}
                   </th>
                   <th className="sortable" onClick={() => handleSort('status')}>
-                    Status/Priority {renderSortIcon('status')}
+                    <span style={{ display: 'block' }}>สถานะ/ความสำคัญ</span>
+                    <span style={{ fontSize: '0.65em', opacity: 0.6, display: 'block', fontWeight: 'normal' }}>Status / Priority</span>
+                    {renderSortIcon('status')}
                   </th>
                   <th>
-                    Assignee
+                    <span style={{ display: 'block' }}>ผู้รับผิดชอบ</span>
+                    <span style={{ fontSize: '0.65em', opacity: 0.6, display: 'block', fontWeight: 'normal' }}>Assignee</span>
                   </th>
                   <th className="sortable" onClick={() => handleSort('created_at')}>
-                    SLA Status {renderSortIcon('created_at')}
+                    <span style={{ display: 'block' }}>สถานะเวลา SLA</span>
+                    <span style={{ fontSize: '0.65em', opacity: 0.6, display: 'block', fontWeight: 'normal' }}>SLA Status</span>
+                    {renderSortIcon('created_at')}
                   </th>
                 </tr>
               </thead>

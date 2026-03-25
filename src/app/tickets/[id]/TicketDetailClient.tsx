@@ -5,7 +5,26 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { logger } from "@/lib/logger";
-import { ArrowLeft, Activity, Clock, Zap, FileText, Share2, CheckCircle, Hand, UserCheck, ChevronLeft, ChevronRight, Info, X } from "lucide-react";
+import { 
+  ArrowLeft, 
+  Activity, 
+  Clock, 
+  Zap, 
+  FileText, 
+  Share2, 
+  CheckCircle, 
+  Hand, 
+  User, 
+  UserCheck, 
+  ChevronLeft, 
+  ChevronRight, 
+  Info, 
+  X,
+  Link2,
+  AlertTriangle,
+  Hospital,
+  Clock as ClockIcon
+} from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
@@ -421,6 +440,14 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
     } catch { showToast("ไม่สามารถคัดลอกได้"); }
   };
 
+  const handleCopyMagicLink = async () => {
+    try {
+      const url = `${window.location.origin}/t/${initialTicket.id}`;
+      await navigator.clipboard.writeText(url);
+      showToast("คัดลอกลิงก์สำหรับส่งต่อให้ผู้ปฏิบัติงานเรียบร้อยแล้ว!");
+    } catch { showToast("ไม่สามารถคัดลอกลิงก์ได้"); }
+  };
+
   return (
     <div className={`dashboard-container ${theme}`} style={{ height: "100vh", overflow: "hidden" }}>
       {/* Sidebar */}
@@ -461,138 +488,172 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
         </nav>
 
         <button className="sidebar-toggle-btn" onClick={() => setIsSidebarOpen(!isSidebarOpen)} title={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
-          style={{ zIndex: 1002, border: theme === 'light' ? '2px solid white' : '2px solid var(--bg-color)' }}>
+          style={{ zIndex: 1002, border: theme === 'light' ? '2px solid white' : '2px solid var(--bg-color)', background: 'var(--primary)', color: 'white' }}>
           {isSidebarOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
         </button>
       </aside>
 
-      <main className="main-content" style={{ display: "flex", gap: "2rem", padding: "1.5rem 2rem", flex: 1, minHeight: 0, overflow: "hidden" }}>
-        {/* Left Side: Detail Card */}
-        <div className="detail-panel" style={{ flex: "0 0 380px", display: "flex", flexDirection: "column", gap: "1.5rem", minHeight: 0 }}>
-          <div className="stat-card animate-fade-in" style={{ padding: "1.5rem 2rem", flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
-            {/* Ticket Header Component */}
+      <main className="main-content" style={{ display: "flex", gap: "1rem", padding: "1rem", flex: 1, minHeight: 0, overflow: "hidden", background: "var(--bg-color)" }}>
+        {/* Box 1 (Left Column): Management Panel */}
+        <div className="left-column" style={{ width: "380px", display: "flex", flexDirection: "column", gap: "1rem", flexShrink: 0 }}>
+          <div className="technical-panel" style={{ padding: "0", display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden", borderRadius: "var(--radius-sharp)", border: "1px solid var(--border-color)", borderTop: "4px solid var(--primary)", background: "var(--bg-surface)", boxShadow: "0 4px 20px rgba(0,0,0,0.3)" }}>
             <TicketHeader ticket={initialTicket} assigneeName={assigneeName} onCopyTicketId={handleCopyTicketId} />
+            
+            <div style={{ flex: 1, overflowY: "auto", padding: "1.25rem" }}>
+               <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                 {/* Assigned Staff Section (HUD Style) */}
+                 <div style={{ padding: "1rem", background: "rgba(14, 165, 233, 0.05)", borderRadius: "var(--radius-sharp)", border: "1px solid var(--border-light)" }}>
+                    <label style={{ color: "var(--primary)", fontSize: "0.6rem", display: "block", marginBottom: "0.5rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "1px" }}>[ CURRENT_OPERATOR ]</label>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                       <div className="logo-icon-container" style={{ width: "32px", height: "32px", border: "1px solid var(--primary)" }}>
+                          <UserCheck size={16} color="var(--primary)" />
+                       </div>
+                       <span style={{ fontWeight: 800, color: "var(--text-heading)", fontSize: "1rem", fontFamily: 'monospace' }}>{assigneeName?.toUpperCase() || 'UNASSIGNED'}</span>
+                    </div>
+                 </div>
 
-            <div style={{ flex: 1, overflowY: "auto", paddingRight: "0.5rem" }}>
-              {/* AI Summary Section */}
-              {aiSummary && (
-                <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'var(--bg-glass)', borderRadius: '12px', border: '1px solid var(--primary-glow)' }}>
-                  <label style={{ fontSize: '0.7rem', color: 'var(--primary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Zap size={14} /> AI สรุปงาน (Insight)
-                  </label>
-                  <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', lineHeight: '1.6', color: 'var(--text-main)' }}>
-                    {aiSummary.split('\n').map((line: string, i: number) => <p key={i} style={{ marginBottom: '0.4rem' }}>{line}</p>)}
-                  </div>
-                </div>
-              )}
-
-              {/* Assign Section */}
-              <div style={{ padding: "1.5rem", background: "rgba(255,255,255,0.03)", borderRadius: "20px", border: "1px solid var(--border-color)" }}>
-                <label style={{ color: "var(--text-muted)", fontSize: "0.75rem", display: "block", marginBottom: "1rem" }}>ASSIGNED STAFF</label>
-                {assigneeName ? (
-                  <div style={{ fontSize: "1.2rem", fontWeight: 800, color: "var(--primary)", display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                    <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "var(--primary-glow)", display: "flex", alignItems: "center", justifyContent: "center" }}>👨‍💻</div>
-                    {assigneeName}
-                  </div>
-                ) : (
-                  <button onClick={handleAssign} disabled={isAssigning} className="btn-claim-premium">
-                    {isAssigning ? <div className="loading-spinner-small" /> : (
-                      <>
-                        <div className="claim-icon-wrapper"><Hand size={24} className="claim-icon" /></div>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                          <span style={{ fontSize: '1.25rem', fontWeight: 800 }}>กดรับงาน (Claim)</span>
-                          <span style={{ fontSize: '0.8rem', opacity: 0.8, fontWeight: 500 }}>คลิกเพื่อยืนยันว่าคุณคือผู้รับผิดชอบ</span>
-                        </div>
-                      </>
-                    )}
-                  </button>
-                )}
-              </div>
+                 {/* Description Preview (Minimalist) */}
+                 <div style={{ padding: "1rem", background: "var(--bg-glass)", border: "1px solid var(--border-light)", borderRadius: "var(--radius-sharp)" }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', opacity: 0.6 }}>
+                      <FileText size={12} />
+                      <span style={{ fontSize: '0.6rem', fontWeight: 800 }}>OBJECTIVE_DATA</span>
+                    </div>
+                    <p style={{ fontSize: "0.85rem", color: "var(--text-main)", lineHeight: "1.6", whiteSpace: "pre-wrap" }}>{initialTicket.description}</p>
+                 </div>
+               </div>
             </div>
 
-            {/* Actions Bar */}
-            <div style={{ marginTop: "2rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-              {currentStatus !== "Resolved" && assigneeName && (
-                <div style={{ display: "flex", gap: "0.75rem" }}>
-                  <button onClick={() => setIsResolveModalOpen(true)} className="btn-primary"
-                    style={{ flex: 2, background: "linear-gradient(135deg, #10b981, #059669)", color: "white", padding: "1rem", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", boxShadow: "0 10px 20px rgba(16,185,129,0.3)" }}>
-                    <CheckCircle size={20} /> ปิดงาน (Resolve)
+            {/* Bottom Actions Panel in Left Column */}
+            <div style={{ padding: "1.5rem", borderTop: "1px solid #e2e8f0", display: "flex", flexDirection: "column", gap: "0.75rem", background: "white" }}>
+                <button onClick={handleGenerateAISummary} disabled={isGeneratingAI} style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1px dashed #3b82f6", background: "white", color: "#1e293b", fontWeight: 700, fontSize: "0.85rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}>
+                   <Zap size={16} color="#3b82f6" /> {isGeneratingAI ? "กำลังประมวลผล..." : "ให้ AI สรุปงาน"}
+                </button>
+                
+                {currentStatus !== "Resolved" && assigneeName && (
+                  <button onClick={() => setIsResolveModalOpen(true)} style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", color: "#1e293b", fontWeight: 700, fontSize: "0.85rem" }}>
+                    แก้ไขข้อมูลการทำงาน
                   </button>
-                  <button onClick={() => setIsTransferModalOpen(true)} className="btn-secondary"
-                    style={{ flex: 1, padding: "1rem", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", background: "rgba(99, 102, 241, 0.1)", color: "var(--primary)", borderColor: "var(--primary)" }}>
-                    <UserCheck size={20} /> ส่งมอบ Staff
-                  </button>
-                  <button onClick={() => setIsEscalateModalOpen(true)} className="btn-secondary"
-                    style={{ flex: 1, padding: "1rem", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", background: "rgba(239, 68, 68, 0.05)", color: "var(--status-escalated-text)", borderColor: "var(--status-escalated-text)" }}>
-                    <Share2 size={20} /> ส่งฝ่ายอื่น
-                  </button>
+                )}
+
+                <button onClick={handleExportPDF} style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "none", background: "#0066cc", color: "white", fontWeight: 700, fontSize: "0.85rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}>
+                   <FileText size={18} /> PDF
+                </button>
+
+                <div style={{ padding: "0.5rem", borderTop: "1px dashed #e2e8f0", marginTop: "0.5rem" }}>
+                   <p style={{ fontSize: "0.65rem", color: "#64748b", fontWeight: 700, marginBottom: "0.5rem", textTransform: "uppercase" }}>External Escalation Tools</p>
+                   <button 
+                    onClick={handleCopyMagicLink} 
+                    style={{ 
+                      width: "100%", 
+                      padding: "0.7rem", 
+                      borderRadius: "8px", 
+                      border: "1px solid #0ea5e9", 
+                      background: "#f0f9ff", 
+                      color: "#0369a1", 
+                      fontWeight: 700, 
+                      fontSize: "0.8rem",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "0.5rem",
+                      cursor: "pointer"
+                    }}
+                   >
+                     <Link2 size={14} /> คัดลอก Magic Link ส่งงานต่อ
+                   </button>
+                   <p style={{ fontSize: "0.6rem", color: "#94a3b8", marginTop: "0.4rem", fontStyle: "italic" }}>* แผนกอื่นเข้าดูและปิดงานได้โดยไม่ต้อง Login</p>
                 </div>
-              )}
-              {assigneeName && (
-                <button onClick={handleGenerateAISummary} disabled={isGeneratingAI} className="btn-secondary"
-                  style={{ width: "100%", padding: "0.85rem", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.6rem", borderStyle: "dashed", borderColor: "var(--primary)" }}>
-                  {isGeneratingAI ? <div className="spinner-mini" /> : <><Zap size={16} /> {aiSummary ? "AI สรุปใหม่" : "ให้ AI สรุปงาน"}</>}
-                </button>
-              )}
-              {currentStatus === "Resolved" && (
-                <button onClick={() => setIsResolveModalOpen(true)} className="btn-secondary" style={{ width: "100%", padding: "1rem", borderRadius: "14px" }}>
-                  แก้ไขข้อมูลการปิดงาน
-                </button>
-              )}
-              {["Resolved", "Closed"].includes(currentStatus) && (
-                <button onClick={() => { handleExportPDF(); }} className="btn-primary"
-                  style={{ padding: "0.6rem 1rem", borderRadius: "14px", display: "flex", alignItems: "center", gap: "0.5rem", background: "var(--primary)", boxShadow: "0 4px 12px var(--primary-glow)", zIndex: 50 }}>
-                  <FileText size={18} /><span style={{ fontSize: "0.85rem", fontWeight: 700 }}>PDF</span>
-                </button>
-              )}
             </div>
           </div>
         </div>
 
-        {/* Right Side: Chat Area */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "var(--bg-glass)", backdropFilter: "blur(20px)", borderRadius: "32px", border: "1px solid var(--border-color)", overflow: "hidden", boxShadow: "0 20px 50px rgba(0,0,0,0.3)" }}>
-          <div className="chat-area" ref={reportRef} data-pdf-report style={{ flex: 1, padding: "2rem", overflowY: "auto", display: "flex", flexDirection: "column", gap: "1.25rem" }}
-            onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }} onDragLeave={() => setIsDragOver(false)}
-            onDrop={(e) => { e.preventDefault(); setIsDragOver(false); const f = e.dataTransfer.files?.[0]; if (f) uploadFileAndSend(f); }}>
-            
-            {isDragOver && <div style={{ position: "absolute", inset: "1rem", borderRadius: "20px", background: "rgba(99, 102, 241, 0.1)", border: "3px dashed var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10 }}>
-              <span style={{ background: "var(--bg-surface)", padding: "1.5rem 2.5rem", borderRadius: "16px", fontWeight: 800, color: "var(--primary)" }}>วางรูปภาพเพื่อส่งให้ลูกค้า</span>
-            </div>}
-
-            {/* Message Bubbles */}
+        {/* Box 2 (Right Column): Pure Chat Interface */}
+        <div className="right-column" style={{ 
+          flex: 1, 
+          display: "flex", 
+          flexDirection: "column", 
+          minWidth: 0, 
+          background: "var(--bg-surface)", 
+          borderRadius: "var(--radius-sharp)", 
+          border: "1px solid var(--border-color)", 
+          overflow: "hidden", 
+          boxShadow: "0 4px 30px rgba(0,0,0,0.4)",
+          position: 'relative'
+        }}>
+          {/* HUD Scanline Effect for Chat */}
+          <div className="scanner-line-fixed" style={{ pointerEvents: 'none' }} />
+          
+          {/* Chat Messages Area */}
+          <div className="chat-area" style={{ 
+            flex: 1, 
+            padding: "2rem", 
+            overflowY: "auto", 
+            display: "flex", 
+            flexDirection: "column", 
+            gap: "0.5rem",
+            background: `repeating-linear-gradient(0deg, var(--hud-scanline), var(--hud-scanline) 1px, transparent 1px, transparent 3px)`
+          }}>
             {messages.map((msg, idx) => (
               <MessageBubble key={msg.id ?? idx} msg={msg} isIT={msg.direction === "outbound"} setAnnotationImage={setAnnotationImage} setSelectedImage={setSelectedImage} />
             ))}
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Quick Reply Chips */}
-          {initialSettings?.quick_replies?.length > 0 && (
-            <div style={{ padding: "0.75rem 2rem 0", background: "rgba(0,0,0,0.2)", borderTop: "1px solid var(--border-color)", display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
-              <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <Zap size={14} className="text-amber-500" /> สำเร็จรูป:
-              </span>
-              {initialSettings.quick_replies.map((reply: string, idx: number) => (
-                <button key={idx} type="button" onClick={() => setReplyText(reply)}
-                  style={{ padding: "0.3rem 0.85rem", borderRadius: "20px", border: "1px solid rgba(99,102,241,0.4)", background: "rgba(99,102,241,0.08)", color: "var(--primary)", fontSize: "0.82rem", cursor: "pointer", transition: "all 0.15s ease", whiteSpace: "nowrap", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis" }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(99,102,241,0.2)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--primary)"; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(99,102,241,0.08)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(99,102,241,0.4)"; }} title={reply}>
-                  {reply.length > 25 ? reply.substring(0, 25) + "…" : reply}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Chat Input Component */}
-          <ChatInput 
-            ticketId={initialTicket.id} 
-            onSendMessage={handleSendReply} 
-            isLoading={isSending || isUploadingImage} 
-            value={replyText}
-            onChange={setReplyText}
-          />
+          {/* Bottom Bar: Quick Replies & Input */}
+          <div style={{ borderTop: "1px solid var(--border-color)", background: "var(--bg-glass)", backdropFilter: 'blur(10px)' }}>
+            {initialSettings?.quick_replies?.length > 0 && (
+              <div style={{ padding: "0.75rem 1rem", background: "rgba(0,0,0,0.2)", display: "flex", gap: "0.5rem", flexWrap: "wrap", borderBottom: "1px solid var(--border-light)" }}>
+                <span style={{ fontSize: "0.55rem", color: "var(--primary)", display: "flex", alignItems: "center", gap: "6px", marginRight: "8px", fontWeight: 800, letterSpacing: '1px' }}>
+                  <Zap size={10} /> MACROS:
+                </span>
+                {initialSettings.quick_replies.map((reply: string, idx: number) => (
+                  <button 
+                    key={idx} 
+                    onClick={() => setReplyText(reply)} 
+                    className="btn-macro"
+                  >
+                    {reply.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            )}
+            <ChatInput ticketId={initialTicket.id} onSendMessage={handleSendReply} isLoading={isSending || isUploadingImage} value={replyText} onChange={setReplyText} />
+          </div>
         </div>
       </main>
+
+      <style jsx>{`
+        .btn-macro {
+          padding: 0.25rem 0.75rem;
+          border-radius: 2px;
+          background: var(--bg-color);
+          border: 1px solid var(--border-color);
+          font-size: 0.65rem;
+          color: var(--text-main);
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-family: monospace;
+        }
+        .btn-macro:hover {
+          background: var(--primary);
+          color: black;
+          box-shadow: 0 0 10px var(--primary-glow);
+          border-color: var(--primary);
+        }
+        .scanner-line-fixed {
+          position: absolute;
+          top: 0; left: 0; width: 100%; height: 2px;
+          background: var(--primary);
+          opacity: 0.05;
+          animation: scan 8s linear infinite;
+          z-index: 5;
+        }
+        @keyframes scan {
+          from { top: 0; }
+          to { top: 100%; }
+        }
+      `}</style>
 
       {/* Modals */}
       {isResolveModalOpen && (
@@ -727,19 +788,19 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
       {/* PDF Template (hidden) */}
       <div style={{ position: "fixed", top: "-20000px", left: "-20000px", opacity: 0, pointerEvents: "none", zIndex: -100 }} data-pdf-report>
         <div ref={reportRef} style={{ width: "800px", padding: "60px", background: "white", color: "black", fontFamily: "'IBM Plex Sans Thai', sans-serif", display: "block", textAlign: "left" }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '40px', borderBottom: '2px solid #4f46e5', paddingBottom: '20px' }}>
-            <div style={{ textAlign: 'left' }}><div style={{ color: "#4f46e5", margin: 0, fontSize: "28px", fontWeight: 700 }}>NEO SUPPORT</div><p style={{ color: "#666", margin: "5px 0", fontSize: "14px" }}>Service Report & Technical Summary</p></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '40px', borderBottom: '2px solid var(--primary)', paddingBottom: '20px' }}>
+            <div style={{ textAlign: 'left' }}><div style={{ color: "var(--primary)", margin: 0, fontSize: "28px", fontWeight: 700 }}>NEO SUPPORT</div><p style={{ color: "#666", margin: "5px 0", fontSize: "14px" }}>Service Report & Technical Summary</p></div>
             <div style={{ textAlign: 'right' }}><p style={{ fontWeight: 700, margin: 0, fontSize: "18px" }}>Ticket: {initialTicket.ticket_no}</p><p style={{ color: "#666", margin: "5px 0" }}>Date: {new Date().toLocaleDateString('th-TH')}</p></div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '40px' }}>
             <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px', textAlign: 'left' }}><h3 style={{ borderBottom: '1px solid #ddd', paddingBottom: '5px', marginBottom: '10px', fontSize: '16px', fontWeight: 700 }}>CLIENT INFO</h3><p style={{ margin: '5px 0' }}><strong>Hospital:</strong> {initialTicket.users?.hospitals?.name || '-'}</p><p style={{ margin: '5px 0' }}><strong>Department:</strong> {initialTicket.users?.department || '-'}</p><p style={{ margin: '5px 0' }}><strong>Reporter:</strong> {initialTicket.users?.display_name || '-'}</p></div>
             <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px', textAlign: 'left' }}><h3 style={{ borderBottom: '1px solid #ddd', paddingBottom: '5px', marginBottom: '10px', fontSize: '16px', fontWeight: 700 }}>ISSUE DETAILS</h3><p style={{ margin: '5px 0' }}><strong>Type:</strong> {initialTicket.issue_type || '-'}</p><p style={{ margin: '5px 0' }}><strong>Module:</strong> {initialTicket.module || '-'}</p><p style={{ margin: '5px 0' }}><strong>Status:</strong> {currentStatus === 'Resolved' ? 'แก้ไขเสร็จสิ้น' : 'ปิดงาน'}</p></div>
           </div>
-          <div style={{ marginBottom: '40px', textAlign: 'left' }}><h3 style={{ fontSize: '18px', color: '#4f46e5', borderLeft: '4px solid #4f46e5', paddingLeft: '10px', marginBottom: '15px', fontWeight: 700 }}>PROBLEM DESCRIPTION</h3><p style={{ background: '#fff', border: '1px solid #eee', padding: '15px', borderRadius: '8px', lineHeight: '1.6', minHeight: '60px' }}>{initialTicket.description}</p></div>
+          <div style={{ marginBottom: '40px', textAlign: 'left' }}><h3 style={{ fontSize: '18px', color: 'var(--primary)', borderLeft: '4px solid var(--primary)', paddingLeft: '10px', marginBottom: '15px', fontWeight: 700 }}>PROBLEM DESCRIPTION</h3><p style={{ background: '#fff', border: '1px solid #eee', padding: '15px', borderRadius: '8px', lineHeight: '1.6', minHeight: '60px' }}>{initialTicket.description}</p></div>
           <div style={{ marginBottom: '40px', textAlign: 'left' }}><h3 style={{ fontSize: '18px', color: '#10b981', borderLeft: '4px solid #10b981', paddingLeft: '10px', marginBottom: '15px', fontWeight: 700 }}>RESOLUTION & NOTES</h3><div style={{ background: '#f0fdf4', border: '1px solid #10b981', padding: '20px', borderRadius: '8px', lineHeight: '1.6' }}><p style={{ margin: '5px 0' }}><strong>วิธีแก้ไข:</strong> {initialTicket.notes || resolveNotes || 'N/A'}</p>{initialTicket.notes?.includes('\nหมายเหตุ:') && <p style={{ marginTop: '10px', borderTop: '1px dashed #10b981', paddingTop: '10px' }}>รายละเอียดเพิ่มเติมตามบันทึกระบบ</p>}</div></div>
           <div style={{ marginBottom: '40px', textAlign: 'left' }}>
-            <h3 style={{ fontSize: '18px', color: '#4f46e5', borderLeft: '4px solid #4f46e5', paddingLeft: '10px', marginBottom: '15px', fontWeight: 700 }}>AI ANALYSIS & SATISFACTION</h3>
-            {aiSummary && <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '20px', borderRadius: '8px', lineHeight: '1.6', marginBottom: '20px' }}><p style={{ margin: '5px 0', color: '#4f46e5', fontWeight: 700 }}>AI สรุปผลการตรวจสอบ:</p><div style={{ fontSize: '13px', color: '#475569' }}>{aiSummary.split('\n').map((line: string, i: number) => <p key={i} style={{ margin: '0 0 4px 0' }}>{line}</p>)}</div></div>}
+            <h3 style={{ fontSize: '18px', color: 'var(--primary)', borderLeft: '4px solid var(--primary)', paddingLeft: '10px', marginBottom: '15px', fontWeight: 700 }}>AI ANALYSIS & SATISFACTION</h3>
+            {aiSummary && <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '20px', borderRadius: '8px', lineHeight: '1.6', marginBottom: '20px' }}><p style={{ margin: '5px 0', color: 'var(--primary)', fontWeight: 700 }}>AI สรุปผลการตรวจสอบ:</p><div style={{ fontSize: '13px', color: '#475569' }}>{aiSummary.split('\n').map((line: string, i: number) => <p key={i} style={{ margin: '0 0 4px 0' }}>{line}</p>)}</div></div>}
             {(initialTicket.rating || 0) > 0 && <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', padding: '15px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}><div><p style={{ margin: 0, fontWeight: 700, color: '#92400e', fontSize: '14px' }}>ความพึงพอใจของลูกค้า</p><p style={{ margin: 0, fontSize: '12px', color: '#b45309' }}>ประเมินโดยผู้แจ้งงานเมื่อปิดใบงาน</p></div><div style={{ textAlign: 'right' }}><p style={{ margin: 0, fontSize: '24px', letterSpacing: '4px' }}>{"⭐".repeat(initialTicket.rating || 0)}</p><p style={{ margin: 0, fontWeight: 700, color: '#92400e' }}>{initialTicket.rating} / 5 คะแนน</p></div></div>}
           </div>
           {(() => { const chatImages = messages.filter(m => m.message_type === 'image' && m.content.startsWith('http')).slice(0, 8); if (chatImages.length === 0) return null; return (<div style={{ marginTop: '20px' }}><h3 style={{ fontSize: '18px', color: '#4f46e5', borderLeft: '4px solid #4f46e5', paddingLeft: '10px', marginBottom: '15px', fontWeight: 700 }}>ATTACHED COMMUNICATIONS</h3><div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>{chatImages.map((img, idx) => (<div key={idx} style={{ border: '1px solid #eee', borderRadius: '12px', overflow: 'hidden', height: chatImages.length > 2 ? '200px' : '350px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', pageBreakInside: 'avoid' }}><img src={img.content} alt={`Attachment ${idx + 1}`} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} /></div>))}</div></div>); })()}

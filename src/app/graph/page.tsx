@@ -49,14 +49,17 @@ async function getDashboardData() {
 
 export default async function GraphPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  const tickets = await getDashboardData();
   
-  // Fetch Advanced SLA configuration
-  const { data: slaSettings } = await supabaseAdmin
-    .from("global_settings")
-    .select("key, value");
+  // 🏎️ Start all fetches in parallel
+  const [
+    { data: { user } },
+    tickets,
+    { data: slaSettings }
+  ] = await Promise.all([
+    supabase.auth.getUser(),
+    getDashboardData(),
+    supabaseAdmin.from("global_settings").select("key, value")
+  ]);
 
   const slaPolicy = slaSettings?.find(s => s.key === 'sla_config_by_type')?.value || { Default: 8 };
   const businessHours = slaSettings?.find(s => s.key === 'business_hours')?.value || { exclude_periods: [] };

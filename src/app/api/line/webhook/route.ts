@@ -717,20 +717,6 @@ async function handlePostback(event: LineEvent, lineUserId: string): Promise<voi
     await Promise.all([
       supabaseAdmin.from("messages").insert(messagesToInsert),
       supabaseAdmin.from("users").update({ line_metadata: {} }).eq("id", user.id),
-      // Notify Staff
-      (async () => {
-        const staffGroupId = process.env.LINE_STAFF_GROUP_ID;
-        if (staffGroupId) {
-          const flexContent = createStaffAlertFlex({
-            ticket_no: ticketNo,
-            description: description || "แจ้งซ่อมผ่านภาพประกอบ",
-            hospital_name: (user as any).hospitals?.name || "Unknown Hospital",
-            reporter_name: user.display_name,
-            priority: newTicket.priority || "Medium"
-          });
-          await pushMessage(staffGroupId, [{ type: "flex", altText: `🚨 งานใหม่: ${ticketNo}`, contents: flexContent }]);
-        }
-      })(),
       categorizeTicket(ticketId, description || "Image/Video Report")
     ]);
 

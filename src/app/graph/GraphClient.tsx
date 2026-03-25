@@ -7,7 +7,7 @@ import {
   PieChart, Pie, Cell, AreaChart, Area, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
   Legend
 } from "recharts";
-import { Sun, Moon, LayoutDashboard, Database, Activity, Briefcase, FileText, CheckCircle, AlertTriangle, Download, Zap } from "lucide-react";
+import { Sun, Moon, LayoutDashboard, Database, Activity, Briefcase, FileText, CheckCircle, AlertTriangle, Download, Zap, PlusCircle, BarChart3, Users, Building2, Settings } from "lucide-react";
 import { logout } from "../login/actions";
 
 export default function GraphClient({ 
@@ -253,13 +253,46 @@ export default function GraphClient({
         </div>
         
         <nav className="sidebar-nav">
-          <Link href="/" className="nav-item">
+          <div className="nav-group-label">{isSidebarOpen ? "หลัก" : "•••"}</div>
+          <Link href="/" prefetch={true} className="nav-item" data-label="หน้าหลัก (Dashboard)">
             <LayoutDashboard size={20} className="nav-icon" />
-            {isSidebarOpen && <span className="nav-label">Dashboard</span>}
+            {isSidebarOpen && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <span className="nav-label">หน้าหลัก</span>
+                <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>Dashboard</span>
+              </div>
+            )}
           </Link>
-          <Link href="/graph" className="nav-item active">
-            <Database size={20} className="nav-icon" />
-            {isSidebarOpen && <span className="nav-label">Analytics</span>}
+          <Link href="/tickets/new" prefetch={true} className="nav-item" data-label="สร้างตั๋วงาน (New Ticket)">
+            <PlusCircle size={20} className="nav-icon" />
+            {isSidebarOpen && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <span className="nav-label">สร้างตั๋วงาน</span>
+                <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>New Ticket</span>
+              </div>
+            )}
+          </Link>
+
+          <div className="nav-group-label" style={{ marginTop: '1.5rem' }}>{isSidebarOpen ? "สถิติและข้อมูล" : "•••"}</div>
+          <Link href="/graph" prefetch={true} className="nav-item active" data-label="สถิติประสิทธิภาพ (Analytics)">
+            <BarChart3 size={20} className="nav-icon" />
+            {isSidebarOpen && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <span className="nav-label">สถิติประสิทธิภาพ</span>
+                <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>Analytics</span>
+              </div>
+            )}
+          </Link>
+
+          <div className="nav-group-label" style={{ marginTop: '1.5rem' }}>{isSidebarOpen ? "ตั้งค่าระบบ" : "•••"}</div>
+          <Link href="/settings" prefetch={true} className="nav-item" data-label="ตั้งค่าทั่วไป (Settings)">
+            <Settings size={20} className="nav-icon" />
+            {isSidebarOpen && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <span className="nav-label">ตั้งค่าทั่วไป</span>
+                <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>System Settings</span>
+              </div>
+            )}
           </Link>
         </nav>
       </aside>
@@ -332,7 +365,7 @@ export default function GraphClient({
         </section>
 
         {/* ─── Charts Grid ──────────────────────────────────────── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }} className="charts-main-grid">
+        <div style={{ display: 'grid', gap: '1.5rem', marginBottom: '2rem', width: '100%' }} className="charts-main-grid">
           
           {/* Trend Chart - Large */}
           <div className="chart-block animate-fade-in delay-2" style={{ gridColumn: '1 / -1', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '20px', padding: '1.5rem' }}>
@@ -357,7 +390,7 @@ export default function GraphClient({
           </div>
 
           {/* Department Bar Chart */}
-          <div className="chart-block animate-fade-in delay-3" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '20px', padding: '1.5rem' }}>
+          <div className="chart-block animate-fade-in delay-3" style={{ gridColumn: '1 / -1', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '20px', padding: '1.5rem' }}>
             <h2 style={{ fontSize: '1.2rem', marginBottom: '1.5rem', fontWeight: 600 }}>🏥 Tickets by Queue / Hospital</h2>
             <div style={{ width: '100%', height: '320px' }}>
               <ResponsiveContainer>
@@ -485,6 +518,24 @@ export default function GraphClient({
         .nav-item { cursor: pointer; transition: all 0.3s ease; }
         .nav-item:hover { transform: translateX(5px); background: rgba(255,255,255,0.05); }
         .nav-item.active { background: var(--primary) !important; color: white !important; box-shadow: 0 10px 20px -5px var(--primary-glow); }
+        
+        .sidebar.collapsed .nav-item { position: relative; }
+        .sidebar.collapsed .nav-item::after {
+          content: attr(data-label);
+          position: absolute; left: 100%; top: 50%;
+          transform: translateY(-50%) translateX(10px);
+          background: var(--bg-surface);
+          color: var(--text-heading);
+          padding: 0.5rem 0.8rem; border-radius: 6px; font-size: 0.8rem;
+          white-space: nowrap; opacity: 0; pointer-events: none;
+          transition: all 0.2s ease;
+          box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+          border: 1px solid var(--border-color); z-index: 1000;
+        }
+        .sidebar.collapsed .nav-item:hover::after {
+          opacity: 1; transform: translateY(-50%) translateX(15px);
+        }
+
         .stat-card { background: var(--bg-surface); backdrop-filter: var(--glass-blur); border: 1px solid var(--border-color); border-radius: 20px; padding: 1.5rem; position: relative; overflow: hidden; transition: all 0.3s ease; }
         .stat-card:hover { transform: translateY(-5px); border-color: var(--primary); box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
         .chart-block { transition: all 0.3s ease; }

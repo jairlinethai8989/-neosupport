@@ -74,7 +74,7 @@ function HospitalStats() {
     return hours;
   }, [tickets]);
 
-  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4'];
 
   if (loading) return <div style={{ padding: "5rem", textAlign: "center", color: "var(--text-muted)" }}>กำลังวิเคราะห์ข้อมูล...</div>;
   if (!hospital) return <div>ไม่พบข้อมูลโรงพยาบาล</div>;
@@ -131,7 +131,7 @@ function HospitalStats() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.5rem" }}>
         
         {/* Chart: Issue Types */}
-        <div style={{ backgroundColor: "var(--bg-surface)", padding: "1.5rem", borderRadius: "20px", border: "1px solid var(--border-color)" }}>
+        <div style={{ backgroundColor: "var(--bg-surface)", padding: "1.5rem", borderRadius: "var(--radius-sharp)", border: "1px solid var(--border-color)" }}>
           <h3 style={{ marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "10px" }}>
             <AlertCircle size={20} color="#ef4444" /> ปัญหาส่วนใหญ่ (Top Issues)
           </h3>
@@ -149,7 +149,7 @@ function HospitalStats() {
         </div>
 
         {/* Chart: Departments */}
-        <div style={{ backgroundColor: "var(--bg-surface)", padding: "1.5rem", borderRadius: "20px", border: "1px solid var(--border-color)" }}>
+        <div style={{ backgroundColor: "var(--bg-surface)", padding: "1.5rem", borderRadius: "var(--radius-sharp)", border: "1px solid var(--border-color)" }}>
           <h3 style={{ marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "10px" }}>
             <Users size={20} color="#10b981" /> จุดที่เสียบ่อย (Hot Departments)
           </h3>
@@ -176,7 +176,7 @@ function HospitalStats() {
         </div>
 
         {/* Chart: Time Trend */}
-        <div style={{ backgroundColor: "var(--bg-surface)", padding: "1.5rem", borderRadius: "20px", border: "1px solid var(--border-color)", gridColumn: "span 2" }}>
+        <div style={{ backgroundColor: "var(--bg-surface)", padding: "1.5rem", borderRadius: "var(--radius-sharp)", border: "1px solid var(--border-color)", gridColumn: "span 2" }}>
           <h3 style={{ marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "10px" }}>
             <Clock size={20} color="#f59e0b" /> ช่วงเวลาที่แจ้งปัญหาบ่อย (Peak Reporting Hours)
           </h3>
@@ -201,7 +201,7 @@ function HospitalStats() {
       </div>
       </div>
 
-      <div style={{ marginTop: "2rem", backgroundColor: "var(--bg-surface)", borderRadius: "20px", padding: "1.5rem", border: "1px solid var(--border-color)" }}>
+      <div style={{ marginTop: "2rem", backgroundColor: "var(--bg-surface)", borderRadius: "var(--radius-sharp)", padding: "1.5rem", border: "1px solid var(--border-color)" }}>
         <h3 style={{ marginBottom: "1rem" }}>ประวัติการแจ้งซ่อมล่าสุด</h3>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
@@ -219,7 +219,7 @@ function HospitalStats() {
                 <td style={{ padding: "1rem" }}>{t.users?.department}</td>
                 <td style={{ padding: "1rem", color: "var(--text-main)" }}>{t.description}</td>
                 <td style={{ padding: "1rem" }}>
-                  <span style={{ fontSize: "0.75rem", padding: "0.2rem 0.6rem", borderRadius: "20px", backgroundColor: "var(--primary-glow)", color: "var(--primary)" }}>
+                  <span style={{ fontSize: "0.75rem", padding: "0.2rem 0.6rem", borderRadius: "var(--radius-sharp)", backgroundColor: "var(--primary-glow)", color: "var(--primary)" }}>
                     {t.status}
                   </span>
                 </td>

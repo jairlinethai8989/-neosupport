@@ -37,13 +37,16 @@ export async function updateSession(request: NextRequest) {
 
   const isAuthPage = request.nextUrl.pathname.startsWith('/login')
   const isApiRoute = request.nextUrl.pathname.startsWith('/api/')
+  const isPublicPage = request.nextUrl.pathname.startsWith('/t/') || request.nextUrl.pathname.startsWith('/public/')
+  const isNextInternal = request.nextUrl.pathname.startsWith('/_next')
   
-  // Protect all paths except auth pages, api routes, and static assets
+  // Protect all paths except auth pages, api routes, public pages, and static assets
   if (
     !user &&
     !isAuthPage &&
     !isApiRoute &&
-    !request.nextUrl.pathname.startsWith('/_next') &&
+    !isPublicPage &&
+    !isNextInternal &&
     !request.nextUrl.pathname.includes('.')
   ) {
     const url = request.nextUrl.clone()

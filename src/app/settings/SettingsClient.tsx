@@ -13,11 +13,11 @@ const MENU_ITEMS = [
   { key: "issue_types",      icon: Tag,           label: "ประเภทงาน",                  sub: "Ticket Types" },
   { key: "resolution_notes", icon: Wrench,        label: "วิธีแก้ไขสำเร็จรูป",       sub: "Quick Resolutions" },
   { key: "quick_replies",    icon: MessageSquare, label: "ข้อความตอบกลับสำเร็จรูป",  sub: "Quick Replies" },
+  { key: "hospitals",        icon: Building2,     label: "โรงพยาบาล",                sub: "Hospital Config" },
   { key: "policy",           icon: Shield,        label: "นโยบายระบบ",               sub: "System Policies" },
   { key: "maintenance",      icon: Database,      label: "ดูแลระบบ / พื้นที่",      sub: "System Maintenance" },
-  { key: "staff_approvals",  icon: Users,         label: "อนุมัติสิทธิ์พนักงาน",      sub: "Staff Management", href: "/settings/staff-approvals" },
+  { key: "staff_approvals",  icon: Users,         label: "อนุมัติสิทธิ์พนักงาน",      sub: "Staff Management" },
   { key: "audit_logs",       icon: ShieldAlert,   label: "ประวัติการ Cleanup",      sub: "Audit Logs", href: "/settings/audit-logs" },
-  { key: "hospitals",        icon: Building2,     label: "โรงพยาบาล",                sub: "Hospital Config" },
 ];
 
 const PLACEHOLDERS: Record<string, string> = {
@@ -151,20 +151,28 @@ function ArrayEditor({
 }
 
 
+import StaffApprovalsClient from "./staff-approvals/StaffApprovalsClient";
+
 // ─── Main Settings Component ─────────────────────────────────
 export default function SettingsClient({
   initialSettings,
   initialHospitals = [],
+  initialPending = [],
+  initialActive = [],
   userEmail,
+  initialTab = "modules",
 }: {
   initialSettings: any;
   initialHospitals?: any[];
+  initialPending?: any[];
+  initialActive?: any[];
   userEmail?: string;
+  initialTab?: string;
 }) {
   const [theme, setTheme] = useState(
     typeof window !== "undefined" ? localStorage.getItem("theme") || "dark" : "dark"
   );
-  const [activeMenu, setActiveMenu] = useState("modules");
+  const [activeMenu, setActiveMenu] = useState(initialTab);
   const [saving, setSaving] = useState(false);
   const [savedKey, setSavedKey] = useState<string | null>(null);
 
@@ -270,7 +278,7 @@ export default function SettingsClient({
         borderBottom: "1px solid var(--border-color)",
         display: "flex", alignItems: "center", padding: "0 2rem", gap: "1rem",
       }}>
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--text-muted)", textDecoration: "none", fontWeight: 500, fontSize: "0.9rem" }}>
+        <Link href="/" prefetch={true} style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--text-muted)", textDecoration: "none", fontWeight: 500, fontSize: "0.9rem" }}>
           <ArrowLeft size={18} /> Dashboard
         </Link>
         <span style={{ color: "var(--border-color)" }}>›</span>
@@ -425,6 +433,10 @@ export default function SettingsClient({
                     </button>
                   </div>
                 </div>
+              </div>
+            ) : activeMenu === "staff_approvals" ? (
+              <div key="staff_approvals">
+                <StaffApprovalsClient initialPending={initialPending} initialActive={initialActive} userEmail={userEmail} hideHeader />
               </div>
             ) : activeMenu === "hospitals" ? (
               <div key="hospitals">

@@ -2,18 +2,27 @@ import { createClient } from "@/utils/supabase/server";
 import SettingsClient from "./SettingsClient";
 import { redirect } from "next/navigation";
 
-export default async function SettingsPage() {
+export default async function SettingsPage(props: { searchParams?: Promise<{ tab?: string }> }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  const searchParams = await props.searchParams;
+  const initialTab = searchParams?.tab || "modules";
 
   if (!user) {
     redirect("/login");
   }
 
-  // Fetch settings from DB
-  const { data: settings } = await supabase
-    .from("global_settings")
-    .select("*");
+  const [
+    { data: settings },
+    { data: hospitals },
+    { data: pendingUsers },
+    { data: activeUsers }
+  ] = await Promise.all([
+    supabase.from("global_settings").select("*"),
+    supabase.from("hospitals").select("*").order("name", { ascending: true }),
+    supabase.from("users").select("*, hospitals(name)").eq("status", "pending").order("created_at", { ascending: false }),
+    supabase.from("users").select("*, hospitals(name)").eq("is_staff", true).neq("status", "pending").order("status", { ascending: true })
+  ]);
 
   const initialSettings = {
     modules: settings?.find(s => s.key === "modules")?.value || ["ห้องพยาบาล", "ห้องแพทย์", "ผู้ป่วยใน (IPD)", "ผู้ป่วยนอก (OPD)", "การเงิน/บัญชี", "จัดซื้อ/พัสดุ", "Network/Infra", "อื่นๆ"],
@@ -30,19 +39,16 @@ export default async function SettingsPage() {
     sla_policy: settings?.find(s => s.key === "sla_policy")?.value || { Critical: 1, High: 4, Medium: 8, Low: 24 },
   };
 
-  // Fetch hospitals
-  const { data: hospitals } = await supabase
-    .from("hospitals")
-    .select("*")
-    .order("name", { ascending: true });
-
   const displayUser = user?.email?.replace("@neosupport.local", "") || user?.email;
 
   return (
     <SettingsClient 
       initialSettings={initialSettings} 
       initialHospitals={hospitals || []} 
+      initialPending={pendingUsers || []}
+      initialActive={activeUsers || []}
       userEmail={displayUser} 
+      initialTab={initialTab}
     />
   );
 }

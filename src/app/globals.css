@@ -275,26 +275,12 @@ h6 {
   flex: 1;
   padding: 2rem;
   overflow-y: auto;
-  display: grid;
-  grid-template-columns: 1fr 320px;
-  grid-template-rows: auto auto 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 1.5rem;
-  grid-template-areas: 
-    "header header"
-    "hero sidebar"
-    "content sidebar";
 }
 
-@media (max-width: 1280px) {
-  .main-content {
-    grid-template-columns: 1fr;
-    grid-template-areas: 
-      "header"
-      "hero"
-      "content"
-      "sidebar";
-  }
-}
+
 
 .hud-header { grid-area: header; }
 .hud-hero { grid-area: hero; }

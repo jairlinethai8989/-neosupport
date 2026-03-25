@@ -3,33 +3,33 @@ import { updateSession } from '@/utils/supabase/middleware'
 
 export async function middleware(request: NextRequest) {
   const response = await updateSession(request)
-  
+
   // 🛡️ Security Headers for Google Safe Browsing trust
   const headers = response.headers
-  
+
   // 1. Content Security Policy (Basic)
   // Allows fonts from Google, images from Wikimedia/Unsplash/Supabase/Mixkit
   headers.set('Content-Security-Policy', `
     default-src 'self';
-    script-src 'self' 'unsafe-inline' 'unsafe-eval';
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live;
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
     font-src 'self' https://fonts.gstatic.com;
     img-src 'self' blob: data: https://*.wikimedia.org https://images.unsplash.com https://*.supabase.co https://stickershop.line-scdn.net;
     media-src 'self' https://*.supabase.co https://assets.mixkit.co;
-    connect-src 'self' https://*.supabase.co https://api.line.me https://api-data.line.me https://generativelanguage.googleapis.com;
+    connect-src 'self' wss://*.supabase.co wss://ws-us3.pusher.com https://*.supabase.co https://api.line.me https://api-data.line.me https://generativelanguage.googleapis.com https://vercel.live wss://vercel.live;
     frame-src 'self' data: blob:;
     frame-ancestors 'none';
   `.replace(/\s{2,}/g, ' ').trim())
 
   // 2. Strict-Transport-Security (HSTS) - 2 years
   headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload')
-  
+
   // 3. X-Content-Type-Options
   headers.set('X-Content-Type-Options', 'nosniff')
-  
+
   // 4. X-Frame-Options (Clickjacking protection)
   headers.set('X-Frame-Options', 'DENY')
-  
+
   // 5. Referrer-Policy
   headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
 

@@ -42,7 +42,10 @@ export async function POST(
       );
     }
 
-    // 2. If status is Resolved or Closed, send a LINE notification
+    /* 
+    // Zero-Cost Version: Disable automatic push notification on status change to save quota.
+    // Staff should manually notify customer via LINE OA Manager App (Yellow App) for free.
+    
     if (lineUid && (status === "Resolved" || status === "Closed")) {
       const displayNotes = notes ? `\n📝 วิธีแก้ไข: ${notes.substring(0, 150)}${notes.length > 150 ? "..." : ""}` : "";
       
@@ -67,6 +70,7 @@ export async function POST(
         logger.error("Failed to push status notification:", pushError);
       }
     }
+    */
 
     return NextResponse.json({ success: true, status });
   } catch (error) {
