@@ -822,7 +822,11 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
         .loading-spinner-small { width: 24px; height: 24px; border: 3px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
         @media (max-width: 1200px) { .main-content { flex-direction: column !important; padding: 1rem !important; gap: 1.5rem !important; overflow-y: auto !important; } .detail-panel { flex: none !important; width: 100% !important; } .sidebar { display: none !important; } }
         .modal-content { max-width: 600px; width: 95%; max-height: 90vh; overflow-y: auto; }
-        select { background-color: var(--bg-color) !important; color: white !important; border: 1px solid var(--border-color) !important; }
+        select, input, textarea { 
+          background-color: white !important; 
+          color: var(--text-heading) !important; 
+          border: 1px solid var(--border-color) !important; 
+        }
       `}</style>
     </div>
   );
