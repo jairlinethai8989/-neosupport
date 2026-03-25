@@ -658,33 +658,107 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
 
       {/* Modals */}
       {isResolveModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ borderRadius: "24px", padding: "2.5rem" }}>
-            <h2 style={{ fontSize: "1.75rem", marginBottom: "1.5rem", display: 'flex', alignItems: 'center', gap: '0.75rem' }}><CheckCircle size={28} className="text-green-500" /> ปิดงาน / Resolved Ticket</h2>
-            <div className="form-group">
-              <label style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.4rem', display: 'block' }}>โมดูล / ระบบ</label>
-              <select value={resolveModule} onChange={e => setResolveModule(e.target.value)} style={{ padding: '0.8rem', background: '#ffffff', color: '#1f2937', border: '2px solid #e2e8f0', borderRadius: '12px', width: '100%', fontSize: '1rem' }}>
-                {initialSettings?.modules?.map((m: any, idx: number) => <option key={idx} value={m} style={{ background: '#ffffff', color: '#1f2937' }}>{m}</option>)}
-              </select>
-            </div>
-            <div className="form-group">
-              <label style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.4rem', display: 'block' }}>ประเภทงาน</label>
-              <select value={resolveIssueType} onChange={e => setResolveIssueType(e.target.value)} style={{ padding: '0.8rem', background: '#ffffff', color: '#1f2937', border: '2px solid #e2e8f0', borderRadius: '12px', width: '100%', fontSize: '1rem' }}>
-                {initialSettings?.issue_types?.map((t: any, idx: number) => <option key={idx} value={t} style={{ background: '#ffffff', color: '#1f2937' }}>{t}</option>)}
-              </select>
-            </div>
-            <div className="form-group">
-              <label>วิธีแก้ไขปัญหา (Resolution Notes) *</label>
-              <div style={{ marginBottom: '0.75rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                {initialSettings?.resolution_notes?.map((note: any, idx: number) => <button key={idx} type="button" onClick={() => setResolveNotes(note)} style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', borderRadius: '8px', background: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-main)', cursor: 'pointer' }}>+ {note}</button>)}
+        <div className="modal-overlay" style={{ zIndex: 10005 }}>
+          <div className="modal-content" style={{ 
+            maxWidth: "1100px", 
+            width: "95%", 
+            padding: "0", 
+            overflow: "hidden", 
+            display: "flex", 
+            flexDirection: "row",
+            height: "auto",
+            maxHeight: "90vh"
+          }}>
+            {/* Left Side: Ticket Reference */}
+            <div style={{ flex: 1, background: "var(--bg-surface-hover)", padding: "2.5rem", borderRight: "1px solid var(--border-color)", overflowY: "auto" }}>
+              <div style={{ marginBottom: "2rem" }}>
+                <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px" }}>Reference Ticket</span>
+                <h2 style={{ fontSize: "1.75rem", margin: "0.5rem 0", color: "var(--text-heading)", fontWeight: 800 }}>#{initialTicket.ticket_no}</h2>
+                <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
+                  <span className="status-badge" style={{ background: "var(--status-progress-bg)", color: "var(--status-progress-text)" }}>{initialTicket.status}</span>
+                  <span className="prio-indicator" style={{ border: "1px solid var(--border-color)", borderRadius: "20px", padding: "0.4rem 1rem", fontSize: "0.7rem", fontWeight: 700 }}>{initialTicket.priority}</span>
+                </div>
               </div>
-              <textarea rows={3} value={resolveNotes} onChange={e => setResolveNotes(e.target.value)} placeholder="อธิบายขั้นตอนการแก้ไขงาน..." style={{ borderRadius: "12px", marginBottom: "1rem", background: 'var(--bg-color)', color: 'var(--text-main)', border: '1px solid var(--border-color)', padding: '1rem' }} />
-              <label>หมายเหตุเพิ่มเติม (Optional)</label>
-              <textarea rows={2} value={extraNotes} onChange={e => setExtraNotes(e.target.value)} placeholder="หมายเหตุถึงทีมงานหรือลูกค้า..." style={{ borderRadius: "12px", background: 'var(--bg-color)', color: 'var(--text-main)', border: '1px solid var(--border-color)', padding: '1rem' }} />
+              
+              <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                <div>
+                  <label style={{ fontSize: "0.65rem", color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase", display: "block", marginBottom: "0.4rem" }}>อาการเสีย/รายละเอียดพิ่มเติม</label>
+                  <p style={{ background: "white", padding: "1.25rem", borderRadius: "12px", border: "1px solid var(--border-color)", fontSize: "0.95rem", lineHeight: "1.6", color: "var(--text-main)", margin: 0 }}>
+                    {initialTicket.description}
+                  </p>
+                </div>
+                
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                  <div>
+                    <label style={{ fontSize: "0.65rem", color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase" }}>ผู้แจ้ง</label>
+                    <p style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--text-heading)", margin: 0 }}>{initialTicket.reporter_name || '-'}</p>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "0.65rem", color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase" }}>หน่วยงาน</label>
+                    <p style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--text-heading)", margin: 0 }}>{initialTicket.hospital_name || initialTicket.users?.hospitals?.name || '-'}</p>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="modal-actions">
-              <button className="btn-secondary" onClick={() => setIsResolveModalOpen(false)}>ยกเลิก</button>
-              <button className="btn-primary" onClick={handleConfirmResolve} disabled={isUpdatingStatus} style={{ background: "var(--primary)" }}>{isUpdatingStatus ? "Saving..." : "ยืนยันปิดงาน"}</button>
+
+            {/* Right Side: Resolution Form */}
+            <div style={{ flex: 1, padding: "2.5rem", overflowY: "auto", background: "white" }}>
+              <h2 style={{ fontSize: "1.5rem", marginBottom: "2rem", display: "flex", alignItems: "center", gap: "0.75rem", color: "var(--text-heading)" }}>
+                <CheckCircle size={28} style={{ color: "var(--status-done-text)" }} /> ปิดงาน / Resolved Ticket
+              </h2>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontWeight: 700, color: "var(--text-main)", marginBottom: "0.5rem", display: "block", fontSize: "0.85rem" }}>โมดูล / ระบบ</label>
+                    <select value={resolveModule} onChange={e => setResolveModule(e.target.value)} style={{ width: "100%", padding: "0.8rem", borderRadius: "12px", border: "1px solid var(--border-color)", background: "var(--bg-color)" }}>
+                      {initialSettings?.modules?.map((m: any, idx: number) => <option key={idx} value={m}>{m}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontWeight: 700, color: "var(--text-main)", marginBottom: "0.5rem", display: "block", fontSize: "0.85rem" }}>ประเภทงาน</label>
+                    <select value={resolveIssueType} onChange={e => setResolveIssueType(e.target.value)} style={{ width: "100%", padding: "0.8rem", borderRadius: "12px", border: "1px solid var(--border-color)", background: "var(--bg-color)" }}>
+                      {initialSettings?.issue_types?.map((t: any, idx: number) => <option key={idx} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontWeight: 700, color: "var(--text-main)", marginBottom: "0.5rem", display: "block", fontSize: "0.85rem" }}>วิธีแก้ไขปัญหา (Resolution Notes) *</label>
+                  <div style={{ marginBottom: "0.75rem", display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                    {initialSettings?.resolution_notes?.map((note: any, idx: number) => (
+                      <button key={idx} type="button" onClick={() => setResolveNotes(note)} style={{ padding: "0.4rem 0.8rem", fontSize: "0.75rem", borderRadius: "20px", background: "var(--bg-surface-hover)", border: "1px solid var(--border-color)", color: "var(--text-main)", cursor: "pointer", fontWeight: 600 }}>
+                        + {note}
+                      </button>
+                    ))}
+                  </div>
+                  <textarea 
+                    rows={4} 
+                    value={resolveNotes} 
+                    onChange={e => setResolveNotes(e.target.value)} 
+                    placeholder="ระบุขั้นตอนการแก้ไขปัญหา..." 
+                    style={{ width: "100%", boxSizing: "border-box", padding: "1rem", borderRadius: "12px", border: "1px solid var(--border-color)", background: "var(--bg-color)", color: "var(--text-heading)", fontSize: "0.95rem", lineHeight: "1.5" }} 
+                  />
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontWeight: 700, color: "var(--text-main)", marginBottom: "0.5rem", display: "block", fontSize: "0.85rem" }}>หมายเหตุเพิ่มเติม (Optional)</label>
+                  <textarea 
+                    rows={2} 
+                    value={extraNotes} 
+                    onChange={e => setExtraNotes(e.target.value)} 
+                    placeholder="ระบุหมายเหตุหากมี..." 
+                    style={{ width: "100%", boxSizing: "border-box", padding: "1rem", borderRadius: "12px", border: "1px solid var(--border-color)", background: "var(--bg-color)", color: "var(--text-heading)", fontSize: "0.95rem" }} 
+                  />
+                </div>
+
+                <div className="modal-actions" style={{ marginTop: "1rem", borderTop: "1px solid var(--border-color)", paddingTop: "1.5rem", display: "flex", justifyContent: "flex-end", gap: "1rem" }}>
+                  <button className="btn-secondary" onClick={() => setIsResolveModalOpen(false)} style={{ padding: "0.75rem 2rem" }}>ยกเลิก</button>
+                  <button className="btn-primary" onClick={handleConfirmResolve} disabled={isUpdatingStatus} style={{ padding: "0.75rem 2.5rem", background: "var(--primary)" }}>
+                    {isUpdatingStatus ? "ประมวลผล..." : "ยืนยันปิดงาน"}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
