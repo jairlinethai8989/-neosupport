@@ -682,17 +682,108 @@ async function handlePostback(event: LineEvent, lineUserId: string): Promise<voi
     const ticketId = newTicket.id;
     const ticketNo = newTicket.ticket_no;
 
-    // 3. Reply to user
+    // 3. Reply to user with Flex Message + Chat Link
     if (event.replyToken) {
-      const replyText =
-        `✅ สร้างใบงานสำเร็จแล้วค่ะ/ครับ!\n` +
-        `━━━━━━━━━━━━━━━━━\n` +
-        `📋 หมายเลข: ${ticketNo}\n` +
-        `📝 รายละเอียด: ${description.substring(0, 100)}${description.length > 100 ? "..." : ""}\n` +
-        (attachments.length > 0 ? `🖼️ ไฟล์แนบ: ${attachments.length} ไฟล์\n` : "") +
-        `━━━━━━━━━━━━━━━━━\n\n` +
-        `ทีมงานได้รับเรื่องแล้ว และจะรีบตรวจสอบให้นะคะ/ครับ 🙏`;
-      await replyMessage(event.replyToken, [{ type: "text", text: replyText }]);
+      const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
+      const chatUrl = liffId 
+        ? `https://liff.line.me/${liffId}/chat/${ticketId}`
+        : `${process.env.NEXT_PUBLIC_APP_URL}/liff/chat/${ticketId}`;
+
+      const shortDesc = description.length > 80 ? description.substring(0, 77) + "..." : description;
+
+      await replyMessage(event.replyToken, [
+        {
+          type: "flex",
+          altText: `✅ สร้างใบงาน ${ticketNo} สำเร็จ — กดเข้าห้องแชทได้เลย`,
+          contents: {
+            type: "bubble",
+            size: "mega",
+            header: {
+              type: "box",
+              layout: "vertical",
+              backgroundColor: "#10b981",
+              paddingAll: "20px",
+              contents: [
+                {
+                  type: "text",
+                  text: "✅ สร้างใบงานสำเร็จแล้ว!",
+                  weight: "bold",
+                  color: "#ffffff",
+                  size: "lg",
+                  align: "center"
+                }
+              ]
+            },
+            body: {
+              type: "box",
+              layout: "vertical",
+              spacing: "md",
+              paddingAll: "20px",
+              contents: [
+                {
+                  type: "text",
+                  text: ticketNo,
+                  weight: "bold",
+                  size: "xl",
+                  align: "center",
+                  color: "#1e293b"
+                },
+                {
+                  type: "separator",
+                  margin: "md"
+                },
+                {
+                  type: "box",
+                  layout: "baseline",
+                  spacing: "sm",
+                  margin: "md",
+                  contents: [
+                    { type: "text", text: "📝 ปัญหา:", color: "#94a3b8", size: "sm", flex: 2 },
+                    { type: "text", text: shortDesc || "(ไม่ระบุ)", wrap: true, color: "#334155", size: "sm", flex: 5 }
+                  ]
+                },
+                ...(attachments.length > 0 ? [{
+                  type: "box" as const,
+                  layout: "baseline" as const,
+                  spacing: "sm" as const,
+                  contents: [
+                    { type: "text" as const, text: "🖼️ แนบ:", color: "#94a3b8", size: "sm" as const, flex: 2 },
+                    { type: "text" as const, text: `${attachments.length} ไฟล์`, color: "#334155", size: "sm" as const, flex: 5 }
+                  ]
+                }] : []),
+                {
+                  type: "text",
+                  text: "ทีมงานได้รับเรื่องแล้ว กดปุ่มด้านล่างเพื่อเข้าห้องแชทติดตามงานได้เลยค่ะ/ครับ 🙏",
+                  size: "xs",
+                  color: "#64748b",
+                  wrap: true,
+                  margin: "lg",
+                  align: "center"
+                }
+              ]
+            },
+            footer: {
+              type: "box",
+              layout: "vertical",
+              spacing: "sm",
+              paddingAll: "15px",
+              contents: [
+                {
+                  type: "button",
+                  style: "primary",
+                  color: "#006ce4",
+                  height: "md",
+                  action: {
+                    type: "uri",
+                    label: "💬 เข้าห้องแชทติดตามงาน",
+                    uri: chatUrl
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]);
     }
 
     // 4. Save messages and reset state

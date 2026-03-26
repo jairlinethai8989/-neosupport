@@ -452,10 +452,25 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
       const url = `${window.location.origin}/t/${initialTicket.id}`;
       const hospital = initialTicket.users?.hospitals?.name || "ไม่ระบุหน่วยงาน";
       const desc = initialTicket.description || "ไม่มีรายละเอียด";
-      const shareText = `🛠️ *ส่งต่องานแจ้งซ่อม*\n🏥 หน่วยงาน: ${hospital}\n🆔 เลขที่: #${initialTicket.ticket_no}\n📝 ปัญหา: ${desc}\n\n👉 *ดูรายละเอียดและปิดงานได้ที่นี่:*\n${url}`;
+      const shareText = `🛠️ *ส่งต่องานแจ้งซ่อม (สำหรับเจ้าหน้าที่/ผู้บริหาร)*\n🏥 หน่วยงาน: ${hospital}\n🆔 เลขที่: #${initialTicket.ticket_no}\n📝 ปัญหา: ${desc}\n\n👉 *ดูรายละเอียดและปิดงานได้ที่นี่:*\n${url}`;
       
       await navigator.clipboard.writeText(shareText);
-      showToast("คัดลอกข้อมูลและ Magic Link เรียบร้อยแล้ว!");
+      showToast("คัดลอกลิงก์สำหรับส่งต่อ (External) แล้ว!");
+    } catch { showToast("ไม่สามารถคัดลอกลิงก์ได้"); }
+  };
+
+  const handleCopyLiffLink = async () => {
+    try {
+      const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
+      if (!liffId) {
+        showToast("ไม่พบ LIFF ID ในระบบ ❌");
+        return;
+      }
+      const liffUrl = `https://liff.line.me/${liffId}/chat/${initialTicket.id}`;
+      const shareText = `🔧 *แจ้งสถานะงานซ่อม NEO Support*\nขออภัยในความไม่สะดวกครับ ท่านสามารถติดตามความคืบหน้าและแชทกับเจ้าหน้าที่ได้โดยตรงผ่านช่องทางนี้ครับ\n\n👉 *เข้าสู่หน้าแชทบน LINE:*\n${liffUrl}`;
+      
+      await navigator.clipboard.writeText(shareText);
+      showToast("คัดลอกลิงก์แชทสำหรับส่งให้ลูกค้าแล้ว! 📱");
     } catch { showToast("ไม่สามารถคัดลอกลิงก์ได้"); }
   };
 
@@ -659,29 +674,32 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
                 </button>
             </div>
 
-                <div style={{ padding: "0.5rem", borderTop: "1px dashed #e2e8f0", marginTop: "0.5rem" }}>
-                   <p style={{ fontSize: "0.65rem", color: "#64748b", fontWeight: 700, marginBottom: "0.5rem", textTransform: "uppercase" }}>External Escalation Tools</p>
+                <div style={{ padding: "0.5rem", borderTop: "1px dashed #e2e8f0", marginTop: "0.5rem", display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                   <p style={{ fontSize: "0.65rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px" }}>Client & Support Channels</p>
+                   
+                   <button 
+                    onClick={handleCopyLiffLink} 
+                    style={{ 
+                      width: "100%", padding: "0.8rem", borderRadius: "12px", border: "1px solid #22c55e", 
+                      background: "#f0fdf4", color: "#15803d", fontWeight: 800, fontSize: "0.8rem",
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", cursor: "pointer"
+                    }}
+                   >
+                     <Zap size={14} fill="#22c55e" /> คัดลอกลิงก์แชท (ไปส่งใน LINE ลูกค้า)
+                   </button>
+
                    <button 
                     onClick={handleCopyMagicLink} 
                     style={{ 
-                      width: "100%", 
-                      padding: "0.7rem", 
-                      borderRadius: "8px", 
-                      border: "1px solid #0ea5e9", 
-                      background: "#f0f9ff", 
-                      color: "#0369a1", 
-                      fontWeight: 700, 
-                      fontSize: "0.8rem",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "0.5rem",
-                      cursor: "pointer"
+                      width: "100%", padding: "0.8rem", borderRadius: "12px", border: "1px solid #0ea5e9", 
+                      background: "#f0f9ff", color: "#0369a1", fontWeight: 800, fontSize: "0.8rem",
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", cursor: "pointer"
                     }}
                    >
-                     <Link2 size={14} /> คัดลอก Magic Link ส่งงานต่อ
+                     <Link2 size={14} /> คัดลอก Magic Link (แจ้งแผนกอื่น)
                    </button>
-                   <p style={{ fontSize: "0.6rem", color: "#94a3b8", marginTop: "0.4rem", fontStyle: "italic" }}>* แผนกอื่นเข้าดูและปิดงานได้โดยไม่ต้อง Login</p>
+                   
+                   <p style={{ fontSize: "0.55rem", color: "#94a3b8", textAlign: 'center', fontStyle: 'italic' }}>* ลิงก์แชทจะเด้งเข้าแอป LINE ทันที | Magic Link ไม่ต้อง Login</p>
                 </div>
             </div>
           </div>

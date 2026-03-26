@@ -112,7 +112,7 @@ export default function NewTicketClient({
       if (!res.ok) throw new Error(data.error || "Failed to create ticket");
 
       showToast(`แจ้งงานสำเร็จ! 📝 หมายเลข: ${data.ticket.ticket_no}`);
-      setTimeout(() => router.push(`/`), 1500);
+      setTimeout(() => router.push(`/tickets/${data.ticket.id}`), 1500);
     } catch (err: any) {
       logger.error(err);
       showToast("❌ " + err.message);

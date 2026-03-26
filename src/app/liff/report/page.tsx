@@ -22,6 +22,7 @@ export default function LiffReportPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [ticketNo, setTicketNo] = useState<string>("");
+  const [createdTicketId, setCreatedTicketId] = useState<string>("");
   const router = useRouter();
 
   const categories = [
@@ -45,20 +46,21 @@ export default function LiffReportPage() {
     if (!user) return;
     setIsSubmitting(true);
     
-    // Convert Category label to suitable module or description prefix if needed
-    // or just pass as module
     const result = await createLiffTicket({
       reporter_id: user.id,
       hospital_id: user.hospital_id,
       description: `[${formData.category}] ${formData.description}`,
-      issue_type: 'PB', // Default to Problem
+      issue_type: 'PB',
       module: user.department || formData.category
     });
 
     if (result.success && result.ticket) {
       setTicketNo(result.ticket.ticket_no);
+      setCreatedTicketId(result.ticket.id);
       setIsSubmitting(false);
       setStep(4); // Success step
+      // Auto-redirect to chat room after 2 seconds
+      setTimeout(() => router.push(`/liff/chat/${result.ticket.id}`), 2000);
     } else {
       alert("Error: " + result.error);
       setIsSubmitting(false);
@@ -194,8 +196,8 @@ export default function LiffReportPage() {
                    <CheckCircle2 color="white" size={48} />
                 </div>
              </div>
-             <h2>รับเรื่องเรียบรवीยแล้วครับ!</h2>
-             <p>ใบงานของคุณถูกส่งไปยังระบบส่วนกลางแล้ว <br/>เจ้าหน้าที่กำลังเตรียมเข้าช่วยเหลือในห้องแชทครับ</p>
+             <h2>รับเรื่องเรียบร้อยแล้วครับ!</h2>
+             <p>ใบงานของคุณถูกส่งไปยังระบบส่วนกลางแล้ว <br/>กำลังนำคุณเข้าสู่ห้องแชทอัตโนมัติ...</p>
              
              <div className="success-meta">
                 <div className="meta-card">
@@ -212,7 +214,7 @@ export default function LiffReportPage() {
                   กลับหน้าหลัก
                 </button>
                 <button 
-                  onClick={() => router.push("/liff/menu")} 
+                  onClick={() => router.push(`/liff/chat/${createdTicketId}`)} 
                   className="btn-primary-solid"
                 >
                   เข้าสู่ห้องแชทติดตามงาน <ChevronRight size={20} />
