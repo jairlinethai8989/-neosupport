@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Send, Image as ImageIcon, X, Paperclip } from "lucide-react";
+import { Send, Image as ImageIcon, X, Paperclip, FileText } from "lucide-react";
 
 interface ChatInputProps {
   ticketId: string;
@@ -20,8 +20,12 @@ export default function ChatInput({ onSendMessage, isLoading, value, onChange }:
     const file = e.target.files?.[0];
     if (file) {
       setSelectedFile(file);
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
+      if (file.type.startsWith("image/")) {
+        const url = URL.createObjectURL(file);
+        setPreviewUrl(url);
+      } else {
+        setPreviewUrl("file-icon"); // Placeholder string for non-image files
+      }
     }
   };
 
@@ -62,11 +66,18 @@ export default function ChatInput({ onSendMessage, isLoading, value, onChange }:
       {previewUrl && (
         <div className="preview-overlay">
           <div className="preview-card">
-            <img src={previewUrl} alt="Preview" className="preview-img" />
+            {previewUrl === "file-icon" ? (
+              <div className="preview-file-placeholder">
+                 <FileText size={32} />
+                 <span>{selectedFile?.name.split('.').pop()?.toUpperCase() || 'FILE'}</span>
+              </div>
+            ) : (
+              <img src={previewUrl} alt="Preview" className="preview-img" />
+            )}
             <button onClick={clearFile} className="btn-clear-preview">
               <X size={12} />
             </button>
-            <div className="preview-tag">พร้อมส่งไฟล์ (Attachment)</div>
+            <div className="preview-tag">{selectedFile?.type.startsWith("image/") ? "พร้อมส่งรูปภาพ" : "พร้อมส่งไฟล์แนบ"}</div>
           </div>
         </div>
       )}
@@ -81,7 +92,14 @@ export default function ChatInput({ onSendMessage, isLoading, value, onChange }:
         >
           <Paperclip size={20} />
         </button>
-        <input ref={fileInputRef} type="file" accept="image/*,video/*" onChange={handleFileSelect} disabled={isLoading} style={{ display: 'none' }} />
+        <input 
+          ref={fileInputRef} 
+          type="file" 
+          accept="image/*,video/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
+          onChange={handleFileSelect} 
+          disabled={isLoading} 
+          style={{ display: 'none' }} 
+        />
 
         <textarea
           value={value}
@@ -126,63 +144,84 @@ export default function ChatInput({ onSendMessage, isLoading, value, onChange }:
 
         .preview-card {
           position: relative;
-          background: var(--bg-color);
-          padding: 6px;
+          background: white;
+          padding: 8px;
           border: 1px solid var(--primary);
-          border-radius: var(--radius-sharp);
-          box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+          border-radius: var(--radius-main);
+          box-shadow: var(--shadow-lg);
         }
         
         .preview-img {
           max-width: 160px;
           max-height: 160px;
           display: block;
-          border-radius: 2px;
+          border-radius: 12px;
+        }
+
+        .preview-file-placeholder {
+          width: 120px;
+          height: 120px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          background: #f1f5f9;
+          border-radius: 12px;
+          color: var(--primary);
+          gap: 8px;
+        }
+
+        .preview-file-placeholder span {
+          font-size: 0.7rem;
+          font-weight: 800;
+          color: var(--text-muted);
         }
 
         .preview-tag {
-          font-size: 0.55rem;
+          font-size: 0.6rem;
           color: var(--primary);
           font-weight: 800;
           text-align: center;
-          margin-top: 4px;
-          font-family: monospace;
+          margin-top: 6px;
+          letter-spacing: 0.5px;
         }
 
         .btn-clear-preview {
           position: absolute;
-          top: -8px;
-          right: -8px;
+          top: -10px;
+          right: -10px;
           background: #ef4444;
           color: white;
           border: none;
           border-radius: 50%;
-          width: 20px;
-          height: 20px;
+          width: 24px;
+          height: 24px;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+          box-shadow: var(--shadow-md);
         }
 
         .input-row {
           display: flex;
           align-items: flex-end;
-          background: var(--bg-color);
+          background: #f8fafc;
           border: 1px solid var(--border-color);
-          border-radius: var(--radius-sharp);
-          padding: 0.25rem;
-          gap: 0.25rem;
-          transition: border-color 0.2s, box-shadow 0.2s;
+          border-radius: var(--radius-main);
+          padding: 0.5rem;
+          gap: 0.5rem;
+          transition: var(--transition);
         }
         .input-row:focus-within {
           border-color: var(--primary);
-          box-shadow: 0 0 15px var(--primary-glow);
+          background: white;
+          box-shadow: 0 0 20px var(--primary-glow);
         }
 
         .btn-action {
-          padding: 0.75rem;
+          width: 44px;
+          height: 44px;
           background: transparent;
           border: none;
           color: var(--text-muted);
@@ -190,17 +229,19 @@ export default function ChatInput({ onSendMessage, isLoading, value, onChange }:
           display: flex;
           align-items: center;
           justify-content: center;
-          transition: color 0.2s;
+          transition: var(--transition);
+          border-radius: 12px;
         }
-        .btn-action:hover { color: var(--primary); }
+        .btn-action:hover { background: var(--bg-surface-hover); color: var(--primary); }
 
         .text-input {
           flex: 1;
           padding: 0.75rem 0.5rem;
           border: none;
           background: transparent;
-          color: var(--text-main);
+          color: var(--text-heading);
           font-size: 0.95rem;
+          font-weight: 600;
           resize: none;
           minHeight: 44px;
           maxHeight: 150px;
@@ -209,22 +250,21 @@ export default function ChatInput({ onSendMessage, isLoading, value, onChange }:
         }
 
         .btn-send {
-          padding: 0.75rem 1rem;
-          border-radius: 8px;
+          width: 44px;
+          height: 44px;
+          border-radius: 14px;
           border: none;
           background: var(--primary);
           color: white;
-          font-weight: 700;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
           transition: all 0.2s;
-          margin: 2px;
         }
         .btn-send:hover:not(:disabled) {
-          transform: scale(1.02);
-          box-shadow: 0 0 20px var(--primary-glow);
+          transform: scale(1.05);
+          box-shadow: 0 8px 20px var(--primary-glow);
         }
         .btn-send:disabled {
           background: var(--border-color);

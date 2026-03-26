@@ -27,6 +27,7 @@ export async function POST(
       text    = body.text    || "";
       lineUid = body.lineUid || "";
       fileUrl = body.fileUrl || "";
+      fileType = body.fileType || "image";
     }
 
     if ((!text && !fileUrl && !file) || !lineUid) {
@@ -35,14 +36,19 @@ export async function POST(
 
     // ── Upload file to Supabase Storage ─────────────────────
     if (file) {
-      const isVideoFile = file.type.startsWith("video/") || fileType === "video";
-      const ext = file.name.split(".").pop() || (isVideoFile ? "mp4" : "jpg");
+      const isVideoFile = file.type.startsWith("video/");
+      const isImageFile = file.type.startsWith("image/");
+      const isAudioFile = file.type.startsWith("audio/");
+      
       const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
 
       const fileBuffer = await file.arrayBuffer();
       const { error: uploadError } = await supabaseAdmin.storage
         .from("attachments")
-        .upload(fileName, fileBuffer, { contentType: file.type || "application/octet-stream" });
+        .upload(fileName, fileBuffer, { 
+          contentType: file.type || "application/octet-stream",
+          cacheControl: '3600'
+        });
 
       if (uploadError) {
         console.error("Failed to upload file:", uploadError);
@@ -51,7 +57,11 @@ export async function POST(
 
       const { data } = supabaseAdmin.storage.from("attachments").getPublicUrl(fileName);
       fileUrl  = data.publicUrl;
-      fileType = isVideoFile ? "video" : "image";
+      
+      if (isImageFile) fileType = "image";
+      else if (isVideoFile) fileType = "video";
+      else if (isAudioFile) fileType = "audio";
+      else fileType = "file";
     }
 
     const hasFile  = !!fileUrl;
@@ -83,9 +93,12 @@ export async function POST(
       if (dbType === "image") {
         messagesPayload = [{ type: "image", originalContentUrl: fileUrl, previewImageUrl: fileUrl }];
       } else if (dbType === "video") {
-        // LINE video requires https and a preview image. Use a generic thumb if unavailable.
         const previewUrl = `https://via.placeholder.com/480x270.png?text=Video`;
         messagesPayload = [{ type: "video", originalContentUrl: fileUrl, previewImageUrl: previewUrl }];
+      } else if (dbType === "audio") {
+        messagesPayload = [{ type: "audio", originalContentUrl: fileUrl, duration: 60000 }]; // Default 60s
+      } else if (dbType === "file") {
+        messagesPayload = [{ type: "text", text: `🧑‍💻 [IT Support: File Shared]\n${text || 'มีไฟล์แนบส่งถึงคุณ'}\nคลิกเพื่อดาวน์โหลด: ${fileUrl}` }];
       } else {
         messagesPayload = [{ type: "text", text: `🧑‍💻 [IT Support]\n${text}` }];
       }

@@ -1,16 +1,16 @@
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&family=Anuphan:wght@400;500;600;700&display=swap");
 
 :root {
-  /* Clean & Lean SaaS Palette (Light Mode Default) */
+  /* LIFF-Inspired Modern SaaS Palette (Light Mode Default) */
   --bg-color: #f8fafc;
   --bg-surface: #ffffff;
-  --bg-glass: rgba(255, 255, 255, 0.8);
+  --bg-glass: rgba(255, 255, 255, 0.85);
   --bg-surface-hover: #f1f5f9;
 
-  /* Primary Action Colors (Professional Blue) */
-  --primary: #0066cc;
-  --primary-hover: #0052a3;
-  --primary-glow: rgba(0, 102, 204, 0.1);
+  /* Primary Action Colors (Vibrant LIFF Blue) */
+  --primary: #006ce4;
+  --primary-hover: #0056b8;
+  --primary-glow: rgba(0, 108, 228, 0.15);
   
   --accent: #10b981;
   --accent-glow: rgba(16, 185, 129, 0.1);
@@ -19,18 +19,21 @@
   --text-muted: #64748b;
   --text-heading: #0f172a;
 
-  /* Clean Borders & Shadows */
+  /* Premium Geometry (Soft & Modern) */
   --border-color: #e2e8f0;
   --border-light: #f1f5f9;
   --border-width: 1px;
-  --radius-sharp: 12px; /* Smoother corner */
+  --radius-sharp: 16px; 
+  --radius-main: 24px;
+  --radius-lg: 32px;
+  --radius-xl: 40px;
 
   /* Semantic Status Colors (Clean & Soft) */
   --status-pending-bg: #fffcf0;
   --status-pending-text: #854d0e;
 
-  --status-progress-bg: #f0f9ff;
-  --status-progress-text: #0369a1;
+  --status-progress-bg: #eff6ff;
+  --status-progress-text: #1d4ed8;
 
   --status-done-bg: #f0fdf4;
   --status-done-text: #166534;
@@ -51,12 +54,12 @@
   --prio-low-text: #64748b;
 
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  --glass-blur: blur(8px);
-  --hud-scanline: transparent; /* Removed */
+  --glass-blur: blur(14px);
 
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -2px rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 10px 10px -5px rgb(0 0 0 / 0.04);
+  --shadow-premium: 0 15px 30px rgba(0, 108, 228, 0.12);
 }
 
 /* Dark Theme (Still available but Cleanized) */
@@ -83,11 +86,11 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: "IBM Plex Sans Thai", "Outfit", sans-serif;
+  font-family: "Anuphan", "Outfit", "IBM Plex Sans Thai", sans-serif;
 }
 
 body {
-  font-family: "IBM Plex Sans Thai", "Outfit", sans-serif;
+  font-family: "Anuphan", "Outfit", "IBM Plex Sans Thai", sans-serif;
   background-color: var(--bg-color);
   color: var(--text-main);
   line-height: 1.6;
@@ -96,7 +99,7 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: "Outfit", sans-serif;
+  font-family: "Outfit", "Anuphan", sans-serif;
   color: var(--text-heading);
   font-weight: 700;
   letter-spacing: -0.01em;

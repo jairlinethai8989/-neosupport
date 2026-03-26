@@ -16,6 +16,7 @@ export default function MessageBubble({ msg, isIT, setAnnotationImage, setSelect
     (msg.message_type === "sticker" && msg.content?.startsWith('http'))
   );
   const [isVideo] = useState(msg.message_type === "video");
+  const [isFile] = useState(msg.message_type === "file");
   const isSystem = msg.direction === "system";
 
   if (isSystem) {
@@ -54,6 +55,14 @@ export default function MessageBubble({ msg, isIT, setAnnotationImage, setSelect
             <div className="media-wrapper">
               <video src={msg.content} controls className="media-video" />
             </div>
+          ) : isFile && msg.content.startsWith('http') ? (
+            <a href={msg.content} target="_blank" rel="noopener noreferrer" className="file-attachment-pill">
+              <FileText size={20} />
+              <div className="file-info">
+                 <span className="file-name">ไฟล์เอกสาร {isIT ? 'จากแอดมิน' : 'จากลูกค้า'}</span>
+                 <span className="file-action">คลิกเพื่อดาวน์โหลดเอกสาร</span>
+              </div>
+            </a>
           ) : (
             <div className="text-content">{msg.content}</div>
           )}
@@ -88,29 +97,31 @@ export default function MessageBubble({ msg, isIT, setAnnotationImage, setSelect
 
         .msg-bubble {
           max-width: 80%;
-          padding: 0.75rem 1rem;
-          border-radius: 12px;
+          padding: 0.85rem 1.1rem;
+          border-radius: 22px;
           position: relative;
-          box-shadow: var(--shadow-sm);
+          box-shadow: 0 2px 4px rgba(0,0,0,0.02);
           border: 1px solid var(--border-color);
         }
         
         .bubble-staff {
           background: var(--primary);
           color: white;
-          border-radius: 18px 18px 4px 18px;
+          border-radius: 22px 22px 4px 22px;
           border: none;
+          box-shadow: 0 8px 16px rgba(0, 108, 228, 0.15);
         }
         
         .bubble-user {
           background: #ffffff;
-          color: #0f172a;
-          border-radius: 18px 18px 18px 4px;
+          color: var(--text-heading);
+          border-radius: 22px 22px 22px 4px;
         }
 
         .bubble-content {
           font-size: 0.95rem;
           line-height: 1.5;
+          font-weight: 500;
         }
 
         .bubble-footer {
@@ -118,16 +129,54 @@ export default function MessageBubble({ msg, isIT, setAnnotationImage, setSelect
           justify-content: flex-end;
           align-items: center;
           gap: 0.5rem;
-          margin-top: 0.4rem;
-          opacity: 0.6;
+          margin-top: 0.5rem;
+          opacity: 0.7;
         }
 
-        .timestamp-tag { font-size: 0.7rem; }
+        .timestamp-tag { font-size: 0.65rem; font-weight: 700; }
 
         .media-img, .media-video {
           max-width: 100%;
-          border-radius: 8px;
+          border-radius: 12px;
           display: block;
+        }
+
+        .file-attachment-pill {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          background: rgba(0, 108, 228, 0.05);
+          padding: 12px 16px;
+          border-radius: 14px;
+          text-decoration: none;
+          color: inherit;
+          transition: var(--transition);
+          border: 1px solid rgba(0, 108, 228, 0.1);
+          margin: 4px 0;
+        }
+        .bubble-staff .file-attachment-pill {
+          background: rgba(255, 255, 255, 0.15);
+          border-color: rgba(255, 255, 255, 0.2);
+          color: white;
+        }
+        .file-info {
+           display: flex;
+           flex-direction: column;
+           gap: 2px;
+        }
+        .file-name {
+           font-size: 0.85rem;
+           font-weight: 700;
+           letter-spacing: 0.3px;
+        }
+        .file-action {
+           font-size: 0.7rem;
+           opacity: 0.7;
+           font-weight: 600;
+        }
+        .file-attachment-pill:hover {
+           transform: translateY(-2px);
+           box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
 
         .btn-media-edit {

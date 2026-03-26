@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { supabaseAdmin } from '@/lib/supabase';
 import { Activity, Clock, Hospital, User, FileText, CheckCircle, Zap } from 'lucide-react';
 import PublicTicketForm from './PublicTicketForm';
+import RatingComponent from './RatingComponent';
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
@@ -186,10 +187,14 @@ export default async function PublicTicketPage({ params }: { params: Promise<{ i
                   </div>
                   <h3 className="text-2xl font-black text-emerald-800">ดำเนินการแก้ไขเรียบร้อยแล้ว</h3>
                   <p className="text-emerald-600 font-medium italic">ส่งผลลัพธ์กลับไปยังเจ้าหน้าที่ IT เมื่อ {new Date(ticket.updated_at).toLocaleString('th-TH')} น.</p>
+                  
                   <div className="pt-6 border-t border-emerald-100 mt-6 text-left max-w-lg mx-auto">
                     <label className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest block mb-2">บันทึกสรุปงาน:</label>
                     <p className="text-emerald-900 font-bold text-lg bg-white p-4 rounded-xl shadow-inner-sm">{ticket.notes || 'ไม่มีบันทึกเพิ่มเติม'}</p>
                   </div>
+
+                  {/* Interative Rating Section */}
+                  <RatingComponent ticketId={ticket.id} initialRating={ticket.rating} />
                 </div>
               )}
             </div>

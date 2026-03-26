@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0",
 };
 
+import LiffProvider from "./components/LiffProvider";
+
 export default function LiffLayout({
   children,
 }: {
@@ -14,15 +16,17 @@ export default function LiffLayout({
   return (
     <div className="liff-container" style={{ 
       minHeight: "100dvh", 
-      background: "#f8fafc", /* Slate 50 - Lean vibe */
-      color: "#0f172a", /* Slate 900 */
-      fontFamily: "var(--font-sarabun), system-ui, sans-serif"
+      background: "#f8fafc", 
+      color: "#0f172a", 
+      fontFamily: "'Anuphan', 'Outfit', sans-serif"
     }}>
-      <main style={{ maxWidth: "600px", margin: "0 auto", padding: "0" }}>
-        {children}
-      </main>
+      <LiffProvider>
+        <main style={{ maxWidth: "600px", margin: "0 auto", padding: "0" }}>
+          {children}
+        </main>
+      </LiffProvider>
       
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style>{`
         .liff-container {
           --liff-primary: #006ce4;
           --liff-bg: #f8fafc;
@@ -46,7 +50,7 @@ export default function LiffLayout({
         input, select, textarea {
           font-size: 16px !important; /* Prevent iOS zoom */
         }
-      `}} />
+      `}</style>
     </div>
   );
 }

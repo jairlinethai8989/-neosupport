@@ -258,13 +258,20 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleGenerateAISummary = async () => {
+  const handleGenerateAISummary = async (force = false) => {
     if (isGeneratingAI) return;
     setIsGeneratingAI(true);
     try {
-      const res = await fetch('/api/ai/summarize', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ticketId: initialTicket.id }) });
+      const res = await fetch('/api/ai/summarize', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ ticketId: initialTicket.id, force }) 
+      });
       const data = await res.json();
-      if (data.summary) { setAiSummary(data.summary); showToast("AI สรุปงานให้เรียบร้อยแล้ว ✨"); }
+      if (data.summary) { 
+        setAiSummary(data.summary); 
+        showToast(data.cached ? "ใช้สรุปงานเดิมจากระบบ ✨" : "AI สรุปงานใหม่ให้เรียบร้อยแล้ว ✨"); 
+      }
       else showToast(`❌ ${data.error || "ไม่สามารถสรุปงานได้ในขณะนี้"}`);
     } catch { showToast("❌ ระบบ AI ขัดข้อง กรุณาลองใหม่อีกครั้ง"); }
     finally { setIsGeneratingAI(false); }
@@ -508,7 +515,15 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
           gap: "1rem", 
           flexShrink: 0 
         }}>
-          <div className="technical-panel" style={{ padding: "0", display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden", borderRadius: "var(--radius-sharp)", border: "1px solid var(--border-color)", borderTop: "4px solid var(--primary)", background: "var(--bg-surface)", boxShadow: "0 4px 20px rgba(0,0,0,0.3)" }}>
+          <div className="technical-panel" style={{ 
+            background: "#ffffff", 
+            borderRadius: "var(--radius-lg)", 
+            border: "1px solid var(--border-color)",
+            boxShadow: "var(--shadow-premium)",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden"
+          }}>
             <TicketHeader ticket={initialTicket} assigneeName={assigneeName} onCopyTicketId={handleCopyTicketId} />
             
             <div style={{ flex: 1, overflowY: "auto", padding: "1.25rem" }}>
@@ -523,32 +538,126 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
                     </div>
                  </div>
 
-                 {/* Description Preview (Minimalist) */}
-                 <div style={{ padding: "1rem", background: "var(--bg-glass)", border: "1px solid var(--border-light)", borderRadius: "var(--radius-sharp)" }}>
+                  {/* Description Preview (Minimalist) */}
+                  <div style={{ padding: "1.25rem", background: "var(--bg-color)", border: "1px solid var(--border-light)", borderRadius: "var(--radius-sharp)" }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', opacity: 0.6 }}>
                       <FileText size={12} />
-                      <span style={{ fontSize: '0.7rem', fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>Issue Description</span>
+                      <span style={{ fontSize: '0.7rem', fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: '0.5px' }}>Issue Description</span>
                     </div>
-                    <p style={{ fontSize: "0.85rem", color: "var(--text-main)", lineHeight: "1.6", whiteSpace: "pre-wrap" }}>{initialTicket.description}</p>
-                 </div>
-               </div>
+                    <p style={{ fontSize: "0.9rem", color: "var(--text-main)", lineHeight: "1.7", whiteSpace: "pre-wrap", fontWeight: 500 }}>{initialTicket.description}</p>
+                  </div>
+
+                  {/* AI Summary Display - LIFF THEMED */}
+                  {aiSummary && (
+                    <div className="animate-fade-in" style={{ 
+                      padding: "1.5rem", 
+                      background: "linear-gradient(135deg, rgba(0, 108, 228, 0.04), rgba(16, 185, 129, 0.04))", 
+                      border: "1px solid rgba(0, 108, 228, 0.22)", 
+                      borderRadius: "var(--radius-main)", 
+                      position: 'relative', 
+                      overflow: 'hidden',
+                      boxShadow: "0 10px 20px rgba(0, 108, 228, 0.05)"
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <Zap size={14} color="var(--primary)" fill="var(--primary)" />
+                          <span style={{ fontSize: '0.75rem', fontWeight: 900, color: "var(--primary)", textTransform: "uppercase", letterSpacing: '1px' }}>AI Smart Insight</span>
+                        </div>
+                        <button 
+                          onClick={() => handleGenerateAISummary(true)}
+                          disabled={isGeneratingAI}
+                          style={{ 
+                            background: 'none', 
+                            border: 'none', 
+                            color: 'var(--primary)', 
+                            fontSize: '0.65rem', 
+                            fontWeight: 800, 
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            opacity: isGeneratingAI ? 0.5 : 1
+                          }}
+                        >
+                          <Activity size={10} /> REGENERATE
+                        </button>
+                      </div>
+                      <div style={{ fontSize: "0.9rem", color: "var(--text-heading)", lineHeight: "1.8", whiteSpace: "pre-wrap", fontWeight: 600 }}>
+                         {aiSummary}
+                      </div>
+                    </div>
+                  )}
+                </div>
             </div>
 
             {/* Bottom Actions Panel in Left Column */}
-            <div style={{ padding: "1.5rem", borderTop: "1px solid #e2e8f0", display: "flex", flexDirection: "column", gap: "0.75rem", background: "white" }}>
-                <button onClick={handleGenerateAISummary} disabled={isGeneratingAI} style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1px dashed #3b82f6", background: "white", color: "#1e293b", fontWeight: 700, fontSize: "0.85rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}>
-                   <Zap size={16} color="#3b82f6" /> {isGeneratingAI ? "กำลังประมวลผล..." : "ให้ AI สรุปงาน"}
-                </button>
+            <div style={{ padding: "1.75rem", borderTop: "1px solid var(--border-light)", display: "flex", flexDirection: "column", gap: "0.85rem", background: "white", paddingBottom: "2.5rem" }}>
                 
-                {currentStatus !== "Resolved" && assigneeName && (
-                  <button onClick={() => setIsResolveModalOpen(true)} style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", color: "#1e293b", fontWeight: 700, fontSize: "0.85rem" }}>
-                    แก้ไขข้อมูลการทำงาน
+                {/* 1. CLAIM BUTTON (If unassigned) */}
+                {!assigneeName && (
+                  <button 
+                    onClick={handleAssign}
+                    disabled={isAssigning}
+                    className="btn-claim-task"
+                    style={{ 
+                      width: "100%", padding: "1.25rem", borderRadius: "18px", 
+                      background: "linear-gradient(135deg, var(--primary), #3b82f6)", 
+                      color: "white", border: "none", fontWeight: 900, fontSize: "1rem",
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px',
+                      boxShadow: "0 10px 20px var(--primary-glow)", cursor: 'pointer', transition: 'all 0.3s'
+                    }}
+                  >
+                    <Hand size={20} /> {isAssigning ? "กำลังรับงาน..." : "รับรับผิดชอบงานนี้ (Claim Task)"}
                   </button>
                 )}
 
-                <button onClick={handleExportPDF} style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "none", background: "#0066cc", color: "white", fontWeight: 700, fontSize: "0.85rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}>
-                   <FileText size={18} /> PDF
+                {/* 2. AI SUMMARY BUTTON */}
+                <button 
+                  onClick={() => handleGenerateAISummary()}
+                  disabled={isGeneratingAI}
+                  style={{ width: "100%", padding: "1.1rem", borderRadius: "20px", border: "1px solid var(--primary-glow)", background: "var(--primary-glow)", color: "var(--primary)", fontWeight: 850, fontSize: "0.85rem", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', transition: 'var(--transition)', cursor: 'pointer' }}
+                  className="btn-ai-action"
+                >
+                  <Zap size={16} color="var(--primary)" fill="var(--primary)" /> {isGeneratingAI ? "กำลังวิเคราะห์ข้อมูล..." : aiSummary ? "สรุปงานใหม่ด้วย AI" : "ใช้ AI สรุปข้อมูลทั้งหมด"}
                 </button>
+                
+                {/* 3. FORWARD / TRANSFER BUTTONS (If assigned) */}
+                {assigneeName && currentStatus !== "Resolved" && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <button 
+                      onClick={() => setIsTransferModalOpen(true)}
+                      style={{ padding: "1rem", borderRadius: "18px", border: "1px solid var(--border-color)", background: "white", color: "var(--text-heading)", fontWeight: 800, fontSize: "0.8rem", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}
+                    >
+                      <Share2 size={16} /> ส่งงานต่อ (Staff)
+                    </button>
+                    <button 
+                      onClick={() => setIsEscalateModalOpen(true)}
+                      style={{ padding: "1rem", borderRadius: "18px", border: "1px solid var(--border-color)", background: "white", color: "var(--text-heading)", fontWeight: 800, fontSize: "0.8rem", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}
+                    >
+                      <AlertTriangle size={16} color="#f59e0b" /> ส่งต่อฝ่ายงาน
+                    </button>
+                  </div>
+                )}
+
+                {/* 4. RESOLVE BUTTON */}
+                {currentStatus !== "Resolved" && assigneeName && (
+                  <button 
+                    onClick={() => setIsResolveModalOpen(true)}
+                    style={{ width: "100%", padding: "1.1rem", borderRadius: "20px", border: "1px solid var(--border-color)", background: "white", color: "var(--text-heading)", fontWeight: 800, fontSize: "0.85rem", transition: 'var(--transition)', cursor: 'pointer' }}
+                    className="btn-secondary-modern"
+                  >
+                    แก้ไขข้อมูล / ปิดงาน (Resolve)
+                  </button>
+                )}
+
+                {/* 5. PDF EXPORT BUTTON */}
+                <button 
+                  onClick={handleExportPDF}
+                  style={{ width: "100%", padding: "1.1rem", borderRadius: "20px", border: "none", background: "#f1f5f9", color: "#475569", fontWeight: 850, fontSize: "0.85rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", transition: 'var(--transition)', cursor: 'pointer' }}
+                >
+                   <FileText size={18} /> ส่งออกไฟล์ PDF สรุปงาน
+                </button>
+            </div>
 
                 <div style={{ padding: "0.5rem", borderTop: "1px dashed #e2e8f0", marginTop: "0.5rem" }}>
                    <p style={{ fontSize: "0.65rem", color: "#64748b", fontWeight: 700, marginBottom: "0.5rem", textTransform: "uppercase" }}>External Escalation Tools</p>
@@ -576,7 +685,6 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
                 </div>
             </div>
           </div>
-        </div>
 
         {/* Box 2 (Right Column): Pure Chat Interface */}
         <div className="right-column" style={{ 
@@ -691,9 +799,20 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
               <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
                 <div>
                   <label style={{ fontSize: "0.65rem", color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase", display: "block", marginBottom: "0.4rem" }}>อาการเสีย/รายละเอียดพิ่มเติม</label>
-                  <p style={{ background: "white", padding: "1.25rem", borderRadius: "12px", border: "1px solid var(--border-color)", fontSize: "0.95rem", lineHeight: "1.6", color: "var(--text-main)", margin: 0 }}>
+                  <p style={{ background: "white", padding: "1.25rem", borderRadius: "16px", border: "1px solid var(--border-color)", fontSize: "0.95rem", lineHeight: "1.6", color: "var(--text-main)", margin: 0 }}>
                     {initialTicket.description}
                   </p>
+
+                  {/* AI Summary in Resolve Modal */}
+                  {aiSummary && (
+                    <div style={{ marginTop: "1rem", padding: "1.25rem", background: "linear-gradient(135deg, rgba(0, 108, 228, 0.05), rgba(16, 185, 129, 0.05))", border: "1px solid rgba(0, 108, 228, 0.15)", borderRadius: "16px" }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                        <Zap size={14} color="var(--primary)" fill="var(--primary)" />
+                        <span style={{ fontSize: '0.7rem', fontWeight: 900, color: "var(--primary)", textTransform: "uppercase" }}>AI Summary Insight</span>
+                      </div>
+                      <p style={{ fontSize: "0.85rem", color: "var(--text-heading)", lineHeight: "1.7", margin: 0, fontWeight: 500 }}>{aiSummary}</p>
+                    </div>
+                  )}
                 </div>
                 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>

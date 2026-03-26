@@ -4,10 +4,6 @@ import { useState, useMemo, useEffect, memo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { logger } from "@/lib/logger";
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, AreaChart, Area, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis
-} from "recharts";
 import { 
   Sun, Moon, ArrowUpDown, ArrowUp, ArrowDown, Menu, 
   LayoutDashboard, PlusCircle, BarChart3, Users, Hospital, Settings, Building2,
@@ -110,52 +106,54 @@ const TicketRow = memo(({
     <tr 
       onClick={() => router.push(`/tickets/${t.id}`)}
       className={`ticket-row-hover ${!t.assignee_name ? 'unassigned-row' : ''}`}
-      style={{ cursor: "pointer", transition: "all 0.2s ease" }}
+      style={{ cursor: "pointer", transition: "var(--transition)" }}
     >
-      <td>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
+      <td style={{ padding: '1.25rem 1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {!t.assignee_name && <span className="unassigned-pulse-dot" title="ยังไม่มีผู้รับงาน" />}
-          <div className="ticket-no">{t.ticket_no}</div>
+          <div className="ticket-no" style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--primary)' }}>#{t.ticket_no}</div>
         </div>
-        <div style={{fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "0.2rem"}}>{t.issue_type}</div>
+        <div style={{fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "2px", fontWeight: 700}}>{t.issue_type}</div>
       </td>
-      <td><div className="ticket-desc">{t.description}</div></td>
+      <td><div className="ticket-desc" style={{ fontWeight: 500, lineHeight: 1.5 }}>{t.description}</div></td>
       <td>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{fontWeight: 500, color: "var(--text-heading)"}}>{hospitalName}</div>
+          <div style={{fontWeight: 700, color: "var(--text-heading)", fontSize: '0.9rem'}}>{hospitalName}</div>
           {hospitalId && (
             <button 
               onClick={(e) => { e.stopPropagation(); router.push(`/hospitals/${hospitalId}/stats`); }}
               className="btn-icon-mini-dashboard"
-              title="ดูสถิติเชิงลึกของโรงพยาบาลนี้"
-              style={{ padding: '4px', borderRadius: '6px', background: 'var(--primary-glow)', border: 'none', cursor: 'pointer', color: 'var(--primary)', display: 'flex' }}
+              style={{ padding: '6px', borderRadius: '10px', background: 'var(--primary-glow)', border: 'none', cursor: 'pointer', color: 'var(--primary)', display: 'flex' }}
             >
               <BarChart3 size={14} />
             </button>
           )}
         </div>
-        <div style={{fontSize: "0.85rem", color: "var(--text-muted)", display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px'}}>
+        <div style={{fontSize: "0.8rem", color: "var(--text-muted)", display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', fontWeight: 600}}>
           <User size={12} /> {userName}
         </div>
       </td>
       <td>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'flex-start' }}>
-          <span className={`status-badge ${badgeCls}`}>{getStatusLabel(t.status)}</span>
-          <span className={`prio-badge prio-${(t.priority || "Medium").toLowerCase()}`}>{t.priority || "Medium"}</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-start' }}>
+          <span className={`status-badge-modern ${badgeCls}`} style={{ padding: '0.4rem 0.8rem', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 850 }}>{getStatusLabel(t.status)}</span>
+          <span className={`prio-badge prio-${(t.priority || "Medium").toLowerCase()}`} style={{ padding: '0.3rem 0.8rem', borderRadius: '20px', fontSize: '0.65rem', fontWeight: 850 }}>{t.priority || "Medium"}</span>
         </div>
       </td>
       <td>
         {t.assignee_name ? (
-          <div style={{fontWeight: 500, color: "var(--primary)", display: 'flex', alignItems: 'center', gap: '0.4rem'}}>
-            <Users size={14} /> {t.assignee_name}
+          <div style={{fontWeight: 700, color: "var(--primary)", display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem'}}>
+            <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--primary-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+               <User size={14} />
+            </div>
+            {t.assignee_name}
           </div>
         ) : (
-          <button onClick={(e) => onClaim(e, t.id)} disabled={isAssigning === t.id} className="btn-claim-modern-dashboard">
+          <button onClick={(e) => onClaim(e, t.id)} disabled={isAssigning === t.id} className="btn-claim-modern-dashboard" style={{ background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '12px', padding: '0.6rem 1rem', fontWeight: 800, fontSize: '0.8rem' }}>
             {isAssigning === t.id ? (
               <div className="spinner-mini" />
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Activity size={14} className="animate-pulse" /> รับงาน
+                <Activity size={14} /> รับงาน
               </div>
             )}
           </button>
@@ -548,157 +546,88 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
     return Array.from(names).sort();
   }, [tickets]);
 
-   const statusData = [
-    { name: 'งานใหม่', count: pending, fill: '#f59e0b' },
-    { name: 'กำลังดำเนินการ', count: inProgress, fill: '#3b82f6' },
-    { name: 'แก้ไขเสร็จสิ้น', count: done, fill: '#22c55e' },
-    { name: 'ส่งต่องาน', count: escalated, fill: '#ef4444' }
-  ];
-
-  const hospitalCounts = visibleTickets.reduce((acc, t) => {
-    const name = t.users?.hospitals?.name || "Unknown";
-    acc[name] = (acc[name] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-  
-  const hospitalColorsDark = ['#58a6ff', '#14b8a6', '#3fb950', '#d29922', '#f85149'];
-  const hospitalColorsLight = ['#0969da', '#0fb9b1', '#1a7f37', '#9a6700', '#d1242f'];
-  const currentColors = theme === 'dark' ? hospitalColorsDark : hospitalColorsLight;
-
-  const hospitalData = Object.keys(hospitalCounts).map((key, index) => ({
-    name: key, 
-    count: hospitalCounts[key],
-    fill: currentColors[index % currentColors.length]
-  }));
-
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', padding: '10px', borderRadius: '8px' }}>
-          <p style={{ color: 'var(--text-heading)', fontWeight: 'bold' }}>{label || payload[0].name}</p>
-          <p style={{ color: payload[0].payload.fill }}>Tickets: {payload[0].value}</p>
-        </div>
-      );
-    }
-    return null;
-  };
-
   return (
     <div className={`dashboard-container ${theme}`}>
-      {/* New Ticket Realtime Notification Popup */}
+      {/* New Ticket Realtime Notification Popup - MODERNISED */}
       {newTicketNotify && (
-        <div className="new-ticket-popup animate-bounce-in hud-style" style={{ borderLeft: '4px solid var(--primary)', borderRadius: '2px 14px 14px 2px' }}>
-          <div className="popup-header" style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '0.75rem', marginBottom: '0.75rem' }}>
-            <div className="popup-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ padding: '6px', background: 'var(--primary-glow)', borderRadius: '8px' }}>
-                <Bell size={18} className="animate-pulse" color="var(--primary)" />
+        <div className="new-ticket-popup animate-bounce-in" style={{ background: 'white', borderRadius: '24px', boxShadow: 'var(--shadow-premium)', border: '1px solid var(--border-color)', padding: '1.5rem', width: '380px', zIndex: 10000 }}>
+          <div className="popup-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ padding: '10px', background: 'var(--primary-glow)', borderRadius: '16px' }}>
+                <Bell size={20} color="var(--primary)" />
               </div>
-              <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-heading)', letterSpacing: '0.5px' }}>NEW_INCOMING_TICKET</span>
+              <span style={{ fontWeight: 850, fontSize: '0.95rem', color: 'var(--text-heading)' }}>มีใบงานใหม่เข้ามา</span>
             </div>
-            <button className="popup-close" onClick={() => setNewTicketNotify(null)} style={{ opacity: 0.5 }}>
-              <X size={18} />
+            <button onClick={() => setNewTicketNotify(null)} style={{ border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+              <X size={20} />
             </button>
           </div>
-          <div className="popup-content" style={{ padding: '0.5rem 0' }}>
-            <div className="popup-hospital" style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>
-              Origin: {newTicketNotify.users?.hospitals?.name || "EXTERNAL_SOURCE"}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '0.5px' }}>
+              {newTicketNotify.users?.hospitals?.name || "ไม่ระบุหน่วยงาน"}
             </div>
-            <div style={{ fontSize: '1.1rem', color: 'var(--primary)', fontWeight: 900, marginBottom: '0.5rem', fontFamily: 'monospace' }}>
+            <div style={{ fontSize: '1.25rem', color: 'var(--text-heading)', fontWeight: 900, marginBottom: '0.75rem', letterSpacing: '-0.5px' }}>
               #{newTicketNotify.ticket_no}
             </div>
-            <div className="popup-desc" style={{ fontSize: '0.9rem', color: 'var(--text-main)', lineHeight: 1.5, opacity: 0.9 }}>
+            <p style={{ fontSize: '0.95rem', color: 'var(--text-main)', lineHeight: 1.6, margin: 0 }}>
               {newTicketNotify.description}
-            </div>
+            </p>
           </div>
-          <div className="popup-footer" style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem' }}>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
             <button 
-              className="btn-secondary" 
-              style={{ flex: 1, padding: '0.75rem', fontSize: '0.8rem', borderRadius: '10px' }}
-              onClick={() => {
-                router.push(`/tickets/${newTicketNotify.id}`);
-                setNewTicketNotify(null);
-              }}
+              className="btn-secondary-modern" 
+              style={{ flex: 1, padding: '0.9rem', borderRadius: '16px', border: '1px solid var(--border-color)', background: 'white', fontWeight: 700, cursor: 'pointer' }}
+              onClick={() => { router.push(`/tickets/${newTicketNotify.id}`); setNewTicketNotify(null); }}
             >
-              INVESTIGATE
+              ตรวจสอบ
             </button>
             <button 
-              className="btn-primary" 
-              style={{ 
-                flex: 1.2, 
-                padding: '0.75rem', 
-                fontSize: '0.8rem', 
-                borderRadius: '10px',
-                background: 'var(--primary)',
-                boxShadow: '0 4px 15px var(--primary-glow)'
-              }}
-              onClick={async (e) => {
-                await handleClaim(e as any, newTicketNotify.id);
-                setNewTicketNotify(null);
-              }}
+              className="btn-primary-modern" 
+              style={{ flex: 1.2, padding: '0.9rem', borderRadius: '16px', border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 850, cursor: 'pointer', boxShadow: '0 8px 16px var(--primary-glow)' }}
+              onClick={async (e) => { await handleClaim(e as any, newTicketNotify.id); setNewTicketNotify(null); }}
             >
-              <Zap size={14} /> CLAIM_NODE
+              รับงานทันที
             </button>
           </div>
-          <div className="scanner-line" style={{ background: 'var(--primary)', opacity: 0.5 }} />
         </div>
       )}
 
-      <aside className={`sidebar ${!isSidebarOpen ? 'collapsed' : ''}`}>
-        <div className="sidebar-logo">
-          <div className="logo-icon-container">
-            <Activity className="logo-icon" size={24} />
+      <aside className={`sidebar ${!isSidebarOpen ? 'collapsed' : ''}`} style={{ background: 'white', borderRight: '1px solid var(--border-color)', boxShadow: 'var(--shadow-md)' }}>
+        <div className="sidebar-logo" style={{ padding: '2rem 1.5rem' }}>
+          <div className="logo-icon-container" style={{ background: 'var(--primary)', borderRadius: '12px', boxShadow: '0 8px 16px var(--primary-glow)' }}>
+            <Activity className="logo-icon" size={24} color="white" />
           </div>
-          {isSidebarOpen && <span className="logo-text">NEO Support</span>}
+          {isSidebarOpen && <span className="logo-text" style={{ fontWeight: 900, color: 'var(--text-heading)', fontSize: '1.25rem', letterSpacing: '-0.5px' }}>NEO Support</span>}
         </div>
         
-        <nav className="sidebar-nav">
-          <div className="nav-group-label">{isSidebarOpen ? "หลัก" : "•••"}</div>
-          <Link href="/" prefetch={true} className="nav-item active" data-label="หน้าหลัก (Dashboard)">
-            <LayoutDashboard size={20} className="nav-icon" />
-            {isSidebarOpen && (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                <span className="nav-label">หน้าหลัก</span>
-                <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>Dashboard</span>
-              </div>
-            )}
+        <nav className="sidebar-nav" style={{ padding: '0 1rem' }}>
+          <div className="nav-group-label" style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '1rem', paddingLeft: '0.5rem' }}>{isSidebarOpen ? "MENU" : "•••"}</div>
+          <Link href="/" prefetch={true} className="nav-item-modern active" data-label="หน้าหลัก">
+            <LayoutDashboard size={20} />
+            {isSidebarOpen && <span className="nav-label-modern">หน้าหลัก</span>}
           </Link>
-          <Link href="/tickets/new" prefetch={true} className="nav-item" data-label="สร้างใบงาน (New Ticket)">
-            <PlusCircle size={20} className="nav-icon" />
-            {isSidebarOpen && (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                <span className="nav-label">สร้างใบงาน</span>
-                <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>New Ticket</span>
-              </div>
-            )}
+          <Link href="/tickets/new" prefetch={true} className="nav-item-modern" data-label="สร้างใบงาน">
+            <PlusCircle size={20} />
+            {isSidebarOpen && <span className="nav-label-modern">สร้างใบงาน</span>}
           </Link>
 
-          <div className="nav-group-label" style={{ marginTop: '1.5rem' }}>{isSidebarOpen ? "สถิติและข้อมูล" : "•••"}</div>
-          <Link href="/graph" prefetch={true} className="nav-item" data-label="สถิติประสิทธิภาพ (Analytics)">
-            <BarChart3 size={20} className="nav-icon" />
-            {isSidebarOpen && (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                <span className="nav-label">สถิติประสิทธิภาพ</span>
-                <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>Analytics</span>
-              </div>
-            )}
+          <div className="nav-group-label" style={{ marginTop: '2rem', fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '1rem', paddingLeft: '0.5rem' }}>{isSidebarOpen ? "ANALYTICS" : "•••"}</div>
+          <Link href="/graph" prefetch={true} className="nav-item-modern" data-label="สถิติประสิทธิภาพ">
+            <BarChart3 size={20} />
+            {isSidebarOpen && <span className="nav-label-modern">สถิติประสิทธิภาพ</span>}
           </Link>
 
-          <div className="nav-group-label" style={{ marginTop: '1.5rem' }}>{isSidebarOpen ? "ตั้งค่าระบบ" : "•••"}</div>
-          <Link href="/settings" prefetch={true} className="nav-item" data-label="ตั้งค่าทั่วไป (Settings)">
-            <Settings size={20} className="nav-icon" />
-            {isSidebarOpen && (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                <span className="nav-label">ตั้งค่าทั่วไป</span>
-                <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>System Settings</span>
-              </div>
-            )}
+          <div className="nav-group-label" style={{ marginTop: '2rem', fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '1rem', paddingLeft: '0.5rem' }}>{isSidebarOpen ? "SYSTEM" : "•••"}</div>
+          <Link href="/settings" prefetch={true} className="nav-item-modern" data-label="ตั้งค่าระบบ">
+            <Settings size={20} />
+            {isSidebarOpen && <span className="nav-label-modern">ตั้งค่าระบบ</span>}
           </Link>
 
-          <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+          <div style={{ marginTop: 'auto', paddingTop: '1.5rem', marginBottom: '2rem', borderTop: '1px solid var(--border-color)' }}>
               <form action={logout}>
-                <button type="submit" className="nav-item hover-danger" style={{ width: '100%', background: 'none', border: 'none' }} data-label="ออกจากระบบ">
-                  <LogOut size={20} className="nav-icon" />
-                  <span className="nav-label">ออกจากระบบ</span>
+                <button type="submit" className="nav-item-modern hover-danger" style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer' }} data-label="ออกจากระบบ">
+                  <LogOut size={20} />
+                  {isSidebarOpen && <span className="nav-label-modern">ออกจากระบบ</span>}
                 </button>
               </form>
           </div>
@@ -709,13 +638,15 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           title={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
           style={{ 
-            top: '70px', 
+            transform: 'translateY(70px)', 
             right: '-12px', 
             background: 'var(--primary)', 
             color: 'white', 
             boxShadow: '0 4px 10px var(--primary-glow)',
             border: 'none',
-            zIndex: 100
+            zIndex: 100,
+            position: 'absolute',
+            willChange: 'transform'
           }}
         >
           {isSidebarOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
@@ -723,76 +654,47 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
       </aside>
 
       <main className="main-content">
-        <header className="header hud-header animate-fade-in">
-          <div className="header-title" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            {!isSidebarOpen && (
-              <button 
-                onClick={() => setIsSidebarOpen(true)} 
-                className="btn-icon-modern"
-              >
-                <ChevronRight size={20} />
-              </button>
-            )}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                <span style={{ fontSize: '0.65rem', color: 'var(--primary)', border: '1px solid var(--primary)', padding: '1px 4px', letterSpacing: '2px' }}>NEO_PROTOCOL_v3</span>
-                <span style={{ fontSize: '0.65rem', color: 'var(--accent)', opacity: 0.8 }}>SYSTEM ACTIVE</span>
-              </div>
-              <h1 style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
-                แผงควบคุมหลัก <span style={{ fontSize: '1rem', color: 'var(--text-muted)', fontWeight: 500, letterSpacing: '2px' }}>COMMAND INTERFACE</span>
-              </h1>
-              <p style={{ letterSpacing: '0.5px', margin: 0 }}>ภาพรวมระบบและใบแจ้งซ่อมจากทุกสาขา <span style={{ opacity: 0.5, fontSize: '0.85em' }}>(Sector Analysis: All Hospital Network Nodes)</span></p>
+        <header className="header animate-fade-in" style={{ padding: '2rem 3rem', background: 'white', borderBottom: '1px solid var(--border-color)', marginBottom: '2rem' }}>
+          <div className="header-title">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--primary)', animation: 'pulse 2s infinite' }}></div>
+              <span style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '1px' }}>System Operational</span>
             </div>
+            <h1 style={{ fontSize: 'clamp(1.75rem, 5vw, 2.25rem)', fontWeight: 900, color: 'var(--text-heading)', letterSpacing: '-1.5px', margin: 0 }}>แผงควบคุมหลัก</h1>
+            <p style={{ fontSize: '1.05rem', color: 'var(--text-muted)', fontWeight: 500, margin: '8px 0 0 0' }}>ภาพรวมระบบและใบแจ้งซ่อมจากทุกสาขาในเครือข่าย</p>
           </div>
-          <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            {userEmail && (
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px', borderRight: '1px solid var(--border-color)', paddingRight: '1rem' }}>
-                <code>ผู้ใช้งาน (ID): {userEmail.toUpperCase()}</code>
-              </div>
-            )}
+          <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
             {mounted && (
-              <button className="theme-toggle" onClick={toggleTheme} title="Toggle Interface" style={{ borderRadius: '0', border: '1px solid var(--border-color)' }}>
-                {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+              <button className="theme-toggle" onClick={toggleTheme} style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'var(--bg-surface-hover)', border: '1px solid var(--border-color)', color: 'var(--text-heading)', cursor: 'pointer' }}>
+                {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
               </button>
             )}
             <Link href="/tickets/new" style={{ textDecoration: 'none' }}>
-              <button className="btn-primary" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0.5rem 1rem', lineHeight: 1.2 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Plus size={16} /> สร้างใบงาน
-                </div>
-                <span style={{ fontSize: '0.6rem', opacity: 0.8, letterSpacing: '1px' }}>INITIALIZE_TICKET</span>
+              <button className="btn-primary-modern" style={{ padding: '1rem 2rem', borderRadius: '20px', background: 'var(--primary)', color: 'white', border: 'none', fontWeight: 850, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '10px', boxShadow: '0 10px 20px var(--primary-glow)', cursor: 'pointer' }}>
+                <Plus size={20} /> สร้างใบงานใหม่
               </button>
             </Link>
           </div>
         </header>
 
-
-        <section className="dashboard-summary-ribbon animate-fade-in delay-1" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '2.5rem' }}>
+        <section className="summary-grid animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', padding: '0 3rem', marginBottom: '3rem' }}>
           {[
-            { label: "ใบงานทั้งหมด", sub: "TOTAL_ASSETS", value: total, color: "var(--primary)", icon: <Activity size={18} /> },
-            { label: "รอดำเนินการ", sub: "PENDING_QUEUE", value: pending, color: "var(--status-pending-text)", icon: <Clock size={18} /> },
-            { label: "กำลังแก้ไข", sub: "ACTIVE_STREAM", value: inProgress, color: "var(--status-progress-text)", icon: <Zap size={18} /> },
-            { label: "แก้ไขล่าช้า", sub: "ESCALATED_ALERTS", value: escalated, color: "var(--status-escalated-text)", icon: <AlertTriangle size={18} /> },
-            { label: "ยังไม่จ่ายงาน", sub: "UNCLAIMED_JOB", value: unassignedCount, color: "var(--status-escalated-text)", glow: true, icon: <Zap size={18} /> }
+            { label: "ใบงานทั้งหมด", sub: "Total Tickets", value: total, color: "var(--primary)", icon: <Activity size={22} /> },
+            { label: "รอดำเนินการ", sub: "Pending", value: pending, color: "var(--status-pending-text)", icon: <Clock size={22} /> },
+            { label: "กำลังแก้ไข", sub: "In Progress", value: inProgress, color: "var(--status-progress-text)", icon: <Zap size={22} /> },
+            { label: "ยังไม่รับงาน", sub: "Unassigned", value: unassignedCount, color: "var(--status-escalated-text)", glow: true, icon: <AlertTriangle size={22} /> }
           ].map((m, i) => (
-            <div key={i} className="technical-panel" style={{ padding: '1.25rem', borderTop: m.glow ? '2px solid var(--status-escalated-text)' : '1px solid var(--border-color)', position: 'relative', overflow: 'hidden' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                <div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '2px' }}>{m.label}</div>
-                  <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', letterSpacing: '1px' }}>{m.sub}</div>
+            <div key={i} className="technical-panel" style={{ padding: '2rem', borderRadius: '32px', border: '1px solid var(--border-color)', background: 'white', boxShadow: 'var(--shadow-premium)', transition: 'var(--transition)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+                <div style={{ padding: '12px', borderRadius: '16px', background: `${m.color}10`, color: m.color }}>
+                  {m.icon}
                 </div>
-                <div style={{ color: m.color, opacity: 0.8 }}>{m.icon}</div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>{m.sub}</div>
+                  <div style={{ fontSize: '2.5rem', fontWeight: 900, color: m.color, letterSpacing: '-1px', lineHeight: 1 }}>{m.value}</div>
+                </div>
               </div>
-              <div style={{ 
-                fontSize: '2.2rem', 
-                fontWeight: 800, 
-                color: m.color,
-                textShadow: m.glow ? `0 0 15px ${m.color}80` : 'none',
-                fontFamily: 'monospace'
-              }}>
-                {m.value.toString().padStart(2, '0')}
-              </div>
-              {m.glow && <div className="scanner-line" style={{ top: 0, height: '2px', background: m.color }} />}
+              <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-heading)' }}>{m.label}</div>
             </div>
           ))}
         </section>
@@ -843,7 +745,7 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
             <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
               <span style={{ fontSize: "2.5rem" }}>🚨</span>
               <div>
-                <h3 style={{ margin: 0, color: "var(--status-escalated-text)", fontSize: "1.2rem" }}>มีงานใหม่รอผู้รับผิดชอบ (New Unassigned Jobs)</h3>
+                <h2 style={{ margin: 0, color: "var(--status-escalated-text)", fontSize: "1.2rem", fontWeight: 800 }}>มีงานใหม่รอผู้รับผิดชอบ (New Unassigned Jobs)</h2>
                 <p style={{ margin: "0.4rem 0 0 0", color: "var(--text-main)", fontSize: "0.95rem" }}>ตอนนี้มี <strong style={{color: "var(--status-escalated-text)", fontSize: "1.1rem"}}>{unassignedCount} งาน</strong> ที่กำลังรอให้ทีม IT กด ✋ Claim เพื่อรับงาน โปรดตรวจสอบในตารางด้านล่างด่วน!</p>
               </div>
             </div>
@@ -1108,10 +1010,10 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
         }
 
         .hud-style {
-          background: var(--bg-glass);
-          backdrop-filter: blur(20px);
-          box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-          border: 1px solid var(--border-light);
+          background: rgba(var(--bg-surface-rgb, 255, 255, 255), 0.7);
+          backdrop-filter: blur(20px) saturate(180%);
+          box-shadow: 0 10px 40px -10px rgba(0,0,0,0.3), 0 5px 20px -5px rgba(0,0,0,0.2);
+          border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
         .scanner-line {
@@ -1122,11 +1024,23 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
           background: var(--primary);
           box-shadow: 0 0 10px var(--primary);
           animation: scan 3s linear infinite;
+          transform: translateY(0);
+          will-change: transform;
         }
 
         @keyframes scan {
-          0% { top: 0; }
-          100% { top: 100%; }
+          0% { transform: translateY(0); opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { transform: translateY(100vh); opacity: 0; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .animate-fade-in, .scanner-line, .btn-primary-modern, .nav-item {
+            animation: none !important;
+            transition: none !important;
+            transform: none !important;
+          }
         }
       `}</style>
     </div>

@@ -4,27 +4,33 @@ import { logger } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
-    const { ticketId } = await req.json();
+    const { ticketId, force = false } = await req.json();
     const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
 
     if (!apiKey) {
       return NextResponse.json({ error: 'AI API Key not configured' }, { status: 500 });
     }
 
-    // 1. Fetch ticket and messages
+    // 1. Fetch ticket (and check cache)
     const { data: ticket } = await supabaseAdmin
       .from("tickets")
       .select("*, users!reporter_id(display_name, hospitals(name))")
       .eq("id", ticketId)
       .single();
 
+    if (!ticket) return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+
+    // Caching Logic: If summary exists and not forced, reuse it
+    if (ticket.ai_summary && !force) {
+      return NextResponse.json({ summary: ticket.ai_summary, cached: true });
+    }
+
+    // 2. Fetch messages
     const { data: messages } = await supabaseAdmin
       .from("messages")
       .select("*")
       .eq("ticket_id", ticketId)
       .order("created_at", { ascending: true });
-
-    if (!ticket) return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
 
     // 2. Prepare prompt for Gemini
     const chatLog = messages?.map(m => `${m.direction === 'inbound' ? 'Customer' : 'Staff'}: ${m.content}`).join('\n') || 'ไม่มีประวัติการสนทนา';

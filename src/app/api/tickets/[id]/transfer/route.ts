@@ -50,15 +50,35 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
          return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
        }
 
+       // --- ADAPTED: GET DEPARTMENT NAME FOR SYSTEM MESSAGE ---
+       let deptName = "แผนกอื่น";
+       if (newDepartmentId) {
+         const { data: dData } = await supabaseAdmin.from("departments").select("name").eq("id", newDepartmentId).single();
+         if (dData) deptName = dData.name;
+       }
+
        await supabaseAdmin
          .from("handover_logs")
          .insert({
            ticket_id: id,
            from_department_id: ticket?.current_department_id,
-           to_department_id: newDepartmentId || ticket?.current_department_id, // Keep current if only staff changed
+           to_department_id: newDepartmentId || ticket?.current_department_id,
            handed_over_by: user.id,
            notes: notes
          });
+
+       // --- NEW: INSERT SYSTEM MESSAGE TO CHAT ---
+       const systemMsg = newDepartmentId 
+         ? `📄 ระบบ: ส่งมอบงานต่อให้แผนก [${deptName}] ดำเนินการตรวจสอบต่อไปครับ\nหมายเหตุ: ${notes || "ไม่มี"}`
+         : `📄 ระบบ: มอบหมายงานให้เจ้าหน้าที่ [${newAssigneeName}] รับช่วงต่อครับ\nหมายเหตุ: ${notes || "ไม่มี"}`;
+
+       await supabaseAdmin.from("messages").insert({
+         ticket_id: id,
+         content: systemMsg,
+         direction: "outbound",
+         message_type: "system",
+         status: "sent"
+       });
     }
 
     return NextResponse.json({ success: true });

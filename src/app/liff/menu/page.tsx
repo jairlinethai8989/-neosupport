@@ -1,121 +1,230 @@
 "use client";
 
-import { useState } from "react";
-import { MessageSquare, PlusCircle, Activity, ChevronRight, Zap, Info, Clock, AlertTriangle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { MessageSquare, PlusCircle, Activity, ChevronRight, Zap, Info, Clock, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useLiff } from "../components/LiffProvider";
+import { getLiffTicketHistory } from "../liffActions";
+import { useRouter } from "next/navigation";
 
 export default function LiffMenuPage() {
-  const [ticketHistory] = useState([
-    { id: "1", title: "แจ้งซ่อมจอภาพ", status: "Pending", time: "10 นาทีที่แล้ว" },
-    { id: "2", title: "ติดตั้งเครื่องพิมพ์", status: "Resolved", time: "เมื่อวาน" },
-  ]);
+  const { user, profile, isRegistered, isLoading: contextLoading } = useLiff();
+  const [ticketHistory, setTicketHistory] = useState<any[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!contextLoading && !isRegistered) {
+      router.push("/liff/register");
+    }
+  }, [contextLoading, isRegistered, router]);
+
+  useEffect(() => {
+    async function fetchHistory() {
+      if (user?.id) {
+        const history = await getLiffTicketHistory(user.id);
+        setTicketHistory(history);
+        setIsLoadingHistory(false);
+      }
+    }
+    fetchHistory();
+  }, [user]);
+
+  const pendingCount = ticketHistory.filter(t => t.status !== 'Resolved' && t.status !== 'Closed').length;
+  const resolvedCount = ticketHistory.filter(t => t.status === 'Resolved' || t.status === 'Closed').length;
 
   const stats = [
-    { label: "ใบงานค้าง", value: "1", color: "text-amber-500", bg: "bg-amber-50" },
-    { label: "แก้ไขแล้ว", value: "24", color: "text-emerald-500", bg: "bg-emerald-50" },
+    { label: "ใบงานค้าง", value: pendingCount.toString(), color: "#f59e0b", bg: "#fffbeb" },
+    { label: "แก้ไขแล้ว", value: resolvedCount.toString(), color: "#10b981", bg: "#f0fdf4" },
   ];
 
+  if (contextLoading) {
+    return (
+      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', background: 'white' }}>
+        <Loader2 className="animate-spin" size={32} color="var(--primary)" />
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col min-h-screen p-6 space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+    <div className="liff-hub animate-fade-in">
       
       {/* Personalized Greeting */}
-      <div className="flex items-center justify-between pt-6">
+      <div className="greeting-section">
         <div>
-          <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest">สวัสดีครับ,</h2>
-          <h1 className="text-2xl font-black text-slate-900 mt-1">คุณ เจริญศักดิ์ 👋</h1>
+          <span className="welcome-tag">สวัสดีครับ, {user?.hospitals?.name || "ยินดีต้อนรับ"}</span>
+          <h1>{user?.display_name || profile?.displayName || "คุณ"} 👋</h1>
         </div>
-        <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 border border-slate-200/50">
-           <Activity size={20} />
+        <div className="avatar-placeholder" style={{ borderRadius: '50%', overflow: 'hidden' }}>
+           {profile?.pictureUrl ? (
+             <img src={profile.pictureUrl} alt="profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+           ) : (
+             <Activity size={20} />
+           )}
         </div>
       </div>
 
       {/* Hero Stats (Lean) */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="stats-grid">
         {stats.map((s, i) => (
-          <div key={i} className={`${s.bg} p-6 rounded-3xl border border-white/50 transition-all active:scale-[0.97]`}>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{s.label}</p>
-            <h3 className={`text-2xl font-black ${s.color} mt-1`}>{s.value}</h3>
+          <div key={i} className="stat-card" style={{ background: s.bg, borderColor: s.bg }}>
+            <span className="stat-label">{s.label}</span>
+            <h3 className="stat-value" style={{ color: s.color }}>{s.value}</h3>
           </div>
         ))}
       </div>
 
       {/* Major Action Hub */}
-      <div className="space-y-4 pt-2">
-        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-1">เมนูบริการ (Services)</label>
+      <div className="action-hub">
+        <label className="section-label">เมนูบริการ (Services)</label>
         
-        {/* Option 2 (Report Issue) - Primary Action */}
-        <Link href="/liff/report" className="block">
-          <div className="relative group overflow-hidden bg-blue-600 p-8 rounded-[2.5rem] text-white shadow-2xl shadow-blue-200 transition-all active:scale-[0.98]">
-             <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-2xl group-hover:scale-125 transition-all" />
-             <div className="relative z-10 flex items-center justify-between">
-                <div className="space-y-2">
-                  <div className="bg-white/20 w-fit p-3 rounded-2xl backdrop-blur-md">
-                    <PlusCircle size={28} />
-                  </div>
-                  <h3 className="text-2xl font-black">แจ้งใบงานใหม่</h3>
-                  <p className="text-blue-100/80 text-sm font-medium">เปิดเคสซ่อมหรือขอความช่วยเหลือไอที</p>
+        <Link href="/liff/report" className="primary-link">
+          <div className="primary-card">
+             <div className="blur-overlay" />
+             <div className="card-content">
+                <div className="icon-box">
+                  <PlusCircle size={28} />
                 </div>
-                <ChevronRight size={24} className="opacity-50" />
+                <div className="card-info">
+                  <h3>แจ้งใบงานใหม่</h3>
+                  <p>เปิดเคสซ่อมหรือขอความช่วยเหลือไอที</p>
+                </div>
+                <ChevronRight size={20} className="arrow-icon" />
              </div>
           </div>
         </Link>
 
-        {/* Option 1 (AI Tutor) */}
-        <Link href="#" className="block">
-          <div className="bg-white border-2 border-slate-100 p-8 rounded-[2.5rem] text-slate-800 transition-all active:scale-[0.98] hover:border-amber-200 shadow-sm">
-             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-5">
-                  <div className="bg-amber-500 p-3 rounded-2xl text-white shadow-lg shadow-amber-200">
+        <Link href="#" className="secondary-link">
+          <div className="secondary-card">
+             <div className="card-content">
+                <div className="icon-group">
+                  <div className="icon-box amber">
                     <Zap size={24} fill="white" />
                   </div>
-                  <div className="space-y-1">
-                    <h3 className="text-xl font-bold">สอบถามปัญหาทั่วไป (AI)</h3>
-                    <p className="text-slate-400 text-[13px] font-medium leading-relaxed">ปรึกษาปัญหาเบื้องต้นกับ Google AI</p>
+                  <div className="card-info">
+                    <h3>สอบถามปัญหาทั่วไป (AI)</h3>
+                    <p>ปรึกษาปัญหาเบื้องต้นกับ Google AI</p>
                   </div>
                 </div>
-                <ChevronRight size={20} className="text-slate-300" />
+                <ChevronRight size={18} className="arrow-muted" />
              </div>
           </div>
         </Link>
       </div>
 
       {/* Recent Activity (Minimalist) */}
-      <div className="space-y-5 pt-4">
-        <div className="flex items-center justify-between px-1">
-          <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">ประวัติใบงานล่าสุด</label>
-          <button className="text-blue-600 text-[11px] font-bold uppercase tracking-wider">ดูทั้งหมด</button>
+      <div className="history-section">
+        <div className="section-header">
+          <label className="section-label">ประวัติใบงานล่าสุด</label>
         </div>
         
-        <div className="space-y-3">
-          {ticketHistory.map((t) => (
-            <div key={t.id} className="bg-white p-5 rounded-3xl border border-slate-100 flex items-center justify-between transition-all active:bg-slate-50">
-               <div className="flex items-center gap-4">
-                  <div className={`p-2 rounded-xl ${t.status === 'Resolved' ? 'bg-emerald-50 text-emerald-500' : 'bg-amber-50 text-amber-500'}`}>
-                    {t.status === 'Resolved' ? <CheckCircle2 size={18} /> : <Clock size={18} />}
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-800 text-[15px]">{t.title}</h4>
-                    <p className="text-[11px] text-slate-400 font-medium">{t.time}</p>
-                  </div>
-               </div>
-               <ChevronRight size={16} className="text-slate-300" />
+        <div className="history-list">
+          {isLoadingHistory ? (
+            <div style={{ textAlign: 'center', padding: '1rem', opacity: 0.5 }}>กำลังโหลด...</div>
+          ) : ticketHistory.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '2rem', background: '#f8fafc', borderRadius: '24px', color: '#94a3b8' }}>
+               ไม่มีประวัติใบงาน
             </div>
-          ))}
+          ) : (
+            ticketHistory.slice(0, 5).map((t) => (
+              <Link key={t.id} href={`/liff/chat/${t.id}`} style={{ textDecoration: 'none' }}>
+                <div className="history-item">
+                  <div className="item-main">
+                      <div className={`status-icon ${t.status === 'Resolved' ? 'done' : 'pending'}`}>
+                        {t.status === 'Resolved' ? <CheckCircle2 size={16} /> : <Clock size={16} />}
+                      </div>
+                      <div className="item-text">
+                        <h4>{t.ticket_no}</h4>
+                        <span className="item-time">{new Date(t.created_at).toLocaleDateString('th-TH')}</span>
+                      </div>
+                  </div>
+                  <ChevronRight size={14} className="arrow-muted" />
+                </div>
+              </Link>
+            ))
+          )}
         </div>
       </div>
 
       {/* Branding Footer */}
-      <div className="mt-auto py-8 text-center">
-        <div className="flex items-center justify-center gap-2 mb-2 text-slate-300 opacity-50">
-           <Info size={12} />
-           <p className="text-[10px] font-bold uppercase tracking-widest">Version 2.0.0 (LIFF-Centric)</p>
+      <div className="footer">
+        <div className="footer-content">
+           <Info size={12} className="info-icon" />
+           <p>Version 2.0.0 (LIFF-Centric)</p>
         </div>
       </div>
+
+      <style jsx>{`
+        .liff-hub { padding: 2.5rem 1.5rem; display: flex; flex-direction: column; gap: 2.5rem; }
+        
+        .greeting-section { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; }
+        .welcome-tag { font-size: 0.7rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1.5px; }
+        h1 { font-size: 1.6rem; font-weight: 800; color: var(--text-heading); margin-top: 4px; }
+        .avatar-placeholder { 
+          width: 50px; height: 50px; border-radius: 16px; background: white; 
+          border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; color: #cbd5e1;
+          box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        }
+
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .stat-card { padding: 1.5rem; border-radius: 20px; border: 1px solid transparent; transition: 0.2s; }
+        .stat-card:active { transform: scale(0.97); }
+        .stat-label { font-size: 0.65rem; font-weight: 750; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
+        .stat-value { font-size: 1.75rem; font-weight: 850; margin-top: 4px; }
+
+        .action-hub { display: flex; flex-direction: column; gap: 1.25rem; }
+        .section-label { font-size: 0.65rem; font-weight: 750; color: #94a3b8; text-transform: uppercase; letter-spacing: 1.5px; margin-left: 0.5rem; }
+        
+        .primary-link { text-decoration: none; }
+        .primary-card { 
+          background: #006ce4; padding: 2.25rem 2rem; border-radius: 36px; color: white;
+          position: relative; overflow: hidden; box-shadow: 0 15px 30px rgba(0, 108, 228, 0.2);
+          transition: 0.2s;
+        }
+        .primary-card:active { transform: scale(0.98); }
+        .blur-overlay { position: absolute; top: -40px; right: -40px; width: 140px; height: 140px; background: rgba(255,255,255,0.1); border-radius: 50%; filter: blur(30px); }
+        
+        .card-content { display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 5; }
+        .icon-box { background: rgba(255,255,255,0.15); padding: 0.8rem; border-radius: 16px; backdrop-filter: blur(10px); }
+        .card-info { flex: 1; margin-left: 1.25rem; }
+        .card-info h3 { font-size: 1.35rem; font-weight: 800; color: white; margin-bottom: 2px; }
+        .card-info p { font-size: 0.85rem; color: rgba(255,255,255,0.7); font-weight: 500; }
+        .arrow-icon { opacity: 0.5; }
+
+        .secondary-link { text-decoration: none; }
+        .secondary-card { 
+          background: white; border: 1px solid #f1f5f9; padding: 1.75rem; border-radius: 36px;
+          transition: 0.2s; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
+        }
+        .secondary-card:active { transform: scale(0.98); }
+        .icon-group { display: flex; align-items: center; gap: 1.25rem; }
+        .icon-box.amber { background: #f59e0b; color: white; box-shadow: 0 8px 16px rgba(245, 158, 11, 0.25); }
+        .secondary-card .card-info h3 { color: var(--text-heading); font-size: 1.15rem; }
+        .secondary-card .card-info p { color: #94a3b8; }
+        .arrow-muted { color: #cbd5e1; }
+
+        .history-section { display: flex; flex-direction: column; gap: 1rem; }
+        .section-header { display: flex; justify-content: space-between; align-items: center; padding: 0 0.5rem; }
+        .btn-text { background: none; border: none; font-size: 0.7rem; font-weight: 800; color: #006ce4; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; }
+        
+        .history-list { display: flex; flex-direction: column; gap: 0.75rem; }
+        .history-item { background: white; padding: 1.25rem; border-radius: 24px; border: 1px solid #f8fafc; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; }
+        .history-item:active { background: #f8fafc; }
+        .item-main { display: flex; align-items: center; gap: 1rem; }
+        .status-icon { padding: 0.5rem; border-radius: 12px; }
+        .status-icon.pending { background: #fffcf0; color: #f59e0b; }
+        .status-icon.done { background: #f0fdf4; color: #10b981; }
+        .item-text h4 { font-size: 0.95rem; font-weight: 750; color: var(--text-heading); margin-bottom: 2px; }
+        .item-time { font-size: 0.7rem; color: #94a3b8; font-weight: 600; }
+
+        .footer { margin-top: auto; padding-bottom: 2rem; border-top: 1px dashed #f1f5f9; padding-top: 2rem; }
+        .footer-content { display: flex; align-items: center; justify-content: center; gap: 0.5rem; color: #cbd5e1; }
+        .footer p { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; }
+        .info-icon { opacity: 0.5; }
+
+        .animate-fade-in { animation: fadeIn 0.8s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
     </div>
   );
-}
-
-// Minimal placeholder component to satisfy React requirement in same file
-function CheckCircle2({ size }: { size: number }) {
-  return <zap size={size} />; // Just a placeholder, jkd - let me import it correctly
 }

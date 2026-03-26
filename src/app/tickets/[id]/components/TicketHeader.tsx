@@ -17,13 +17,13 @@ const statusConfig: Record<string, { icon: any; color: string; bg: string; label
   'Closed': { icon: CheckCircle, color: 'var(--status-done-text)', bg: 'var(--status-done-bg)', label: 'ปิดงาน' }
 };
 
-export default function TicketHeader({ ticket, onCopyTicketId }: TicketHeaderProps) {
+export default function TicketHeader({ ticket, assigneeName, onCopyTicketId }: TicketHeaderProps) {
   const [showDetails, setShowDetails] = useState(false);
   const status = ticket.status || 'Pending';
   const StatusIcon = statusConfig[status]?.icon || Clock;
 
   return (
-    <div className="clean-header">
+    <div className="modern-header">
       <div className="header-top">
         <div className="id-section">
           <span className="id-label">Ticket ID</span>
@@ -49,7 +49,7 @@ export default function TicketHeader({ ticket, onCopyTicketId }: TicketHeaderPro
           <div className="priority-badge" style={{ 
             backgroundColor: `var(--prio-${ticket.priority.toLowerCase()}-bg)`, 
             color: `var(--prio-${ticket.priority.toLowerCase()}-text)`,
-            borderColor: `var(--prio-${ticket.priority.toLowerCase()}-text)`
+            borderColor: `var(--prio-${ticket.priority.toLowerCase()}-bg)`
           }}>
             {ticket.priority.toUpperCase()}
           </div>
@@ -60,14 +60,20 @@ export default function TicketHeader({ ticket, onCopyTicketId }: TicketHeaderPro
         <div className="details-grid animate-fade-in">
           <div className="detail-item">
             <label>หน่วยงาน</label>
-            <p>{ticket.users?.hospitals?.name || 'ไม่ระบุ'}</p>
+            <p>{ticket.hospitals?.name || ticket.users?.hospitals?.name || 'ไม่ระบุ'}</p>
           </div>
           <div className="detail-item">
             <label>ผู้แจ้ง</label>
             <p>{ticket.users?.display_name || 'ไม่ระบุ'} ({ticket.users?.department || '-'})</p>
           </div>
+          {assigneeName && (
+            <div className="detail-item">
+              <label>ผู้รับผิดชอบ</label>
+              <p>{assigneeName}</p>
+            </div>
+          )}
           <div className="detail-item">
-            <label>กลุ่มงานที่รับผิดชอบ</label>
+            <label>กลุ่มงาน</label>
             <p>{ticket.departments?.name || 'ยังไม่ระบุ'}</p>
           </div>
           <div className="detail-item">
@@ -78,24 +84,26 @@ export default function TicketHeader({ ticket, onCopyTicketId }: TicketHeaderPro
       )}
 
       <style jsx>{`
-        .clean-header {
-          padding: 2rem;
+        .modern-header {
+          padding: 2.25rem;
           border-bottom: 1px solid var(--border-color);
           background: white;
+          border-top-left-radius: var(--radius-lg);
+          border-top-right-radius: var(--radius-lg);
         }
         .header-top {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
-          margin-bottom: 1.25rem;
+          margin-bottom: 1.5rem;
         }
-        .id-label { font-size: 0.7rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+        .id-label { font-size: 0.65rem; color: var(--text-muted); font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; opacity: 0.8; }
         .id-value { 
-          font-size: clamp(1.2rem, 4.5vw, 1.65rem); 
-          font-weight: 800; 
+          font-size: clamp(1.4rem, 4.5vw, 1.85rem); 
+          font-weight: 900; 
           color: var(--text-heading); 
           margin-top: 4px; 
-          letter-spacing: -1.25px;
+          letter-spacing: -1.5px;
           word-break: break-word;
           overflow-wrap: anywhere;
           line-height: 1.1;
@@ -104,29 +112,37 @@ export default function TicketHeader({ ticket, onCopyTicketId }: TicketHeaderPro
         .action-row { display: flex; gap: 0.75rem; }
         .btn-copy, .btn-info {
           display: flex; gap: 0.5rem; align-items: center;
-          padding: 0.6rem 1rem; border-radius: 10px; border: 1px solid var(--border-color);
-          font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: 0.2s;
+          padding: 0.7rem 1.1rem; border-radius: 14px; border: 1px solid var(--border-color);
+          font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: var(--transition);
           background: white;
           color: var(--text-main);
+          box-shadow: var(--shadow-sm);
         }
-        .btn-copy:hover, .btn-info:hover { background: var(--bg-surface-hover); border-color: var(--primary); color: var(--primary); }
+        .btn-copy:hover, .btn-info:hover { 
+          background: var(--bg-surface-hover); 
+          border-color: var(--primary); 
+          color: var(--primary);
+          transform: translateY(-1px);
+          box-shadow: var(--shadow-md);
+        }
 
         .badge-row { display: flex; gap: 0.75rem; align-items: center; margin-top: 0.5rem; }
         .status-badge {
           display: flex; align-items: center; gap: 6px;
-          padding: 0.4rem 1.25rem; border-radius: 20px; font-size: 0.8rem; font-weight: 700;
+          padding: 0.5rem 1.5rem; border-radius: 40px; font-size: 0.75rem; font-weight: 850;
+          box-shadow: 0 4px 6px rgba(0,0,0,0.02);
         }
         .priority-badge {
-          padding: 0.4rem 1.25rem; border-radius: 20px; font-size: 0.8rem; font-weight: 700;
+          padding: 0.5rem 1.5rem; border-radius: 40px; font-size: 0.75rem; font-weight: 850;
           border: 1px solid transparent;
         }
         
         .details-grid {
-          display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-          gap: 1.5rem; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px dashed var(--border-color);
+          display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+          gap: 1.5rem; margin-top: 2rem; padding-top: 1.75rem; border-top: 1px dashed var(--border-color);
         }
-        .detail-item label { font-size: 0.65rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; }
-        .detail-item p { font-size: 0.95rem; font-weight: 600; color: var(--text-heading); margin-top: 4px; }
+        .detail-item label { font-size: 0.6rem; color: var(--text-muted); font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+        .detail-item p { font-size: 0.9rem; font-weight: 700; color: var(--text-heading); margin-top: 5px; line-height: 1.4; }
         
         @keyframes fade-in { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fade-in 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
