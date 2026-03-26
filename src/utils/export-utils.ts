@@ -197,7 +197,7 @@ export const exportAnalyticsPDF = async (elementId: string, title: string, filte
     pdf.addImage(imgData, 'PNG', 10, 50, imgWidth, imgHeight);
     
     // Footer
-    const pageCount = pdf.internal.getNumberOfPages();
+    const pageCount = pdf.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
         pdf.setPage(i);
         pdf.setTextColor(150, 150, 150);
