@@ -177,7 +177,7 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
       supabase.removeChannel(channel);
       clearInterval(pollInterval);
     };
-  }, [initialTicket.id, initialMessages, router, supabase]);
+  }, [initialTicket.id, initialMessages, router]);
 
   const handleSendReply = async (content: string, file?: File) => {
     if ((!content && !file) || isSending) return;

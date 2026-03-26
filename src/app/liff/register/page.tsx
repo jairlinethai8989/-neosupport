@@ -35,7 +35,7 @@ export default function RegisterPage() {
     if (profile?.displayName && !formData.fullName) {
       setFormData(prev => ({ ...prev, fullName: profile.displayName }));
     }
-  }, [contextLoading, isRegistered, profile, router]);
+  }, [contextLoading, isRegistered, profile, router, formData.fullName]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
