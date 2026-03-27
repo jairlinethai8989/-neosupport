@@ -83,171 +83,120 @@ const SlaDisplay = memo(({
 });
  SlaDisplay.displayName = "SlaDisplay";
 
-const TicketRow = memo(({ 
-  ticket, 
-  router, 
-  onClaim, 
-  isAssigning, 
-  getStatusLabel, 
-  slaPolicy, 
-  now 
-}: any) => {
-  const t = ticket;
-  const userName = t.users?.display_name || "Unknown";
-  const hospitalName = t.users?.hospitals?.name || "Unknown Hospital";
-  const hospitalId = t.users?.hospitals?.id;
+// Helper functions for new TicketRow
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'Pending': return { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200' };
+    case 'In Progress': return { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' };
+    case 'Resolved': return { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' };
+    case 'Closed': return { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200' };
+    case 'Escalated': return { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' };
+    default: return { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200' };
+  }
+};
 
-  let badgeCls = "status-pending";
-  if (t.status === "In Progress") badgeCls = "status-in-progress";
-  if (["Resolved", "Closed"].includes(t.status)) badgeCls = "status-done";
-  if (t.status === "Escalated") badgeCls = "status-escalated";
+const getPriorityColor = (priority: string) => {
+  switch (priority) {
+    case 'Critical': return { bg: 'bg-red-100', text: 'text-red-800', border: 'border-red-300' };
+    case 'High': return { bg: 'bg-orange-100', text: 'text-orange-800', border: 'border-orange-300' };
+    case 'Medium': return { bg: 'bg-yellow-100', text: 'text-yellow-800', border: 'border-yellow-300' };
+    case 'Low': return { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-300' };
+    default: return { bg: 'bg-gray-100', text: 'text-gray-800', border: 'border-gray-300' };
+  }
+};
 
-  return (
-    <tr 
-      onClick={() => router.push(`/tickets/${t.id}`)}
-      className={`ticket-row-hover ${!t.assignee_name ? 'unassigned-row' : ''}`}
-      style={{ cursor: "pointer", transition: "var(--transition)" }}
-    >
-      <td style={{ padding: '1.25rem 1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {!t.assignee_name && <span className="unassigned-pulse-dot" title="ยังไม่มีผู้รับงาน" />}
-          <div className="ticket-no" style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--primary)' }}>#{t.ticket_no}</div>
-        </div>
-        <div style={{fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "2px", fontWeight: 700}}>{t.issue_type}</div>
-      </td>
-      <td><div className="ticket-desc" style={{ fontWeight: 500, lineHeight: 1.5 }}>{t.description}</div></td>
-      <td>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{fontWeight: 700, color: "var(--text-heading)", fontSize: '0.9rem'}}>{hospitalName}</div>
-          {hospitalId && (
-            <button 
-              onClick={(e) => { e.stopPropagation(); router.push(`/hospitals/${hospitalId}/stats`); }}
-              className="btn-icon-mini-dashboard"
-              style={{ padding: '6px', borderRadius: '10px', background: 'var(--primary-glow)', border: 'none', cursor: 'pointer', color: 'var(--primary)', display: 'flex' }}
-            >
-              <BarChart3 size={14} />
-            </button>
-          )}
-        </div>
-        <div style={{fontSize: "0.8rem", color: "var(--text-muted)", display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', fontWeight: 600}}>
-          <User size={12} /> {userName}
-        </div>
-      </td>
-      <td>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-start' }}>
-          <span className={`status-badge-modern ${badgeCls}`} style={{ padding: '0.4rem 0.8rem', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 850 }}>{getStatusLabel(t.status)}</span>
-          <span className={`prio-badge prio-${(t.priority || "Medium").toLowerCase()}`} style={{ padding: '0.3rem 0.8rem', borderRadius: '20px', fontSize: '0.65rem', fontWeight: 850 }}>{t.priority || "Medium"}</span>
-        </div>
-      </td>
-      <td>
-        {t.assignee_name ? (
-          <div style={{fontWeight: 700, color: "var(--primary)", display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem'}}>
-            <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--primary-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-               <User size={14} />
-            </div>
-            {t.assignee_name}
-          </div>
-        ) : (
-          <button onClick={(e) => onClaim(e, t.id)} disabled={isAssigning === t.id} className="btn-claim-modern-dashboard" style={{ background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '12px', padding: '0.6rem 1rem', fontWeight: 800, fontSize: '0.8rem' }}>
-            {isAssigning === t.id ? (
-              <div className="spinner-mini" />
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Activity size={14} /> รับงาน
-              </div>
-            )}
-          </button>
-        )}
-      </td>
-      <td><SlaDisplay ticket={t} slaPolicy={slaPolicy} now={now} /></td>
-    </tr>
-  );
-});
-TicketRow.displayName = "TicketRow";
-
-const TicketCard = memo(({ 
-  ticket, 
-  router, 
-  onClaim, 
-  isAssigning, 
-  getStatusLabel, 
-  slaPolicy, 
-  now 
-}: any) => {
-  const t = ticket;
+const TicketRow = ({ t }: { t: any }) => {
+  const router = useRouter();
+  const statusColor = getStatusColor(t.status);
+  const priorityColor = getPriorityColor(t.priority);
   const hospitalName = t.users?.hospitals?.name || "Unknown";
-  const hospitalId = t.users?.hospitals?.id;
   const userName = t.users?.display_name || "Unknown";
-  
-  let badgeCls = "status-pending";
-  if (t.status === "In Progress") badgeCls = "status-in-progress";
-  if (["Resolved", "Closed"].includes(t.status)) badgeCls = "status-done";
-  if (t.status === "Escalated") badgeCls = "status-escalated";
+
+  const timeSince = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    const hrs = Math.floor(mins / 60);
+    if (hrs > 0) return `${hrs}h ${mins % 60}m`;
+    return `${mins}m`;
+  };
+
+  const formattedDate = new Date(t.created_at).toLocaleTimeString('th-TH', { 
+    hour: '2-digit', minute: '2-digit' 
+  });
 
   return (
-    <div key={t.id} className={`ticket-card ${!t.assignee_name ? 'unassigned-row' : ''}`} onClick={() => router.push(`/tickets/${t.id}`)} style={{ transition: "all 0.2s ease" }}>
-      <div className="card-header" style={{ alignItems: 'flex-start' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-             {!t.assignee_name && <span className="unassigned-pulse-dot" />}
-             <div className="card-ticket-no">{t.ticket_no}</div>
-          </div>
-          <div style={{fontSize: '0.75rem', opacity: 0.7}}>{t.issue_type}</div>
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ scale: 1.002, backgroundColor: "rgba(255, 255, 255, 0.4)" }}
+      onClick={() => router.push(`/tickets/${t.id}`)}
+      className="group flex flex-col md:flex-row items-start md:items-center gap-4 p-5 mb-3 rounded-2xl border border-white/40 bg-white/30 backdrop-blur-md shadow-sm transition-all cursor-pointer"
+    >
+      {/* 1. ID & Type */}
+      <div className="flex flex-col min-w-[140px]">
+        <span className="text-xs font-bold text-slate-400 tracking-wider">#{t.ticket_no}</span>
+        <span className="text-sm font-semibold text-slate-700">{t.issue_type || "PB"}</span>
+      </div>
+
+      {/* 2. Customer Info */}
+      <div className="flex flex-col flex-1 min-w-[200px]">
+        <div className="flex items-center gap-2">
+          <Hospital className="w-4 h-4 text-blue-500" />
+          <span className="text-sm font-bold text-slate-800">{hospitalName}</span>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', alignItems: 'flex-end' }}>
-          <span className={`status-badge ${badgeCls}`} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem' }}>
-            {getStatusLabel(t.status)}
-          </span>
-          <span className={`prio-badge prio-${(t.priority || "Medium").toLowerCase()}`} style={{ fontSize: '0.65rem' }}>
-            {t.priority || "Medium"}
-          </span>
+        <div className="flex items-center gap-2 mt-1">
+          <User className="w-3.5 h-3.5 text-slate-400" />
+          <span className="text-xs text-slate-500 font-medium">{userName}</span>
         </div>
       </div>
 
-      <div className="card-hospital" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span>{hospitalName}</span>
-        {hospitalId && (
-          <button 
-            onClick={(e) => { e.stopPropagation(); router.push(`/hospitals/${hospitalId}/stats`); }}
-            style={{ padding: '0.4rem', borderRadius: '8px', background: 'var(--primary-glow)', border: 'none', color: 'var(--primary)' }}
-          >
-            <BarChart3 size={16} />
-          </button>
+      {/* 3. Description Item */}
+      <div className="flex flex-col flex-[2] min-w-[250px]">
+        <p className="text-sm text-slate-600 line-clamp-1 font-medium group-hover:text-blue-600 transition-colors">
+          {t.description}
+        </p>
+        <div className="flex items-center gap-3 mt-1 text-[10px] text-slate-400 font-semibold uppercase tracking-tight">
+          <div className="flex items-center gap-1">
+            <Clock className="w-3 h-3" />
+            <span>เริ่มต้น: {formattedDate}</span>
+          </div>
+          <div className="flex items-center gap-1 text-emerald-500">
+            <CheckCircle2 className="w-3 h-3" />
+            <span>เปิดมาแล้ว {timeSince(t.created_at)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. Assignee */}
+      <div className="min-w-[150px]">
+        {t.assignee_name ? (
+           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-blue-700">
+              <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center text-[10px] text-white font-bold">
+                {t.assignee_name.charAt(0).toUpperCase()}
+              </div>
+              <span className="text-xs font-bold">{t.assignee_name}</span>
+           </div>
+        ) : (
+          <span className="text-xs text-slate-300 italic font-medium px-3">ยังไม่มีผู้รับงาน</span>
         )}
       </div>
-      <div className="card-meta">
-        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><User size={12} /> {userName}</span>
-      </div>
 
-      <div className="card-desc">{t.description}</div>
-
-      <div className="card-footer">
-        <SlaDisplay ticket={t} slaPolicy={slaPolicy} now={now} />
-        <div>
-          {t.assignee_name ? (
-            <div style={{fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 600}}>🙋‍♂️ {t.assignee_name}</div>
-          ) : (
-            <button 
-              onClick={(e) => onClaim(e, t.id)}
-              disabled={isAssigning === t.id}
-              className="btn-claim-modern-dashboard"
-              style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
-            >
-              {isAssigning === t.id ? (
-                <div className="spinner-mini" />
-              ) : (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Activity size={14} className="animate-pulse" /> รับงาน
-                </div>
-              )}
-            </button>
-          )}
-        </div>
+      {/* 5. Priority & Status */}
+      <div className="flex items-center gap-3 min-w-[180px] justify-end">
+        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${priorityColor.bg} ${priorityColor.text} ${priorityColor.border}`}>
+          {t.priority}
+        </span>
+        <span className={`px-3 py-1 rounded-full text-xs font-bold shadow-sm ${statusColor.bg} ${statusColor.text}`}>
+          {t.status === 'Pending' ? 'งานใหม่' : t.status === 'In Progress' ? 'กำลังทำ' : t.status}
+        </span>
+        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:translate-x-1 transition-transform" />
       </div>
-    </div>
+    </motion.div>
   );
-});
-TicketCard.displayName = "TicketCard";
+};
+
+// Removed TicketCard component as it's replaced by the new TicketRow
 
 export default function DashboardClient({ initialTickets, userEmail, slaPolicy = {} }: { initialTickets: any[], userEmail?: string, slaPolicy?: Record<string, number> }) {
   const router = useRouter();
@@ -723,29 +672,6 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
         </section>
 
         <section className="hud-content" style={{ width: '100%', maxWidth: 'none' }}>
-          {/* Mobile Card Layout - Visible only on mobile via CSS */}
-          <div className="mobile-cards-container">
-               {sortedTickets.length === 0 ? (
-                <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <Inbox size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-                  ไม่พบรายการที่ค้นหา
-                </div>
-              ) : (
-                sortedTickets.map(t => (
-                  <TicketCard 
-                    key={t.id} 
-                    ticket={t} 
-                    router={router} 
-                    onClaim={handleClaim} 
-                    isAssigning={isAssigning}
-                    getStatusLabel={getStatusLabel}
-                    slaPolicy={slaPolicy}
-                    now={now}
-                  />
-                ))
-              )}
-            </div>
-
         {/* New Jobs Alert Section */}
         {mounted && unassignedCount > 0 && (
           <div 
@@ -774,226 +700,97 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
             </div>
           </div>
         )}
+        {/* Tickets List Area */}
+        <div className="bg-white/40 backdrop-blur-md rounded-[2.5rem] border border-white p-8 lg:p-10 shadow-xl mt-10">
+          <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-10">
+            <h2 className="flex items-center gap-4 text-2xl font-black text-slate-800 tracking-tighter">
+              <Activity className="w-8 h-8 text-blue-500" />
+              <span>รายการใบงานล่าสุด <span className="text-slate-300 ml-2">/ Recent Tickets</span></span>
+            </h2>
 
-        {/* Tickets Table */}
-        <div className="table-container animate-fade-in delay-2">
-          <div className="table-header-row" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '2rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-              <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', margin: 0 }}>
-                <Activity size={24} color="var(--primary)" />
-                <span style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem', flexWrap: 'wrap' }}>
-                  รายการใบงานล่าสุด <span style={{ fontSize: '1.1rem', color: 'var(--text-muted)', fontWeight: 500 }}>Recent Tickets</span>
-                </span>
-                {statusFilter !== "ALL" && (
-                  <span style={{ fontSize: '0.75rem', padding: '0.3rem 0.7rem', backgroundColor: 'var(--primary-glow)', color: 'var(--primary)', borderRadius: '20px', fontWeight: 600, border: '1px solid var(--primary)' }}>
-                    {getStatusLabel(statusFilter)}
-                  </span>
-                )}
-              </h2>
-              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <div className="flex flex-wrap items-center gap-4 w-full xl:w-auto">
+               <button 
+                onClick={() => setIsSmartView(!isSmartView)}
+                className={`px-6 py-3 rounded-2xl font-black text-sm transition-all border-2 ${
+                  isSmartView 
+                  ? 'bg-blue-500 border-blue-500 text-white shadow-lg shadow-blue-500/20' 
+                  : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
+                }`}
+              >
+                {isSmartView ? '✨ Smart View: ON' : '📁 All History'}
+              </button>
+
+              <div className="flex gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/50">
                 <button 
-                  onClick={() => setIsSmartView(!isSmartView)}
-                  className="btn-secondary"
-                  style={{ 
-                    fontSize: '0.85rem', 
-                    padding: '0.5rem 1rem', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '0.5rem',
-                    borderRadius: '12px',
-                    border: isSmartView ? '2px solid var(--primary)' : '1px solid var(--border-color)',
-                    background: isSmartView ? 'var(--primary-glow)' : 'transparent',
-                    color: isSmartView ? 'var(--primary)' : 'var(--text-muted)'
-                  }}
-                  title="Smart View: ซ่อนงานที่ปิดไปแล้วก่อนหน้าวันนี้ เพื่อให้ตารางสะอาดตา"
+                  onClick={() => exportTicketsPDF(sortedTickets, "IT_Report")}
+                  className="px-5 py-2 hover:bg-white text-slate-500 hover:text-red-500 rounded-xl text-xs font-black transition-all"
                 >
-                  {isSmartView ? '✨ Smart View: ON' : '📁 All History'}
+                  PDF
                 </button>
-                
-                {(statusFilter !== "ALL" || selectedHospital !== "ALL" || searchQuery !== "") && (
-                  <button 
-                    onClick={() => {
-                      setStatusFilter("ALL");
-                      setSelectedHospital("ALL");
-                      setSearchQuery("");
-                    }}
-                     className="btn-secondary hover-danger"
-                    style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
-                  >
-                    <Trash2 size={14} /> ล้างตัวกรอง
-                  </button>
-                )}
-
-                <div style={{ display: 'flex', gap: '0.5rem', marginLeft: '0.5rem', borderLeft: '1px solid var(--border-color)', paddingLeft: '1rem' }}>
-                  <button 
-                    onClick={() => {
-                      const dataToExport = sortedTickets.map(t => ({
-                        'Ticket No': t.ticket_no,
-                        'Description': t.description,
-                        'Hospital': t.users?.hospitals?.name,
-                        'Department': t.users?.department,
-                        'User': t.users?.display_name,
-                        'Status': t.status,
-                        'Priority': t.priority,
-                        'Assignee': t.assignee_name,
-                        'Created At': new Date(t.created_at).toLocaleString('th-TH')
-                      }));
-                      exportToCSV(dataToExport, `tickets_report_${new Date().toISOString().split('T')[0]}`);
-                    }}
-                    className="btn-secondary"
-                    style={{ fontSize: '0.85rem', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.3)' }}
-                  >
-                    CSV
-                  </button>
-                  <button 
-                    onClick={() => exportTicketsPDF(sortedTickets, `IT_Support_Report_${new Date().toLocaleDateString('th-TH')}`)}
-                    className="btn-secondary"
-                    style={{ fontSize: '0.85rem', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}
-                  >
-                    PDF
-                  </button>
-                </div>
+                <button 
+                  onClick={() => exportToCSV(sortedTickets, "IT_Report")}
+                  className="px-5 py-2 hover:bg-white text-slate-500 hover:text-emerald-500 rounded-xl text-xs font-black transition-all"
+                >
+                  CSV
+                </button>
               </div>
             </div>
+          </div>
 
-            {/* Search and Filters Bar */}
-            <div className="filter-bar-modern" style={{ display: 'flex', gap: '1rem', width: '100%', flexWrap: 'wrap' }}>
-               <div style={{ position: 'relative', flex: 1, minWidth: '300px' }}>
-                <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>
-                  <Search size={18} />
-                </span>
-                <input 
-                  type="text" 
-                  placeholder="ค้นหาเลขที่ Ticket, อาการ, ชื่อผู้แจ้ง หรือโรงพยาบาล..." 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem 1rem 0.75rem 2.8rem',
-                    borderRadius: '14px',
-                    background: 'var(--bg-surface)',
-                    color: 'var(--text-heading)',
-                    fontSize: '1rem',
-                    fontWeight: '600',
-                    transition: 'all 0.2s ease',
-                    outline: 'none',
-                    boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-                    border: '2px solid var(--border-color)'
-                  }}
-                  className="search-input-modern"
-                />
-              </div>
+          {/* Filter Bar */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-10">
+            <div className="lg:col-span-8 relative group">
+              <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-300 group-focus-within:text-blue-500 transition-all" />
+              <input 
+                type="text" 
+                placeholder="ค้นหาเลขที่ Ticket, ชื่อนามสกุล, หรือโรงพยาบาล..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-white/50 border-2 border-slate-100 focus:border-blue-400 focus:bg-white focus:ring-8 focus:ring-blue-400/5 rounded-2xl py-4 pl-16 pr-8 outline-none transition-all font-bold text-slate-700 shadow-sm"
+              />
+            </div>
 
+            <div className="lg:col-span-4 flex gap-3">
               <select 
                 value={selectedHospital}
                 onChange={(e) => setSelectedHospital(e.target.value)}
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  borderRadius: '14px',
-                  border: '1px solid var(--border-color)',
-                  background: 'var(--bg-surface)',
-                  color: 'var(--text-main)',
-                  fontSize: '0.95rem',
-                  minWidth: '220px',
-                  cursor: 'pointer',
-                  outline: 'none',
-                  boxShadow: '0 2px 5px rgba(0,0,0,0.05)'
-                }}
+                className="flex-1 bg-white/50 border-2 border-slate-100 rounded-2xl px-6 focus:border-blue-400 outline-none font-bold text-slate-600 shadow-sm"
               >
-                 <option value="ALL">เลือกโรงพยาบาลทั้งหมด</option>
+                <option value="ALL">ทุกโรงพยาบาล</option>
                 {allHospitals.map(h => (
                   <option key={h} value={h}>{h}</option>
                 ))}
               </select>
 
-              {selectedHospital !== "ALL" && (
+              {(statusFilter !== "ALL" || selectedHospital !== "ALL" || searchQuery !== "") && (
                 <button 
-                  onClick={() => {
-                    const hData = tickets.find(t => (t.users?.hospitals?.name === selectedHospital));
-                    if (hData?.users?.hospitals?.id) {
-                      router.push(`/hospitals/${hData.users.hospitals.id}/stats`);
-                    }
-                  }}
-                  className="btn-primary"
-                  style={{ 
-                    padding: '0.75rem 1.25rem', 
-                    borderRadius: '14px', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '8px',
-                    boxShadow: '0 4px 12px var(--primary-glow)' 
-                  }}
+                  onClick={() => { setStatusFilter("ALL"); setSelectedHospital("ALL"); setSearchQuery(""); }}
+                  className="w-14 h-14 flex items-center justify-center bg-slate-100 text-slate-400 hover:bg-rose-50 hover:text-rose-500 rounded-2xl transition-all"
                 >
-                  <BarChart3 size={18} /> ดูสถิติ {selectedHospital}
+                  <Trash2 className="w-6 h-6" />
                 </button>
               )}
             </div>
           </div>
-          <div style={{overflowX: 'auto'}}>
-            <table>
-              <thead>
-                <tr>
-                  <th className="sortable" onClick={() => handleSort('ticket_no')}>
-                    <span style={{ display: 'block' }}>เลขที่ใบงาน</span>
-                    <span style={{ fontSize: '0.65em', opacity: 0.6, display: 'block', fontWeight: 'normal' }}>Ticket No.</span>
-                    {renderSortIcon('ticket_no')}
-                  </th>
-                  <th className="sortable" onClick={() => handleSort('description')}>
-                    <span style={{ display: 'block' }}>รายละเอียด</span>
-                    <span style={{ fontSize: '0.65em', opacity: 0.6, display: 'block', fontWeight: 'normal' }}>Description</span>
-                    {renderSortIcon('description')}
-                  </th>
-                  <th className="sortable" onClick={() => handleSort('hospitalName')}>
-                    <span style={{ display: 'block' }}>โรงพยาบาล/ผู้แจ้ง</span>
-                    <span style={{ fontSize: '0.65em', opacity: 0.6, display: 'block', fontWeight: 'normal' }}>Hospital / User</span>
-                    {renderSortIcon('hospitalName')}
-                  </th>
-                  <th className="sortable" onClick={() => handleSort('status')}>
-                    <span style={{ display: 'block' }}>สถานะ/ความสำคัญ</span>
-                    <span style={{ fontSize: '0.65em', opacity: 0.6, display: 'block', fontWeight: 'normal' }}>Status / Priority</span>
-                    {renderSortIcon('status')}
-                  </th>
-                  <th>
-                    <span style={{ display: 'block' }}>ผู้รับผิดชอบ</span>
-                    <span style={{ fontSize: '0.65em', opacity: 0.6, display: 'block', fontWeight: 'normal' }}>Assignee</span>
-                  </th>
-                  <th className="sortable" onClick={() => handleSort('created_at')}>
-                    <span style={{ display: 'block' }}>สถานะเวลา SLA</span>
-                    <span style={{ fontSize: '0.65em', opacity: 0.6, display: 'block', fontWeight: 'normal' }}>SLA Status</span>
-                    {renderSortIcon('created_at')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedTickets.length === 0 ? (
-                   <tr>
-                    <td colSpan={6} style={{textAlign: "center", padding: "4rem"}}>
-                      <Inbox size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-                      <p style={{marginTop: '1rem', color: "var(--text-muted)", fontSize: '1.1rem'}}>No tickets found. Good job!</p>
-                    </td>
-                  </tr>
-                ) : (
-                  sortedTickets.map((t: any) => (
-                    <TicketRow 
-                      key={t.id} 
-                      ticket={t} 
-                      router={router} 
-                      onClaim={handleClaim} 
-                      isAssigning={isAssigning}
-                      getStatusLabel={getStatusLabel}
-                      slaPolicy={slaPolicy}
-                      now={now}
-                    />
-                  ))
-                )}
-              </tbody>
-            </table>
+
+          {/* Structured Ticket List */}
+          <div className="space-y-4 pb-12">
+            <AnimatePresence mode="popLayout">
+              {sortedTickets.length > 0 ? (
+                sortedTickets.map((t) => (
+                  <TicketRow key={t.id} t={t} />
+                ))
+              ) : (
+                <div className="flex flex-col items-center justify-center p-24 bg-slate-50/50 rounded-[2.5rem] border-4 border-dashed border-slate-100">
+                  <Inbox className="w-16 h-16 text-slate-200 mb-4" />
+                  <p className="text-slate-400 font-bold">ไม่พบข้อมูลที่ตรงกับเงื่อนไขการค้นหา</p>
+                </div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
-
-        {/* Mobile Card Layout - Visible only on mobile via CSS */}
-        </section>
-      </main>
+      </section>
+    </main>
        {toast.show && (
         <div className="toast-notification">
            <Info size={18} /> {toast.message}
