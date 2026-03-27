@@ -84,31 +84,32 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
   const [isEscalating, setIsEscalating] = useState(false);
 
   // Fetch staff list and active tickets
-  useEffect(() => {
-    const loadAppData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      const currentUserName = user?.user_metadata?.full_name || user?.email?.split('@')[0];
+  const loadAppData = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const currentUserName = user?.user_metadata?.full_name || user?.email?.split('@')[0];
 
-      const { data: sData } = await supabase.from('users').select('id, display_name').eq('role', 'Staff').eq('status', 'approved');
-      if (sData) setStaffList(sData);
+    const { data: sData } = await supabase.from('users').select('id, display_name').eq('role', 'Staff').eq('status', 'approved');
+    if (sData) setStaffList(sData);
 
-      const { data: deptData } = await supabase.from('departments').select('id, name').order('name', { ascending: true });
-      if (deptData) {
-        setDepartments(deptData);
-        const prog = deptData.find(d => d.name === 'Programmer');
-        if (prog) setEscalateDept(prog.id);
-        else if (deptData.length > 0) setEscalateDept(deptData[0].id);
-      }
+    const { data: deptData } = await supabase.from('departments').select('id, name').order('name', { ascending: true });
+    if (deptData) {
+      setDepartments(deptData);
+      const prog = deptData.find(d => d.name === 'Programmer');
+      if (prog) setEscalateDept(prog.id);
+      else if (deptData.length > 0) setEscalateDept(deptData[0].id);
+    }
 
-      const staffName = assigneeName || currentUserName;
-      if (staffName) {
-        const { data: tData } = await supabase.from('tickets').select('id, ticket_no, status, priority, description, users(display_name)')
-          .eq('assignee_name', staffName).neq('status', 'Resolved').neq('status', 'Closed').order('created_at', { ascending: false });
-        if (tData) setMyActiveTickets(tData);
-      }
-    };
-    loadAppData();
+    const staffName = assigneeName || currentUserName;
+    if (staffName) {
+      const { data: tData } = await supabase.from('tickets').select('id, ticket_no, status, priority, description, users(display_name)')
+        .eq('assignee_name', staffName).neq('status', 'Resolved').neq('status', 'Closed').order('created_at', { ascending: false });
+      if (tData) setMyActiveTickets(tData);
+    }
   }, [assigneeName]);
+
+  useEffect(() => {
+    loadAppData();
+  }, [loadAppData]);
 
   const showToast = (message: string) => {
     setToast({ message, show: true });
@@ -132,7 +133,7 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
 
   // Real-time subscription
   useEffect(() => {
-    const channel = supabase.channel(`ticket-${initialTicket.id}`)
+    const msgChannel = supabase.channel(`ticket-${initialTicket.id}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `ticket_id=eq.${initialTicket.id}` }, (payload) => {
         setMessages((prev) => {
           if (prev.some(m => m.id === payload.new.id)) return prev;
@@ -145,8 +146,19 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
       })
       .subscribe();
 
-    // ── Polling fallback: fetch new inbound messages every 5s ──
-    // This ensures LINE messages appear even if Supabase realtime misses them
+    // ── Real-time for Sidebar (New/Updated Tickets) ──
+    const ticketChannel = supabase.channel(`sidebar-tickets-${initialTicket.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "tickets" }, (payload) => {
+        logger.debug("[Sidebar Realtime] Ticket change:", payload.eventType);
+        // Simply reload app data to refresh the sidebar lists
+        loadAppData();
+        
+        // If it's a new ticket, maybe show a small toast or sound if needed? 
+        // Dashboard handles main alerts, but here we just need the sidebar to be fresh.
+      })
+      .subscribe();
+
+    // ── Polling fallback for messages ──
     let lastMsgId = initialMessages.length > 0 ? initialMessages[initialMessages.length - 1].id : null;
     const pollInterval = setInterval(async () => {
       const supabaseClient = supabase;
@@ -157,7 +169,6 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
         .order("created_at", { ascending: true });
 
       if (lastMsgId) {
-        // Only fetch records created after the last known message
         query = query.gt("id", String(lastMsgId).startsWith('opt-') ? '0' : lastMsgId);
       }
       const { data: newMsgs } = await query;
@@ -174,10 +185,11 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
     }, 5000);
 
     return () => { 
-      supabase.removeChannel(channel);
+      supabase.removeChannel(msgChannel);
+      supabase.removeChannel(ticketChannel);
       clearInterval(pollInterval);
     };
-  }, [initialTicket.id, initialMessages, router]);
+  }, [initialTicket.id, initialMessages, router, loadAppData]);
 
   const handleSendReply = async (content: string, file?: File) => {
     if ((!content && !file) || isSending) return;

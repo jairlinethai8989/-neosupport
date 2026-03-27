@@ -130,3 +130,71 @@ export async function getLiffTicketHistory(userId: string) {
   }
   return data || [];
 }
+
+/**
+ * Send a message from LIFF (Handled on server to bypass RLS)
+ */
+export async function sendLiffMessage(formData: FormData) {
+  try {
+    const ticketId = formData.get("ticketId") as string;
+    const content = formData.get("content") as string;
+    const messageType = (formData.get("messageType") as string) || "text";
+    const file = formData.get("file") as File | null;
+
+    if (!ticketId || (!content && !file)) {
+      return { success: false, error: "Missing required fields" };
+    }
+
+    let finalContent = content;
+    let finalMessageType = messageType;
+
+    // 1. Handle File Upload if present
+    if (file) {
+      const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      const { error: uploadError } = await supabaseAdmin.storage
+        .from("attachments")
+        .upload(fileName, buffer, {
+          contentType: file.type,
+          cacheControl: '3600'
+        });
+
+      if (uploadError) {
+        console.error("Storage upload error:", uploadError);
+        return { success: false, error: "Failed to upload file" };
+      }
+
+      const { data } = supabaseAdmin.storage.from("attachments").getPublicUrl(fileName);
+      finalContent = data.publicUrl;
+      
+      if (file.type.startsWith("image/")) finalMessageType = "image";
+      else if (file.type.startsWith("video/")) finalMessageType = "video";
+      else finalMessageType = "file";
+    }
+
+    // 2. Insert into Database
+    const { data, error } = await supabaseAdmin
+      .from("messages")
+      .insert({
+        ticket_id: ticketId,
+        content: finalContent,
+        message_type: finalMessageType,
+        direction: "inbound",
+        status: "sent"
+      })
+      .select()
+      .single();
+
+    if (error) {
+       console.error("Database insert error:", error);
+       return { success: false, error: error.message };
+    }
+
+    return { success: true, message: data };
+  } catch (error: any) {
+    console.error("sendLiffMessage fatal error:", error);
+    return { success: false, error: error.message };
+  }
+}

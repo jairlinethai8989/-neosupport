@@ -21,6 +21,8 @@ import {
 import ImageAnnotationModal from "@/app/tickets/[id]/components/ImageAnnotationModal";
 import { useRouter, useParams } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
+import { sendLiffMessage } from "../../liffActions";
+import { logger } from "@/lib/logger";
 
 const supabase = createClient();
 
@@ -104,19 +106,25 @@ export default function LiffChatPage() {
     setMessages(prev => [...prev, optimisticMsg]);
 
     try {
-      // Logic: Save message to DB
-      const { error } = await supabase.from("messages").insert({
-        ticket_id: ticketId,
-        content,
-        direction: "inbound",
-        message_type: "text",
-        status: "sent"
-      });
-      if (error) throw error;
-    } catch {
+      // 🚀 Move to Server Action instead of direct DB insert
+      const formData = new FormData();
+      formData.append("ticketId", ticketId);
+      formData.append("content", content);
+      formData.append("messageType", "text");
+
+      const result = await sendLiffMessage(formData);
+      
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      // Replace temporary message with final one if necessary, 
+      // though realtime will often bring the real one in
+    } catch (err: any) {
       // Rollback optimistic update on error
       setMessages(prev => prev.filter(m => m.id !== tempId));
       setInputText(content);
+      alert("ไม่สามารถส่งข้อความได้: " + err.message);
     } finally {
       setIsSending(false);
     }
@@ -147,32 +155,21 @@ export default function LiffChatPage() {
     setIsUploading(true);
     
     try {
-      const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("attachments")
-        .upload(fileName, file);
+      // 🚀 Move to Server Action for secure upload (Admin Bypass)
+      const formData = new FormData();
+      formData.append("ticketId", ticketId);
+      formData.append("file", file); // Send raw file to server
+      formData.append("messageType", "image"); // Default to image if it is
 
-      if (uploadError) throw uploadError;
+      const result = await sendLiffMessage(formData);
 
-      const { data: { publicUrl } } = supabase.storage
-        .from("attachments")
-        .getPublicUrl(fileName);
+      if (!result.success) {
+        throw new Error(result.error);
+      }
 
-      let msgType = "file";
-      if (file.type.startsWith("image/")) msgType = "image";
-      else if (file.type.startsWith("video/")) msgType = "video";
-
-      const { error: dbError } = await supabase.from("messages").insert({
-        ticket_id: ticketId,
-        content: publicUrl,
-        message_type: msgType,
-        direction: "inbound",
-        status: "sent"
-      });
-
-      if (dbError) throw dbError;
-    } catch (err) {
-      alert("Error uploading file. Please try again.");
+      logger.info("File uploaded and message saved successfully via server action");
+    } catch (err: any) {
+      alert("เกิดข้อผิดพลาดในการส่งรูปภาพ: " + (err.message || "กรุณาลองใหม่อีกครั้ง"));
       console.error(err);
     } finally {
       setIsUploading(false);

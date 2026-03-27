@@ -323,75 +323,98 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
     }
 
     // Supabase Real-time Subscription for Tickets
-    const channel = supabase
-      .channel(`dashboard-tickets-${Date.now()}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'tickets',
-        },
-        async (payload) => {
-          console.log('[Dashboard Realtime] Ticket change:', payload.eventType, payload);
+    let channel: any = null;
 
-          if (payload.eventType === 'INSERT') {
-            const { data: newTicket, error: fetchErr } = await supabase
-              .from('tickets')
-              .select(`*, users!reporter_id(display_name, department, hospitals(name))`)
-              .eq('id', payload.new.id)
-              .single();
+    const setupRealtime = () => {
+      channel = supabase
+        .channel(`dashboard-tickets-${Date.now()}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'tickets',
+          },
+          async (payload) => {
+            console.log('[Dashboard Realtime] Event received:', payload.eventType, payload);
 
-            if (newTicket) {
-              setTickets((prev) => {
-                if (prev.some(t => t.id === newTicket.id)) return prev;
-                return [newTicket, ...prev];
-              });
-              setNewTicketNotify(newTicket);
-              
-              // 1. Play Sound
+            if (payload.eventType === 'INSERT') {
+              // Priority: try fetching joined data for rich display
               try {
-                const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-                audio.volume = 0.5;
-                audio.play();
-              } catch (e) {
-                logger.warn("Audio play failed", e);
+                const { data: newTicket, error: fetchErr } = await supabase
+                  .from('tickets')
+                  .select(`*, users!reporter_id(display_name, department, hospitals(name))`)
+                  .eq('id', payload.new.id)
+                  .single();
+
+                if (newTicket) {
+                  setTickets((prev) => {
+                    if (prev.some(t => t.id === newTicket.id)) return prev;
+                    return [newTicket, ...prev];
+                  });
+                  setNewTicketNotify(newTicket);
+                  playAlertSound();
+                  showNativeNotification(newTicket);
+                } else {
+                   // Fallback: Use raw payload if join fetch fails (RLS restriction on users table etc)
+                   const rawTicket = payload.new;
+                   setTickets((prev) => {
+                     if (prev.some(t => t.id === rawTicket.id)) return prev;
+                     return [rawTicket, ...prev];
+                   });
+                   // Still play sound for awareness
+                   playAlertSound();
+                }
+              } catch (err) {
+                console.error("Real-time handling error:", err);
               }
-
-              // 2. Browser Push Notification (Native Windows/OS Toast)
-              if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
-                const notification = new Notification(`🚨 มีงานแจ้งซ่อมใหม่: #${newTicket.ticket_no}`, {
-                  body: `โรงพยาบาล: ${newTicket.users?.hospitals?.name || 'ลูกค้า'}\nแจ้งปัญหา: ${newTicket.description.substring(0, 100)}${newTicket.description.length > 100 ? '...' : ''}`,
-                  tag: newTicket.id, // Prevent duplicate if multiple tabs open
-                  icon: '/favicon.ico', // Use favicon as notification icon
-                  requireInteraction: true, // Keep notification open until user clicks or dismisses
-                });
-
-                notification.onclick = (e) => {
-                  e.preventDefault();
-                  window.focus();
-                  router.push(`/tickets/${newTicket.id}`);
-                  notification.close();
-                };
-              }
-
-              setTimeout(() => setNewTicketNotify((prev: any) => (prev?.id === newTicket.id ? null : prev)), 15000);
-            } else {
-              setTickets((prev) => {
-                if (prev.some(t => t.id === payload.new.id)) return prev;
-                return [payload.new, ...prev];
-              });
+            } else if (payload.eventType === 'UPDATE') {
+              setTickets((prev) =>
+                prev.map((t) => (t.id === payload.new.id ? { ...t, ...payload.new } : t))
+              );
+            } else if (payload.eventType === 'DELETE') {
+              setTickets((prev) => prev.filter((t) => t.id !== payload.old.id));
             }
-          } else if (payload.eventType === 'UPDATE') {
-            setTickets((prev) =>
-              prev.map((t) => (t.id === payload.new.id ? { ...t, ...payload.new } : t))
-            );
-          } else if (payload.eventType === 'DELETE') {
-            setTickets((prev) => prev.filter((t) => t.id !== payload.old.id));
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe((status) => {
+          console.log('[Dashboard Realtime] Subscription status:', status);
+          if (status === 'CHANNEL_ERROR') {
+             // Attempt to reconnect after delay
+             setTimeout(() => { if (mounted) setupRealtime(); }, 5000);
+          }
+        });
+    };
+
+    const playAlertSound = () => {
+      try {
+        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+        audio.volume = 0.5;
+        audio.play();
+      } catch (e) {
+        logger.warn("Audio play failed", e);
+      }
+    };
+
+    const showNativeNotification = (ticket: any) => {
+      if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+        const notification = new Notification(`🚨 มีงานแจ้งซ่อมใหม่: #${ticket.ticket_no}`, {
+          body: `โรงพยาบาล: ${ticket.users?.hospitals?.name || 'รับแจ้งใหม่'}\nแจ้งปัญหา: ${ticket.description.substring(0, 100)}`,
+          tag: ticket.id,
+          requireInteraction: true,
+        });
+
+        notification.onclick = (e) => {
+          e.preventDefault();
+          window.focus();
+          router.push(`/tickets/${ticket.id}`);
+          notification.close();
+        };
+      }
+    };
+
+    // Initial setup
+    setupRealtime();
 
     // Run maintenance (Option A: Auto-Cleanup)
     const runMaintenance = async () => {
