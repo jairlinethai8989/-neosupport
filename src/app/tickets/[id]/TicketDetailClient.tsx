@@ -82,6 +82,10 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
   const [departments, setDepartments] = useState<any[]>([]);
   const [escalateNotes, setEscalateNotes] = useState("");
   const [isEscalating, setIsEscalating] = useState(false);
+  const [aiSuggestedReply, setAiSuggestedReply] = useState<string | null>(null);
+  const [isSuggestingReply, setIsSuggestingReply] = useState(false);
+  const [aiResolutionSummary, setAiResolutionSummary] = useState<string | null>(initialTicket.ai_metadata?.resolution_summary || null);
+  const [isGeneratingResolution, setIsGeneratingResolution] = useState(false);
 
   // Fetch staff list and active tickets
   const loadAppData = useCallback(async () => {
@@ -110,6 +114,8 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
   useEffect(() => {
     loadAppData();
   }, [loadAppData]);
+
+  const [isSuggestingResolution, setIsSuggestingResolution] = useState(false);
 
   const showToast = (message: string) => {
     setToast({ message, show: true });
@@ -270,6 +276,27 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const handleSuggestResolution = async () => {
+    if (isSuggestingResolution) return;
+    setIsSuggestingResolution(true);
+    try {
+      const res = await fetch('/api/ai/resolution-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticketId: initialTicket.id, messages })
+      });
+      const data = await res.json();
+      if (data.summary) {
+        setResolveNotes(data.summary);
+        showToast("AI ช่วยสรุปการปิดงานให้แล้ว ✨");
+      }
+    } catch {
+      showToast("AI ไม่สามารถสรุปงานได้ในขณะนี้");
+    } finally {
+      setIsSuggestingResolution(false);
+    }
+  };
+
   const handleGenerateAISummary = async (force = false) => {
     if (isGeneratingAI) return;
     setIsGeneratingAI(true);
@@ -287,6 +314,49 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
       else showToast(`❌ ${data.error || "ไม่สามารถสรุปงานได้ในขณะนี้"}`);
     } catch { showToast("❌ ระบบ AI ขัดข้อง กรุณาลองใหม่อีกครั้ง"); }
     finally { setIsGeneratingAI(false); }
+  };
+
+  const handleSuggestReply = async () => {
+    if (isSuggestingReply) return;
+    setIsSuggestingReply(true);
+    try {
+      const res = await fetch('/api/ai/suggest-reply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticketId: initialTicket.id })
+      });
+      const data = await res.json();
+      if (data.suggestion) {
+        setAiSuggestedReply(data.suggestion);
+        showToast("AI แนะนำคำตอบให้แล้ว ✨");
+      }
+    } catch (e) {
+      showToast("ไม่สามารถหาคำแนะนำได้ในขณะนี้");
+    } finally {
+      setIsSuggestingReply(false);
+    }
+  };
+
+  const handleGenerateResolutionSummary = async () => {
+    if (isGeneratingResolution) return;
+    setIsGeneratingResolution(true);
+    try {
+      const res = await fetch('/api/ai/resolution-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticketId: initialTicket.id })
+      });
+      const data = await res.json();
+      if (data.resolution) {
+        setAiResolutionSummary(data.resolution);
+        setResolveNotes(data.resolution);
+        showToast("AI ช่วยสรุปวิธีแก้ปัญหาให้แล้ว ✨");
+      }
+    } catch (e) {
+      showToast("ไม่สามารถสรุปวิธีแก้ปัญหาได้");
+    } finally {
+      setIsGeneratingResolution(false);
+    }
   };
 
   const handleStatusUpdate = async (newStatus: string, additionalData: any = {}) => {
@@ -587,31 +657,52 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <Zap size={14} color="var(--primary)" fill="var(--primary)" />
+                          <div style={{ padding: '6px', background: 'var(--primary)', borderRadius: '8px' }}>
+                             <Zap size={14} color="white" fill="white" />
+                          </div>
                           <span style={{ fontSize: '0.75rem', fontWeight: 900, color: "var(--primary)", textTransform: "uppercase", letterSpacing: '1px' }}>AI Smart Insight</span>
                         </div>
                         <button 
                           onClick={() => handleGenerateAISummary(true)}
                           disabled={isGeneratingAI}
                           style={{ 
-                            background: 'none', 
+                            background: 'rgba(0,108,228,0.08)', 
                             border: 'none', 
                             color: 'var(--primary)', 
                             fontSize: '0.65rem', 
                             fontWeight: 800, 
                             cursor: 'pointer',
+                            padding: '6px 12px',
+                            borderRadius: '20px',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '4px',
+                            transition: 'all 0.2s',
                             opacity: isGeneratingAI ? 0.5 : 1
                           }}
                         >
                           <Activity size={10} /> REGENERATE
                         </button>
                       </div>
-                      <div style={{ fontSize: "0.9rem", color: "var(--text-heading)", lineHeight: "1.8", whiteSpace: "pre-wrap", fontWeight: 600 }}>
+                      <div style={{ fontSize: "0.95rem", color: "var(--text-heading)", lineHeight: "1.8", whiteSpace: "pre-wrap", fontWeight: 600 }}>
                          {aiSummary}
                       </div>
+
+                      {/* Suggested Category & Priority */}
+                      {(initialTicket.ai_metadata?.suggested_category || initialTicket.ai_metadata?.suggested_priority) && (
+                        <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(0,0,0,0.05)', display: 'flex', gap: '8px' }}>
+                           {initialTicket.ai_metadata?.suggested_category && (
+                             <span style={{ padding: '4px 10px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderRadius: '6px', fontSize: '0.65rem', fontWeight: 800 }}>
+                               AI SUGGESTED: {initialTicket.ai_metadata.suggested_category}
+                             </span>
+                           )}
+                           {initialTicket.ai_metadata?.suggested_priority && (
+                             <span style={{ padding: '4px 10px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderRadius: '6px', fontSize: '0.65rem', fontWeight: 800 }}>
+                               PRIO: {initialTicket.ai_metadata.suggested_priority}
+                             </span>
+                           )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -750,11 +841,42 @@ export default function TicketDetailClient({ initialTicket, initialMessages, ini
 
           {/* Bottom Bar: Quick Replies & Input */}
           <div style={{ borderTop: "1px solid var(--border-color)", background: "var(--bg-glass)", backdropFilter: 'blur(10px)' }}>
+            {/* AI Suggested Reply Section */}
+            {aiSuggestedReply && (
+              <div className="animate-slide-up" style={{ padding: '0.75rem 1rem', background: '#f0f9ff', borderTop: '1px solid #bae6fd' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                     <div style={{ padding: '4px', background: '#0ea5e9', borderRadius: '6px' }}>
+                        <Zap size={10} color="white" fill="white" />
+                     </div>
+                     <span style={{ fontSize: '0.65rem', fontWeight: 900, color: '#0369a1', textTransform: 'uppercase' }}>AI Suggested Reply</span>
+                  </div>
+                  <button onClick={() => setAiSuggestedReply(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+                    <X size={14} />
+                  </button>
+                </div>
+                <div style={{ fontSize: '0.85rem', color: '#0c4a6e', lineHeight: 1.5, background: 'white', padding: '0.75rem', borderRadius: '8px', border: '1px solid #e0f2fe', cursor: 'pointer' }}
+                  onClick={() => { setReplyText(aiSuggestedReply); setAiSuggestedReply(null); }}>
+                  {aiSuggestedReply}
+                </div>
+                <div style={{ fontSize: '0.6rem', color: '#64748b', marginTop: '4px', fontStyle: 'italic' }}>* คลิกที่ข้อความด้านบนเพื่อนำไปใส่ในช่องแชท</div>
+              </div>
+            )}
+
             {initialSettings?.quick_replies?.length > 0 && (
-              <div style={{ padding: "0.75rem 1rem", background: "rgba(0,0,0,0.2)", display: "flex", gap: "0.5rem", flexWrap: "wrap", borderBottom: "1px solid var(--border-light)" }}>
-                <span style={{ fontSize: "0.7rem", color: "var(--primary)", display: "flex", alignItems: "center", gap: "6px", marginRight: "12px", fontWeight: 700 }}>
-                  <Zap size={12} /> Macros:
-                </span>
+              <div style={{ padding: "0.75rem 1rem", background: "rgba(0,0,0,0.02)", display: "flex", gap: "0.5rem", flexWrap: "wrap", borderBottom: "1px solid var(--border-light)" }}>
+                <button 
+                  onClick={handleSuggestReply}
+                  disabled={isSuggestingReply}
+                  style={{ 
+                    padding: "0.4rem 1rem", borderRadius: "8px", background: '#f0f9ff', 
+                    border: '1px solid #0ea5e9', color: '#0ea5e9', fontSize: '0.8rem', fontWeight: 800, 
+                    display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' 
+                  }}
+                >
+                  <Zap size={12} fill="#eaedff" /> AI Suggest
+                </button>
+                <div style={{ width: '1px', background: '#e2e8f0', margin: '0 4px' }} />
                 {initialSettings.quick_replies.map((reply: string, idx: number) => (
                   <button 
                     key={idx} 

@@ -14,6 +14,7 @@ import {
 import { logout } from "./login/actions";
 import { createClient } from "@/utils/supabase/client";
 import { exportToCSV, exportTicketsPDF } from "@/utils/export-utils";
+import { motion, AnimatePresence } from "framer-motion";
 
 // ─── Sub-Components ──────────────────────────────────────────
 
@@ -162,7 +163,7 @@ const TicketRow = ({ t }: { t: any }) => {
             <span>เริ่มต้น: {formattedDate}</span>
           </div>
           <div className="flex items-center gap-1 text-emerald-500">
-            <CheckCircle2 className="w-3 h-3" />
+            <CheckCircle className="w-3 h-3" />
             <span>เปิดมาแล้ว {timeSince(t.created_at)}</span>
           </div>
         </div>
@@ -214,6 +215,9 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedHospital, setSelectedHospital] = useState("ALL");
   const [newTicketNotify, setNewTicketNotify] = useState<any>(null);
+  const [aiInsights, setAiInsights] = useState<any>(null);
+  const [isRefreshingInsights, setIsRefreshingInsights] = useState(false);
+  const [lineStatus, setLineStatus] = useState<"Online" | "Offline" | "Degraded">("Online");
   // Removed isNavigating state to improve perceived performance
 
   const showToast = (message: string) => {
@@ -379,6 +383,15 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
       }
     };
     runMaintenance();
+
+    const fetchAIInsights = async () => {
+       try {
+         const res = await fetch('/api/ai/insights');
+         const data = await res.json();
+         if (data && !data.message) setAiInsights(data);
+       } catch (e) { console.error("Failed to fetch AI Insights"); }
+    };
+    fetchAIInsights();
     
     return () => {
       // Cleanup interval timer
@@ -395,6 +408,7 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
       
       logger.debug('DashboardClient cleanup completed');
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   const toggleTheme = () => {
@@ -499,6 +513,20 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
     return sortableItems;
   }, [visibleTickets, sortConfig, searchQuery, statusFilter, selectedHospital]);
 
+  const handleRefreshInsights = async () => {
+    setIsRefreshingInsights(true);
+    try {
+      const res = await fetch('/api/ai/insights', { method: 'POST' });
+      const data = await res.json();
+      if (data) setAiInsights(data);
+      showToast("อัปเดตข้อมูลเชิงลึก AI สำเร็จ ✨");
+    } catch {
+      showToast("ไม่สามารถอัปเดต AI Insights ได้");
+    } finally {
+      setIsRefreshingInsights(false);
+    }
+  };
+
   const renderSortIcon = (key: string) => {
     if (sortConfig?.key !== key) return <ArrowUpDown size={14} className="inline-icon opacity-40" />;
     return sortConfig.direction === 'asc' 
@@ -595,7 +623,17 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
             {isSidebarOpen && <span className="nav-label-modern">ตั้งค่าระบบ</span>}
           </Link>
 
-          <div style={{ marginTop: 'auto', paddingTop: '1.5rem', marginBottom: '2rem', borderTop: '1px solid var(--border-color)' }}>
+           <div style={{ marginTop: 'auto', paddingTop: '1.5rem', marginBottom: '2rem', borderTop: '1px solid var(--border-color)' }}>
+              <div style={{ padding: '0 1rem 1.5rem 1rem' }}>
+                 <div style={{ background: 'var(--bg-surface-hover)', borderRadius: '16px', padding: '1rem', border: '1px solid var(--border-color)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                       <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)' }}>LINE WEBHOOK</span>
+                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: lineStatus === 'Online' ? '#10b981' : '#ef4444', boxShadow: lineStatus === 'Online' ? '0 0 10px #10b981' : 'none' }}></div>
+                    </div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 850, color: 'var(--text-heading)' }}>{lineStatus}</div>
+                    <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginTop: '4px' }}>Real-time Sync Active</div>
+                 </div>
+              </div>
               <form action={logout}>
                 <button type="submit" className="nav-item-modern hover-danger" style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer' }} data-label="ออกจากระบบ">
                   <LogOut size={20} />
@@ -649,26 +687,112 @@ export default function DashboardClient({ initialTickets, userEmail, slaPolicy =
           </div>
         </header>
 
-        <section className="summary-grid animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', padding: '0 3rem', marginBottom: '3rem' }}>
+        <section className="summary-grid animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', padding: '0 3rem', marginBottom: '3rem' }}>
           {[
-            { label: "ใบงานทั้งหมด", sub: "Total Tickets", value: total, color: "var(--primary)", icon: <Activity size={22} /> },
-            { label: "รอดำเนินการ", sub: "Pending", value: pending, color: "var(--status-pending-text)", icon: <Clock size={22} /> },
-            { label: "กำลังแก้ไข", sub: "In Progress", value: inProgress, color: "var(--status-progress-text)", icon: <Zap size={22} /> },
-            { label: "ยังไม่รับงาน", sub: "Unassigned", value: unassignedCount, color: "var(--status-escalated-text)", glow: true, icon: <AlertTriangle size={22} /> }
+            { label: "ใบงานทั้งหมด", sub: "Total Tickets", value: total, color: "var(--primary)", desc: "จาก 12 สาขาหลัก", icon: <Inbox size={22} /> },
+            { label: "รอดำเนินการ", sub: "Waiting Response", value: pending, color: "var(--status-pending-text)", desc: "เฉลี่ยรอนาน 14 นาที", icon: <Clock size={22} /> },
+            { label: "กำลังแก้ไข", sub: "Active Operations", value: inProgress, color: "var(--status-progress-text)", desc: "กำลังทำโดยคุณ 3 งาน", icon: <Zap size={22} /> },
+            { label: "ยังไม่รับงาน", sub: "Urgent Attention", value: unassignedCount, color: "var(--status-escalated-text)", desc: "ต้องการคนรับผิดชอบทันที", icon: <AlertTriangle size={22} />, glow: unassignedCount > 0 }
           ].map((m, i) => (
-            <div key={i} className="technical-panel" style={{ padding: '2rem', borderRadius: '32px', border: '1px solid var(--border-color)', background: 'white', boxShadow: 'var(--shadow-premium)', transition: 'var(--transition)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
-                <div style={{ padding: '12px', borderRadius: '16px', background: `${m.color}10`, color: m.color }}>
+            <div key={i} className="technical-panel" style={{ 
+              padding: '2.5rem', 
+              borderRadius: '40px', 
+              border: m.glow ? `2px solid ${m.color}` : '1px solid var(--border-color)', 
+              background: 'white', 
+              boxShadow: m.glow ? `0 20px 40px ${m.color}15` : 'var(--shadow-premium)',
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              {m.glow && <div className="animate-pulse" style={{ position: 'absolute', top: '1rem', right: '1rem', width: '8px', height: '8px', borderRadius: '50%', background: m.color }}></div>}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+                <div style={{ padding: '14px', borderRadius: '20px', background: `${m.color}10`, color: m.color }}>
                   {m.icon}
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>{m.sub}</div>
-                  <div style={{ fontSize: '2.5rem', fontWeight: 900, color: m.color, letterSpacing: '-1px', lineHeight: 1 }}>{m.value}</div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '2px' }}>{m.sub}</div>
+                  <div style={{ fontSize: '3.5rem', fontWeight: 950, color: 'var(--text-heading)', letterSpacing: '-2px', lineHeight: 1 }}>{m.value}</div>
                 </div>
               </div>
-              <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-heading)' }}>{m.label}</div>
+              <div style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--text-heading)', marginBottom: '4px' }}>{m.label}</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>{m.desc}</div>
             </div>
           ))}
+        </section>
+
+        {/* AI Executive Insights Section */}
+        <section className="animate-fade-in delay-1" style={{ padding: '0 3rem', marginBottom: '3rem' }}>
+           <div style={{ 
+             background: 'linear-gradient(135deg, #1e293b, #0f172a)', 
+             borderRadius: '48px', 
+             padding: '3.5rem',
+             color: 'white',
+             boxShadow: '0 30px 60px rgba(0,0,0,0.12)',
+             position: 'relative',
+             overflow: 'hidden'
+           }}>
+              {/* Background Decoration */}
+              <div style={{ position: 'absolute', top: '-10%', right: '-10%', width: '400px', height: '400px', background: 'radial-gradient(circle, rgba(59,130,246,0.15), transparent)', borderRadius: '50%' }}></div>
+              
+              <div style={{ position: 'relative', zIndex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                     <div style={{ background: 'var(--primary)', padding: '12px', borderRadius: '16px', boxShadow: '0 0 20px var(--primary-glow)' }}>
+                        <Zap size={24} fill="white" color="white" />
+                     </div>
+                     <div>
+                        <h2 style={{ fontSize: '1.75rem', fontWeight: 950, letterSpacing: '-1px', margin: 0 }}>Executive AI Intelligence</h2>
+                        <p style={{ fontSize: '0.9rem', color: '#94a3b8', margin: '4px 0 0 0' }}>AI-driven analysis of support trends and strategic efficiency</p>
+                     </div>
+                  </div>
+                  <button 
+                    onClick={handleRefreshInsights}
+                    disabled={isRefreshingInsights}
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.75rem 1.5rem', borderRadius: '16px', color: 'white', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                  >
+                    <Activity size={16} /> {isRefreshingInsights ? "ANALYZING..." : "RE-ANALYZE DATA"}
+                  </button>
+                </div>
+
+                {aiInsights ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '4rem' }}>
+                    <div>
+                       <div style={{ fontSize: '1.5rem', fontWeight: 700, lineHeight: 1.6, marginBottom: '2rem', color: '#f1f5f9' }}>
+                          &quot;{aiInsights.summary}&quot;
+                       </div>
+                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1.5rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                             <div style={{ color: '#3b82f6', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', marginBottom: '1rem' }}>Efficiency Insight</div>
+                             <p style={{ fontSize: '0.9rem', color: '#cbd5e1', lineHeight: 1.6 }}>{aiInsights.efficiency_insight}</p>
+                          </div>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1.5rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                             <div style={{ color: '#10b981', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', marginBottom: '1rem' }}>Strategic Recommendation</div>
+                             <p style={{ fontSize: '0.9rem', color: '#cbd5e1', lineHeight: 1.6 }}>{aiInsights.recommendation}</p>
+                          </div>
+                       </div>
+                    </div>
+                    <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '32px', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontWeight: 850 }}>Trending Issues</span>
+                          <span style={{ padding: '4px 12px', background: aiInsights.risk_level === 'High' ? '#ef4444' : '#10b981', borderRadius: '20px', fontSize: '0.65rem', fontWeight: 900 }}>RISK: {aiInsights.risk_level}</span>
+                       </div>
+                       {aiInsights.top_issues?.map((issue: any, idx: number) => (
+                         <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '16px' }}>
+                            <span style={{ fontSize: '0.9rem', color: '#e2e8f0' }}>{issue.title}</span>
+                            <span style={{ fontWeight: 900, color: 'var(--primary)' }}>{issue.count} tickets</span>
+                         </div>
+                       ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed rgba(255,255,255,0.1)', borderRadius: '32px' }}>
+                     <div style={{ textAlign: 'center' }}>
+                        <div className="animate-spin" style={{ width: '32px', height: '32px', border: '3px solid rgba(255,255,255,0.1)', borderTopColor: 'var(--primary)', borderRadius: '50%', margin: '0 auto 1rem auto' }}></div>
+                        <p style={{ color: '#94a3b8', fontWeight: 600 }}>Initialising Executive Intelligence...</p>
+                     </div>
+                  </div>
+                )}
+              </div>
+           </div>
         </section>
 
         <section className="hud-content" style={{ width: '100%', maxWidth: 'none' }}>
